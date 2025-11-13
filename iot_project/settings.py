@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*","https://16de7fd271a3.ngrok-free.app/"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "fertisense-iot-production.up.railway.app",   # tumhari current ngrok URL
+    "https://fertisense-iot-production.up.railway.app",   # tumhari current ngrok URL
 ]
 
 
