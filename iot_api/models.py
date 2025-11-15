@@ -53,6 +53,9 @@ def send_email_notification(subject, message, emails):
         return False
 
 # ================== Alarm Normalized Alert ==================
+import pytz
+
+IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
 def send_normalized_alert(active_alarm):
     from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
 
