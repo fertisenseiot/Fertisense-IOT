@@ -178,7 +178,7 @@ class MasterUserSerializer(serializers.ModelSerializer):
             'VALIDITY_END'
         ]
         extra_kwargs = {
-            "PASSWORD": {"write_only": True},  # Don't return password in API
+            "PASSWORD": {"write_only": False},  # Don't return password in API
         }
 
     def validate_PASSWORD(self, value):
