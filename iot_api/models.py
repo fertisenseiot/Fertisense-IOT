@@ -21,26 +21,41 @@ EMAIL_HOST_USER = 'testwebservice71@gmail.com'
 EMAIL_HOST_PASSWORD = 'akuu vulg ejlg ysbt'  # Gmail app password
 
 # ================== SMS Function ==================
-def send_sms(phone, message):
+def send_sms(phones, message):
+    # phones = list of numbers → convert to single comma string
+    mobile_numbers = ",".join(phones)
+
     params = {
         "user_name": SMS_USER,
         "user_password": SMS_PASS,
-        "mobile": phone,
+        "mobile": mobile_numbers,
         "sender_id": SENDER_ID,
         "type": "F",
         "text": message
     }
+
     try:
         resp = requests.get(SMS_API_URL, params=params, timeout=10)
         print("🔎 SMS API Response:", resp.text)
-        if resp.status_code == 200 and ("success" in resp.text.lower() or "sent" in resp.text.lower()):
-            print(f"✅ SMS sent to {phone}")
+
+        success = True
+        parts = resp.text.split("|")  # split multiple results
+
+        for p in parts:
+            if "~1~" not in p:   # any SMS failed?
+                success = False
+                break
+
+        if resp.status_code == 200 and success:
+            print(f"✅ SMS sent successfully to {mobile_numbers}")
             return True
         else:
-            print(f"❌ SMS failed for {phone}")
+            print(f"❌ SMS failed for {mobile_numbers}")
+            return False
+
     except Exception as e:
         print("❌ SMS Error:", e)
-    return False
+        return False
 
 # ================== Email Function ==================
 def send_email_notification(subject, message, emails):
@@ -86,11 +101,11 @@ def send_normalized_alert(active_alarm):
 
     message = f"INFO!! The temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP"
 
-    for phone in phones:
-        if phone:
-            send_sms(phone, message)
-
-
+    if phones:
+            # send_sms(",".join(phones), message)
+        print("starting to send_sms")
+        send_sms(phone, message)
+        print("send_sms completed") 
     if emails:
         send_email_notification("Alarm Normalized", message, emails)
 
