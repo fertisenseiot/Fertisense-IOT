@@ -88,7 +88,8 @@ def send_normalized_alert(active_alarm):
 
     for phone in phones:
         if phone:
-            send_sms(",".join(phones), message)
+            send_sms(phone, message)
+
 
     if emails:
         send_email_notification("Alarm Normalized", message, emails)
