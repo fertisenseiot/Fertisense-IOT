@@ -168,6 +168,8 @@ class DeviceReadingLog(models.Model):
             if active_alarm:
                 print(f"✅ Alarm normalized for device {self.DEVICE_ID}, sending notifications...")
                 send_normalized_alert(active_alarm)
+                print(f"✅ Alarm normalized for device {self.DEVICE_ID}, sending Email notifications...")
+                send_email_notification(active_alarm)
 
                 # 🔹 Update all normalized timestamps in IST
                 active_alarm.IS_ACTIVE = 0
