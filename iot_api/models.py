@@ -147,7 +147,7 @@ class DeviceReadingLog(models.Model):
             PARAMETER_ID=self.PARAMETER_ID,
             IS_ACTIVE=1
         ).first()
-
+        print("breached value",breached)
         # 🔹 Step 5: Handle breached alarm
         if breached:
             if not active_alarm:
