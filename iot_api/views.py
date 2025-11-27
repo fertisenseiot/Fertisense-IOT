@@ -13,13 +13,13 @@ from rest_framework.response import Response
 from .models import (
     MasterDevice, DeviceReadingLog, DeviceAlarmLog, 
     MasterOrganization, MasterParameter, MasterSensor,
-    CompassDates, SeUser, SensorParameterLink, DeviceSensorLink, DeviceAlarmCallLog , MasterUOM , MasterCentre , MasterRole , CentreOrganizationLink , MasterUser, UserOrganizationCentreLink,MasterNotificationTime , DeviceCategory ,MasterSubscriptionInfo , Master_Plan_Type, SubscriptionHistory,
+    CompassDates, SeUser, SensorParameterLink, DeviceSensorLink, DeviceAlarmCallLog , MasterUOM , MasterCentre , MasterRole , CentreOrganizationLink , MasterUser, UserOrganizationCentreLink,MasterNotificationTime , DeviceCategory ,MasterSubscriptionInfo , Master_Plan_Type, SubscriptionHistory,DeviceStatusAlarmLog
 )
 from .serializers import (
     MasterDeviceSerializer, DeviceReadingLogSerializer, DeviceAlarmLogSerializer,
     MasterOrganizationSerializer, MasterParameterSerializer, MasterSensorSerializer,
     CompassDatesSerializer, SeUserSerializer, SensorParameterLinkSerializer,
-    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer
+    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer
 )
 
 from django.contrib import messages
@@ -103,7 +103,7 @@ def dashboard_view(request):
         'master_subcriptioninfo': MasterSubscriptionInfo.objects.count(),
         'plan_type': Master_Plan_Type.objects.count(),
         'subscription_history': SubscriptionHistory.objects.count(),
-
+        'devicestatusalarmlog' : DeviceStatusAlarmLog.objects.count(),
 
     }
     return render(request, 'dashboard.html', context)
@@ -209,6 +209,10 @@ class MasterPlanTypeViewSet(viewsets.ModelViewSet):
 class Subscription_HistoryViewSet(viewsets.ModelViewSet):
     queryset = SubscriptionHistory.objects.all()
     serializer_class = Subscription_HistorySerializer
+
+class DeviceStatusAlarmLogViewSet(viewsets.ModelViewSet):
+    queryset = DeviceStatusAlarmLog.objects.all()
+    serializer_class = DeviceStatusAlarmLogSerializer
 
 # -------------------------
 # Extra Simple APIs for JS
