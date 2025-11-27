@@ -1121,31 +1121,38 @@ class SubscriptionHistory(models.Model):
         return f"Device {self.Device_ID} | {self.Status} | Start {self.Subscription_Start_date}"
     def save(self, *args, **kwargs): today = date.today() # 1️⃣ Decide status based on dates if self.Subcription_End_date and self.Subcription_End_date < today: self.Status = 'Expired' elif self.Subscription_Start_date > today: self.Status = 'Future' else: self.Status = 'Active' with transaction.atomic(): # 2️⃣ Adjust other subscriptions for same device overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk) for o in overlaps: o_today_status = None # Expire if end date passed if o.Subcription_End_date and o.Subcription_End_date < today: o.Status = 'Expired' # Future → Active if start date reached elif o.Subscription_Start_date <= today and (not o.Subcription_End_date or o.Subcription_End_date >= today): o.Status = 'Active' # Otherwise future elif o.Subscription_Start_date > today: o.Status = 'Future' o.save() super().save(*args, **kwargs)
 
-def save(self, *args, **kwargs):
-    today = date.today()
+    def save(self, *args, **kwargs):
+        today = date.today()
 
-    # 1️⃣ Decide status of current subscription
-    if self.Subcription_End_date and self.Subcription_End_date < today:
-        self.Status = 'Expired'
-    elif self.Subscription_Start_date > today:
-        self.Status = 'Future'
-    else:
-        self.Status = 'Active'
-
-    super().save(*args, **kwargs)  # Save current first
-
-    # 2️⃣ Update other subscriptions WITHOUT calling their save()
-    overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk)
-
-    for o in overlaps:
-        if o.Subcription_End_date and o.Subcription_End_date < today:
-            new_status = 'Expired'
-        elif o.Subscription_Start_date > today:
-            new_status = 'Future'
+        # 1) Decide status for this instance based on dates
+        if self.Subcription_End_date and self.Subcription_End_date < today:
+            self.Status = 'Expired'
+        elif self.Subscription_Start_date > today:
+            self.Status = 'Future'
         else:
-            new_status = 'Expired'   # OLD subscriptions should NEVER be active
+            self.Status = 'Active'
 
-        SubscriptionHistory.objects.filter(pk=o.pk).update(Status=new_status)
+        with transaction.atomic():
+            # Only expire/adjust other active subscriptions if this one is starting now (or in past)
+            if self.Status == 'Active':
+            # Find other active subscriptions for same device
+                overlaps = SubscriptionHistory.objects.filter(
+                    Device_ID=self.Device_ID,
+                    Status='Active'
+                ).exclude(pk=self.pk)
+
+                for o in overlaps:
+                    # If other subscription overlaps (its end is None or >= this start)
+                    if (o.Subcription_End_date is None) or (o.Subcription_End_date >= self.Subscription_Start_date):
+                        # Option: truncate the old subscription to day before new start
+                        new_end = self.Subscription_Start_date - timedelta(days=1)
+                        o.Subcription_End_date = new_end
+                        # If truncated end is before today, mark expired, else keep Active until new_end
+                        o.Status = 'Expired' if new_end < today else o.Status
+                        o.save()
+        # If this subscription is Future — do not touch existing Active ones (they should continue)
+
+            super().save(*args, **kwargs)
 
 
 class DeviceStatusAlarmLog(models.Model):
