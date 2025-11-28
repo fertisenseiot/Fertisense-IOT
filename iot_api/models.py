@@ -40,18 +40,41 @@ def send_sms(phone, message):
         "type": "F",
         "text": message
     }
+    # try:
+    #     resp = requests.get(SMS_API_URL, params=params, timeout=10)
+    #     print("🔎 SMS API Response:", resp.text)
+    #     if resp.status_code == 200 and ("success" in resp.text.lower() or "sent" in resp.text.lower()):
+    #         print(f"✅ SMS sent to {phone}")
+    #         return True
+    #     else:
+    #         print(f"❌ SMS failed for {phone}")
+    # except Exception as e:
+    #     print("❌ SMS Error:", e)
+    # return False
     try:
         resp = requests.get(SMS_API_URL, params=params, timeout=10)
         print("🔎 SMS API Response:", resp.text)
-        if resp.status_code == 200 and ("success" in resp.text.lower() or "sent" in resp.text.lower()):
+
+        response_text = resp.text.lower()
+
+        # --- UniversalSMS success formats ---
+        if (
+            resp.status_code == 200 and (
+                "success" in response_text
+                or "sent" in response_text
+                or "universal" in response_text
+                or response_text.startswith("kp")  # token-based success
+            )
+        ):
             print(f"✅ SMS sent to {phone}")
             return True
         else:
-            print(f"❌ SMS failed for {phone}")
+            print(f"❌ SMS failed for {phone} - API did not return success keyword")
+            return False
+
     except Exception as e:
         print("❌ SMS Error:", e)
-    return False
-
+        return False
 # ================== Email Function ==================
 def send_email_brevo(to_email, subject, html_content):
     print("📧 Sending Email via Brevo...")
