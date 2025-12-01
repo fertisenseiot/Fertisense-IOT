@@ -1055,6 +1055,7 @@ class MasterUser(models.Model):
     VALIDITY_START = models.DateField(null=True, blank=True)
     VALIDITY_END = models.DateField(null=True, blank=True)
     PASSWORD_RESET = models.BooleanField(default=False)
+    IS_ACTIVE = models.IntegerField(default=1)
     class Meta:
         db_table = "master_user"
     
