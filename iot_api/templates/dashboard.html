@@ -1954,23 +1954,23 @@ function toggleUserStatus(userId, checkbox) {
   const isActive = checkbox.checked;
   const tr = checkbox.closest("tr");
 
-  // Update UI
-  tr.classList.toggle("inactive-row", !isActive);
-  checkbox.nextElementSibling.querySelector(".status-text").textContent =
-    isActive ? "Active" : "Inactive";
+//   // Update UI
+//   tr.classList.toggle("inactive-row", !isActive);
+//   checkbox.nextElementSibling.querySelector(".status-text").textContent =
+//     isActive ? "Active" : "Inactive";
 
-  // Update backend
-  fetch(`${API.createuser}${userId}/`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ IS_ACTIVE: isActive ? 1 : 0 })
-  })
-  .then(res => {
-    if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
-    console.log("✅ USER_STATUS updated:", { USER_ID: userId, IS_ACTIVE: isActive });
-  })
-  .catch(err => console.error("Failed to update USER_STATUS:", err));
-}
+//   // Update backend
+//   fetch(`${API.createuser}${userId}/`, {
+//     method: "PATCH",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({ IS_ACTIVE: isActive ? 1 : 0 })
+//   })
+//   .then(res => {
+//     if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
+//     console.log("✅ USER_STATUS updated:", { USER_ID: userId, IS_ACTIVE: isActive });
+//   })
+//   .catch(err => console.error("Failed to update USER_STATUS:", err));
+// }
 
 // ===== Delete =====
 async function deleteRow(id){
