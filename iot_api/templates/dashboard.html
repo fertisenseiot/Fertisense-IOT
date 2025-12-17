@@ -552,8 +552,11 @@ function resolveName(field, value) {
     case "Plan_ID":
       return dropdownData.masterplantype?.find(p => p.Plan_ID == value)?.Plan_Name || value;
 
-    case "USER_ID":
-      return dropdownData.user?.find(u => u.USER_ID == value)?.USERNAME || value;
+  case "USER_ID":
+  // ❌ DO NOT resolve USER_ID for createuser table
+  if (currentTable === "createuser") return value;
+  return dropdownData.user?.find(u => u.USER_ID == value)?.USERNAME || value;
+
 
     case "ROLE_ID":
       return dropdownData.roles?.find(r => r.ROLE_ID == value)?.ROLE_NAME || value;
@@ -1077,104 +1080,115 @@ if (currentData.length) {
 
     // ===============================
     // 3️⃣ DEFAULT NAME MAPPING
-    // ===============================
-    // let cellVal = resolveName(h, row[h]);
-    let rawVal = row[h];
+//     // ===============================
+//     // let cellVal = resolveName(h, row[h]);
+//     let rawVal = row[h];
+// let cellVal = (rawVal === 0 || rawVal === "0") ? "0" : resolveName(h, rawVal);
+
+
+//     // Boolean fields
+//     if (h === "SEND_SMS" || h === "SEND_EMAIL") {
+//         cellVal = row[h] ? "Yes" : "No";
+//     }
+
+//     // Created by → Role
+//     if (h === "CREATED_BY") {
+//         const creator = dropdownData.user?.find(u => u.USER_ID == row[h]);
+//         const roleObj = dropdownData.roles?.find(r => r.ROLE_ID == creator?.ROLE_ID);
+//         cellVal = roleObj ? roleObj.ROLE_NAME : "—";
+//     }
+//      // 🔥🔥 DEVICE_STATUS (THIS WAS NOT WORKING BEFORE)
+//         if (h === "DEVICE_STATUS") {
+//     cellVal = row.DEVICE_STATUS ?? "";   // show 1/0 exactly
+//     return `<td>${cellVal}</td>`;
+// }
+// if (h === "SENSOR_STATUS") {
+//     cellVal = row.SENSOR_STATUS ?? "";   // show 1/0 exactly
+//     return `<td>${cellVal}</td>`;
+// }
+
+// if (h === "created_by") {
+//     const creator = dropdownData.user?.find(u => u.USER_ID == row[h]);
+//     const roleObj = dropdownData.roles?.find(r => r.ROLE_ID == creator?.ROLE_ID);
+//     cellVal = roleObj ? roleObj.ROLE_NAME : "—";
+// }
+
+//     return `<td>${cellVal}</td>`;
+//  // to show id of device,sensor, parameter etc 
+
+//       // Map IDs → Names
+//       if (h === "ORG_ID" || h === "ORGANIZATION_ID") {
+//         const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]);
+//         cellVal = org ? org.ORGANIZATION_NAME : row[h];
+//       }
+//       if (h === "CENTRE_ID") {
+//         const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]);
+//         cellVal = centre ? centre.CENTRE_NAME : row[h];
+//       }
+//       if (h === "CATEGORY_ID") {
+//         const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]);
+//         cellVal = cat ? cat.CATEGORY_NAME : row[h];
+//       }
+//       if (h === "DEVICE_ID" && currentTable !== "masterdevices") {
+//         const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
+//         cellVal = device ? device.DEVICE_NAME : row[h];
+//       }
+//       if (h === "Device_ID") {
+//         const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
+//         cellVal = device ? device.DEVICE_NAME : row[h];
+//       }
+      
+//       if (h === "SENSOR_ID" && currentTable !== "mastersensor") {
+//         const sensor = (dropdownData.sensors || []).find(s => s.SENSOR_ID == row[h]);
+//         cellVal = sensor ? sensor.SENSOR_NAME : row[h];
+//       }
+//       if (h === "PARAMETER_ID" && currentTable !== "masterparameter") {
+//         const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == row[h]);
+//         cellVal = param ? param.PARAMETER_NAME : row[h];
+//       }
+//       if (h === "USER_ID") {
+//         const user = (dropdownData.user || []).find(u => u.USER_ID == row[h]);
+//         cellVal = user ? user.USERNAME : row[h];
+//       }
+//       if (h === "ROLE_ID") {
+//         const role = (dropdownData.roles || []).find(r => r.ROLE_ID == row[h]);
+//         cellVal = role ? role.ROLE_NAME : row[h];
+//       }
+//       if (h === "UOM_ID") {
+//         const uom = (dropdownData.uoms || []).find(u => u.UOM_ID == row[h]);
+//         cellVal = uom ? uom.UOM_NAME : row[h];
+//       }
+
+//       if (h === "Subscription_ID") {
+//         const pkg = (dropdownData.mastersubscriptioninfo || []).find(p => p.Subscription_ID == row[h]);
+//         cellVal = pkg ? pkg.Package_Name : row[h];
+//       }
+
+//       if (h === "Plan_ID") {
+//         const plan = (dropdownData.masterplantype || []).find(p => p.Plan_ID == row[h]);
+//         cellVal = plan ? plan.Plan_Name : row[h];
+// }
+
+
+//       // Format date
+//       if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
+//         const options = { year: "numeric", month: "short", day: "2-digit" };
+//         cellVal = new Date(cellVal).toLocaleDateString("en-GB", options);
+//       }
+
+//       return `<td>${cellVal}</td>`;
+//     }).join("");
+
+
+  let rawVal = row[h];
 let cellVal = (rawVal === 0 || rawVal === "0") ? "0" : resolveName(h, rawVal);
 
-
-    // Boolean fields
-    if (h === "SEND_SMS" || h === "SEND_EMAIL") {
-        cellVal = row[h] ? "Yes" : "No";
-    }
-
-    // Created by → Role
-    if (h === "CREATED_BY") {
-        const creator = dropdownData.user?.find(u => u.USER_ID == row[h]);
-        const roleObj = dropdownData.roles?.find(r => r.ROLE_ID == creator?.ROLE_ID);
-        cellVal = roleObj ? roleObj.ROLE_NAME : "—";
-    }
-     // 🔥🔥 DEVICE_STATUS (THIS WAS NOT WORKING BEFORE)
-        if (h === "DEVICE_STATUS") {
-    cellVal = row.DEVICE_STATUS ?? "";   // show 1/0 exactly
-    return `<td>${cellVal}</td>`;
-}
-if (h === "SENSOR_STATUS") {
-    cellVal = row.SENSOR_STATUS ?? "";   // show 1/0 exactly
-    return `<td>${cellVal}</td>`;
+if (h === "SEND_SMS" || h === "SEND_EMAIL") {
+    cellVal = row[h] ? "Yes" : "No";
 }
 
-if (h === "created_by") {
-    const creator = dropdownData.user?.find(u => u.USER_ID == row[h]);
-    const roleObj = dropdownData.roles?.find(r => r.ROLE_ID == creator?.ROLE_ID);
-    cellVal = roleObj ? roleObj.ROLE_NAME : "—";
-}
+return `<td>${cellVal}</td>`;
 
-    return `<td>${cellVal}</td>`;
- // to show id of device,sensor, parameter etc 
-
-      // Map IDs → Names
-      if (h === "ORG_ID" || h === "ORGANIZATION_ID") {
-        const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]);
-        cellVal = org ? org.ORGANIZATION_NAME : row[h];
-      }
-      if (h === "CENTRE_ID") {
-        const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]);
-        cellVal = centre ? centre.CENTRE_NAME : row[h];
-      }
-      if (h === "CATEGORY_ID") {
-        const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]);
-        cellVal = cat ? cat.CATEGORY_NAME : row[h];
-      }
-      if (h === "DEVICE_ID" && currentTable !== "masterdevices") {
-        const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
-        cellVal = device ? device.DEVICE_NAME : row[h];
-      }
-      if (h === "Device_ID") {
-        const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
-        cellVal = device ? device.DEVICE_NAME : row[h];
-      }
-      
-      if (h === "SENSOR_ID" && currentTable !== "mastersensor") {
-        const sensor = (dropdownData.sensors || []).find(s => s.SENSOR_ID == row[h]);
-        cellVal = sensor ? sensor.SENSOR_NAME : row[h];
-      }
-      if (h === "PARAMETER_ID" && currentTable !== "masterparameter") {
-        const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == row[h]);
-        cellVal = param ? param.PARAMETER_NAME : row[h];
-      }
-      if (h === "USER_ID") {
-        const user = (dropdownData.user || []).find(u => u.USER_ID == row[h]);
-        cellVal = user ? user.USERNAME : row[h];
-      }
-      if (h === "ROLE_ID") {
-        const role = (dropdownData.roles || []).find(r => r.ROLE_ID == row[h]);
-        cellVal = role ? role.ROLE_NAME : row[h];
-      }
-      if (h === "UOM_ID") {
-        const uom = (dropdownData.uoms || []).find(u => u.UOM_ID == row[h]);
-        cellVal = uom ? uom.UOM_NAME : row[h];
-      }
-
-      if (h === "Subscription_ID") {
-        const pkg = (dropdownData.mastersubscriptioninfo || []).find(p => p.Subscription_ID == row[h]);
-        cellVal = pkg ? pkg.Package_Name : row[h];
-      }
-
-      if (h === "Plan_ID") {
-        const plan = (dropdownData.masterplantype || []).find(p => p.Plan_ID == row[h]);
-        cellVal = plan ? plan.Plan_Name : row[h];
-}
-
-
-      // Format date
-      if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
-        const options = { year: "numeric", month: "short", day: "2-digit" };
-        cellVal = new Date(cellVal).toLocaleDateString("en-GB", options);
-      }
-
-      return `<td>${cellVal}</td>`;
-    }).join("");
 
     // ✅ Manually append ID column for master tables
     if (currentTable === "masterdevices") rowCells += `<td>${row.DEVICE_ID || ""}</td>`;
