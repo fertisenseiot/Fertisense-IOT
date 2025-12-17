@@ -971,7 +971,7 @@ if (currentTable === "devicealarmlog") {
 
   // ✅ Render table headers with friendly names
 const displayHeaders = headers
-  .filter(h => !(currentTable === "createuser" && h === "IS_ACTIVE"))   // 🔥 REMOVE IS_ACTIVE COLUMN
+  // .filter(h => !(currentTable === "createuser" && h === "IS_ACTIVE"))   // 🔥 REMOVE IS_ACTIVE COLUMN
   .map(h => {
     if ([
       "masterorganizations","mastercentre","masterdevices","mastersensor",
