@@ -1241,26 +1241,26 @@ if (currentTable === "mastersensor") {
   </tr>`;
 }
 
-if (currentTable === "createuser") {
-  const active = (String(row.IS_ACTIVE) === "1" || String(row.IS_ACTIVE).toLowerCase() === "true");
+// if (currentTable === "createuser") {
+//   const active = (String(row.IS_ACTIVE) === "1" || String(row.IS_ACTIVE).toLowerCase() === "true");
 
-  return `<tr class="${active ? '' : 'inactive-row'}">
-    ${rowCells}
-    <td>
-      <button class="btn btn-sm btn-warning me-2" onclick='editRow(${JSON.stringify(row)})'>
-        <i class="bi bi-pencil"></i>
-      </button>
+//   return `<tr class="${active ? '' : 'inactive-row'}">
+//     ${rowCells}
+//     <td>
+//       <button class="btn btn-sm btn-warning me-2" onclick='editRow(${JSON.stringify(row)})'>
+//         <i class="bi bi-pencil"></i>
+//       </button>
 
-      <label class="switch">
-        <input type="checkbox" ${active ? "checked" : ""} 
-          onchange="toggleUserStatus(${row.USER_ID}, this)">
-        <span class="slider round">
-          <span class="status-text">${active ? "Active" : "Inactive"}</span>
-        </span>
-      </label>
-    </td>
-  </tr>`;
-}
+//       <label class="switch">
+//         <input type="checkbox" ${active ? "checked" : ""} 
+//           onchange="toggleUserStatus(${row.USER_ID}, this)">
+//         <span class="slider round">
+//           <span class="status-text">${active ? "Active" : "Inactive"}</span>
+//         </span>
+//       </label>
+//     </td>
+//   </tr>`;
+// }
 
     return `<tr>${rowCells}${noActions ? "" : `
       <td>
@@ -1508,8 +1508,8 @@ if (currentTable === "createuser") {
   if (currentTable === "mastersensor" && key === "SENSOR_STATUS") return;
   if (currentTable === "masterdevices" && key === "DEVICE_STATUS") return;
   if (currentTable === "mastersubscriptionhistory" && key === "Status") return;
-  if (currentTable === "createuser" && key === "IS_ACTIVE") return;
-  if (key === "created_by") return;
+  // if (currentTable === "createuser" && key === "IS_ACTIVE") return;
+  // if (key === "created_by") return;
 
 
 
@@ -1950,9 +1950,9 @@ function toggleSensorStatus(sensorId, checkbox) {
   .catch(err => console.error("Failed to update SENSOR_STATUS:", err));
 }
 
-function toggleUserStatus(userId, checkbox) {
-  const isActive = checkbox.checked;
-  const tr = checkbox.closest("tr");
+// function toggleUserStatus(userId, checkbox) {
+//   const isActive = checkbox.checked;
+//   const tr = checkbox.closest("tr");
 
 //   // Update UI
 //   tr.classList.toggle("inactive-row", !isActive);
