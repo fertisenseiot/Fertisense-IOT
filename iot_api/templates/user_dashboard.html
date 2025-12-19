@@ -1140,8 +1140,15 @@ if (isVOCDevice) {
     });
 }
 
-// Use robust sorting like devicealarmlog
+// Use robust sorting like devicealarmlog new one
 alarms = alarms.sort((a, b) => {
+  function convertToISO(dateStr, timeStr) {
+    // expected format: dd-mm-yyyy
+    const parts = dateStr.split("-");
+    const iso = `${parts[2]}-${parts[1]}-${parts[0]}T${timeStr}`;
+    return new Date(iso);
+}
+
     const aDateTime = new Date(
         (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || '')
     );
@@ -1177,9 +1184,18 @@ alarms.forEach(a => {
         </tr>`;
 });
 
-document.getElementById("alarm24h").textContent =
+// document.getElementById("alarm24h").textContent =
+//     alarms.filter(a => {
+//         const dt = new Date((a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || ''));
+//         return !isNaN(dt) && (now - dt <= 24 * 60 * 60 * 1000);
+//     }).length;
+  // new one
+  document.getElementById("alarm24h").textContent =
     alarms.filter(a => {
-        const dt = new Date((a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || ''));
+        const dt = convertToISO(
+            a.ALARM_DATE || a.CREATED_DATE || a.DATE,
+            a.ALARM_TIME || a.CREATED_TIME || "00:00:00"
+        );
         return !isNaN(dt) && (now - dt <= 24 * 60 * 60 * 1000);
     }).length;
 
