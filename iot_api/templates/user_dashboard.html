@@ -111,6 +111,12 @@
 .device-card.bg-danger { background:#fff; border:2px solid #dc3545; color:#000; min-height:60px; max-width:400px; }
 #deviceDetailsContainer { display:none; }
 #deviceList { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; align-items: flex-start; margin-bottom: 20px; }
+/* ⭐ jab sirf 1 device ho → center kar do */
+#deviceList:only-child,
+#deviceList > .device-card:only-child{
+  margin-left: auto;
+  margin-right: auto;
+}
 #deviceList .device-card { flex: 1 1 200px; max-width: 250px; min-width: 180px; }
 #alarmLog tr td { vertical-align:middle; }
 /* Hover effect for device cards */
@@ -214,7 +220,17 @@
     <input type="datetime-local" id="startDateTime" class="form-control mb-2">
     <label for="endDateTime">End Date & Time</label>
     <input type="datetime-local" id="endDateTime" class="form-control mb-3">
-    <button class="btn btn-sm btn-warning w-100 mt-2 mb-3" onclick="clearFilters()">Clear Filters</button>
+    <div class="d-flex gap-2 mt-2 mb-3">
+  
+  <button class="btn btn-sm btn-secondary" onclick="clearFilters()">
+    Clear
+  </button>
+
+  <button class="btn btn-sm btn-success" onclick="applyDateFilter()">
+    Apply
+  </button>
+
+</div>
     <h5>Summary</h5>
     <div id="summaryCards">
       <div class="summary-card bg-primary text-center mb-3">
@@ -238,10 +254,16 @@
   <div id="deviceDetailsContainer">
     <button class="btn btn-sm btn-secondary mb-3" onclick="backToDashboard()">← Back</button>
     <h4 id="deviceTypeTitle"></h4>
-    <div id="deviceList" class="mb-3"></div>        
+   
+    <!-- <button class="btn btn-primary btn-sm" onclick="manualRefresh()">
+  Refresh Data
+</button> -->
+
+
+    <div id="deviceList" class="mb-1"></div>        
     <div style="max-width:700px;margin:auto;display:flex;gap:15px;align-items:flex-start;">
       <div style="flex:0 0 150px;display:flex;flex-direction:column;gap:10px;margin-left:-200px;">
-        <div style="max-width:250px;background:#dc3545;color:#fff;border-radius:10px;padding:8px;text-align:center;" class="mb-3">
+        <div style="max-width:250px;background:#dc3545;color:#fff;border-radius:10px;padding:8px;text-align:center; margin-left:20px;" class="mb-3">
           <h6 style="font-size:0.8rem;margin-bottom:4px;">Total Alarms (24h)</h6>
           <p id="alarm24h" class="fs-6 fw-bold">0</p>
         </div>
@@ -250,6 +272,22 @@
         <canvas id="deviceGraph" style="max-height:300px;"></canvas>
       </div>
     </div>
+    
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;">
+  
+  <span id="lastRefreshText" style="font-size:0.8rem;color:#555;">
+    Last refreshed: never
+  </span>
+
+  <button type="button" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">
+    <i class="bi bi-arrow-clockwise"></i> Refresh Data
+  </button>
+
+</div>
+
+<br>
+<br>
+
 
     <h5 class="mt-4 d-flex justify-content-between align-items-center">
       Alarm Log  <span class="badge bg-danger">Active Alarms   <span class="badge bg-danger" id="activeAlarmCount">0</span></span>
@@ -413,8 +451,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// const BASE_URL = "http://127.0.0.1:8000";
-const BASE_URL = "https://fertisense-iot-production.up.railway.app"; // direct IP
+const BASE_URL = "https://fertisense-iot-production.up.railway.app/";
+//const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
   mastercentre: BASE_URL + "/api/mastercentre/",
@@ -501,9 +539,20 @@ async function loadDevices(centreId){
 
 // ------------- DASHBOARD UI -------------
 function clearFilters(){
-  document.getElementById("startDateTime").value = "";
-  document.getElementById("endDateTime").value = "";
-  if(currentCategoryId) openDeviceDashboard(currentCategoryId);
+    document.getElementById("startDateTime").value = "";
+    document.getElementById("endDateTime").value = "";
+
+    // reload current data without filters
+    if(currentCategoryId){
+        updateDashboardLive(currentCategoryId);
+    }
+
+    if(window.currentDeviceGraphDeviceId){
+        const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        if(d){
+            loadDeviceReadings(d);
+        }
+    }
 }
 
 function updateSummary(){
@@ -880,11 +929,53 @@ function backToDashboard(){
 function logout(){ fetch('/logout/').then(()=>window.location='/login/'); }
 
 // ------------- LIVE UPDATES -------------
+// ------------- LIVE UPDATES -------------
 function startLiveUpdates(categoryId){
     if(liveUpdateInterval) clearInterval(liveUpdateInterval);
+
+    // 🔹 sirf ek baar update
     updateDashboardLive(categoryId);
-    liveUpdateInterval = setInterval(()=>updateDashboardLive(categoryId),10000);
+
+    // ❌ auto refresh hata diya
+    // liveUpdateInterval = setInterval(()=>updateDashboardLive(categoryId),10000);
 }
+
+function manualRefresh(){
+    if(currentCategoryId){
+        updateDashboardLive(currentCategoryId);
+    }
+
+    if(window.currentDeviceGraphDeviceId){
+        const currentDevice = allDevices.find(
+            d => d.DEVICE_ID === window.currentDeviceGraphDeviceId
+        );
+        if(currentDevice){
+            loadDeviceReadings(currentDevice);
+        }
+    }
+      updateLastRefreshTime();
+}
+
+
+function applyDateFilter(){
+
+    if(!currentCategoryId){
+        alert("Please select any device category first.");
+        return;
+    }
+
+    // Dashboard update
+    updateDashboardLive(currentCategoryId);
+
+    // Graph update if device open
+    if(window.currentDeviceGraphDeviceId){
+        const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        if(d){
+            loadDeviceReadings(d);
+        }
+    }
+}
+
 
 // ----------- DEVICE STATUS FIX (VOC FRIENDLY) -----------
 // ------------------- DEVICE LIVE STATUS FIX -------------------
@@ -952,30 +1043,38 @@ device.status = status;
     document.getElementById("activeDevices").textContent = active;
     document.getElementById("offlineDevices").textContent = total - active;
 
-    // 5️⃣ Refresh graph & alarms if a device is open
-    if(window.currentDeviceGraphDeviceId){
-        const currentDevice = allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId);
-        if(currentDevice) loadDeviceReadings(currentDevice);
-    }
+    // // 5️⃣ Refresh graph & alarms if a device is open
+    // if(window.currentDeviceGraphDeviceId){
+    //     const currentDevice = allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId);
+    //     if(currentDevice) loadDeviceReadings(currentDevice);
+    // }
 
 
     // Refresh chart & alarms for current device
-    if(window.currentDeviceGraphDeviceId){
-        loadDeviceReadings(allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId));
+    // if(window.currentDeviceGraphDeviceId){
+    //     loadDeviceReadings(allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId));
+    // }
+
+    function manualRefresh(){
+
+    if(currentCategoryId){
+        updateDashboardLive(currentCategoryId);
     }
+}
+
 
     // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
 if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
 
-window.deviceGraphRefreshInterval = setInterval(() => {
-    if (window.currentDeviceGraphDeviceId) {
-        const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
-        if (currentDevice) {
-            console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
-            loadDeviceReadings(currentDevice);
-        }
-    }
-}, 30 * 60 * 1000); // 30 minutes
+// window.deviceGraphRefreshInterval = setInterval(() => {
+//     if (window.currentDeviceGraphDeviceId) {
+//         const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
+//         if (currentDevice) {
+//             console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
+//             loadDeviceReadings(currentDevice);
+//         }
+//     }
+// }, 30 * 60 * 1000); // 30 minutes
 
 
     // Update summary accurately device-wise
@@ -1006,7 +1105,51 @@ async function openDeviceDashboard(categoryId){
         deviceList.appendChild(div);
     });
 
-    startLiveUpdates(categoryId);
+   // startLiveUpdates(categoryId);
+}
+
+//graph align
+// 👉 ADD THIS HERE
+
+function groupByMinute(points, mode="average") {
+
+    const map = new Map();
+
+    points.forEach(p => {
+
+        const key =
+            p.x.getFullYear()+"-"+
+            (p.x.getMonth()+1)+"-"+
+            p.x.getDate()+" "+
+            p.x.getHours()+":"+
+            p.x.getMinutes();
+
+        if(!map.has(key)) map.set(key, []);
+        map.get(key).push(p.y);
+    });
+
+    const result = [];
+
+    map.forEach((values, key) => {
+
+        let value;
+
+        if(mode === "average") {
+            value = values.reduce((a,b)=>a+b,0) / values.length;
+        } else {
+            value = values[values.length-1];
+        }
+
+        result.push({
+            x: new Date(key),
+            y: value
+        });
+
+    });
+
+    result.sort((a,b)=>a.x - b.x);
+
+    return result;
 }
 
 async function loadDeviceReadings(device){
@@ -1035,6 +1178,13 @@ let dataPoints = readingsDataRaw
     }))
     .filter(p => p.x >= start && p.x <= end);
 
+    // 👉 convert raw readings to 1-minute points
+const dataToPlot = groupByMinute(
+    dataPoints.map(p => ({ x: p.x, y: p.y })), 
+    "average"       // "last" bhi use kar sakte ho
+);
+
+
 // 🔹 Detect if this category/device is VOC type
 const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
 const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
@@ -1046,9 +1196,7 @@ if (isVOC) {
         dataPoints = dataPoints.filter(dp => String(dp.paramId) === String(vocParam.PARAMETER_ID));
     }
 }
-
-
-    // 🔹 Identify parameter name (VOC / Refricheck)
+   // 🔹 Identify parameter name (VOC / Refricheck)
     const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(dataPoints[0]?.paramId));
     const paramName = param?.PARAMETER_NAME?.toLowerCase() || "";
 
@@ -1091,38 +1239,67 @@ if (latest) {
 
 
     // 🔹 Draw line chart
-    const ctx = document.getElementById("deviceGraph").getContext('2d');
-    if (window.deviceChart) window.deviceChart.destroy();
-    window.deviceChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            datasets: [{
-                label: device.DEVICE_NAME,
-                data: dataPoints,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: false,
-                pointRadius: 0,
-                pointHoverRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { tooltip: { mode: 'index', intersect: false }, legend: { display: true, position: 'top' } },
-            scales: {
-                x: { type: 'time', time: { tooltipFormat: 'dd-MM-yyyy HH:mm' }, title: { display: true, text: 'Time' } },
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Reading Value' },
-                    // 🔹 Set dynamic max based on parameter
-                    suggestedMax: paramName.includes("voc") ? 2000 : (paramName.includes("refricheck") ? 15 : undefined)
-                }
-            }
-        }
-    });
+  const ctx = document.getElementById("deviceGraph").getContext('2d');
+
+if (window.deviceChart) window.deviceChart.destroy();
+
+// gradient background
+const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+gradient.addColorStop(0, "rgba(13,110,253,.35)");
+gradient.addColorStop(1, "rgba(13,110,253,0)");
+
+window.deviceChart = new Chart(ctx, {
+  type: "line",
+  data: {
+    labels: dataPoints.map(p => p.x),
+    datasets: [
+      {
+        label: device.DEVICE_NAME,
+        data: dataToPlot.map(p => p.y),
+
+        borderColor: "#0d6efd",
+        backgroundColor: gradient,
+
+        fill: true,
+        tension: 0.45,
+
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 2,
+      },
+    ],
+  },
+
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        backgroundColor: "#111",
+        titleColor: "#fff",
+        bodyColor: "#fff",
+        displayColors: false,
+      },
+    },
+
+    scales: {
+      x: {
+        type: "time",
+        time: { tooltipFormat: "dd-MM-yyyy HH:mm" },
+        grid: { display: false },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: "rgba(0,0,0,0.05)" },
+      },
+    },
+  },
+});
+
 
     // 🔹 Update alarms
     const alarmsRaw = await (await fetch(API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
@@ -1175,6 +1352,7 @@ alarms.forEach(a => {
             </span></td>
         </tr>`;
 });
+filterAlarmTableLast24h();
 
 document.getElementById("alarm24h").textContent =
     alarms.filter(a => {
@@ -1187,15 +1365,15 @@ document.getElementById("activeAlarmCount").textContent = activeCount;
     // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
 if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
 
-window.deviceGraphRefreshInterval = setInterval(() => {
-    if (window.currentDeviceGraphDeviceId) {
-        const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
-        if (currentDevice) {
-            console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
-            loadDeviceReadings(currentDevice);
-        }
-    }
-}, 30 * 60 * 1000); // 30 minutes
+// window.deviceGraphRefreshInterval = setInterval(() => {
+//     if (window.currentDeviceGraphDeviceId) {
+//         const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
+//         if (currentDevice) {
+//             console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
+//             loadDeviceReadings(currentDevice);
+//         }
+//     }
+// }, 30 * 60 * 1000); // 30 minutes
 
     
     updateSummary();
@@ -1208,10 +1386,85 @@ document.querySelector('.navbar-toggler').addEventListener('click', () => {
 
 
 // Event listeners
-document.getElementById("startDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
-document.getElementById("endDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
+//document.getElementById("startDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
+//document.getElementById("endDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
 document.getElementById("organizationSelect").addEventListener("change",e=>loadCentres(e.target.value));
 document.getElementById("centreSelect").addEventListener("change",e=>loadDevices(e.target.value));
+
+function filterAlarmTableLast24h() {
+
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // last 24 hours
+
+    const rows = document.querySelectorAll("#alarmLog tr");
+
+    rows.forEach(row => {
+
+        // 👉 Time + Date 3rd column me hai (index 2)
+        const dateTimeText = row.cells[2].innerText.trim();  
+
+        // "YYYY-MM-DD HH:mm:ss" ko JS Date me convert
+        const dt = new Date(dateTimeText.replace(" ", "T"));
+
+        // console.log(dt);  // debug chahiye to
+
+        if (dt < cutoff) {
+            row.style.display = "none";   // purane chhupa do
+        } else {
+            row.style.display = "";       // recent dikhao
+        }
+    });
+}
+
+
+function updateLastRefreshTime() {
+    const now = new Date();
+
+    // save in localStorage
+    localStorage.setItem("lastRefreshTime", now.toString());
+
+    // show nicely formatted
+    const options = {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    };
+
+    document.getElementById("lastRefreshText").innerText =
+        "Last refreshed: " + now.toLocaleString("en-GB", options);
+}
+
+// when page loads, read last saved time
+window.addEventListener("load", function () {
+
+    const saved = localStorage.getItem("lastRefreshTime");
+
+    if (saved) {
+
+        const dt = new Date(saved);
+
+        const options = {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        };
+
+        document.getElementById("lastRefreshText").innerText =
+            "Last refreshed: " + dt.toLocaleString("en-GB", options);
+
+    } else {
+
+        document.getElementById("lastRefreshText").innerText =
+            "Last refreshed: never";
+    }
+});
+
+
+
 
 // Initialize
 (async function(){ 
