@@ -152,6 +152,18 @@
   opacity: 1;
 }
 
+#orgFilter,
+#centreFilter{
+  display:none;
+}
+
+#organizationSelect,
+#centreSelect{
+  visibility:hidden;
+}
+
+
+
 </style>
 </head>
 <body>
@@ -165,9 +177,33 @@
 
     <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
       <ul class="navbar-nav">
+<li class="nav-item" style="display:flex; flex-direction:column; line-height:16px;">
+
+  <!-- ORG NAME -->
+  <span class="nav-link fw-bold" id="navbarOrgLabel" 
+        style="display:none; margin-left:-15px;">
+      <i class="bi bi-building"></i>
+      <span id="navbarOrgName" style="color:white; font-weight:700;"></span>
+  </span>
+
+  <!-- CENTRE NAME -->
+  <span class="nav-link" id="navbarCentreLabel" 
+        style="display:none; margin-top:-6px; margin-left:-7px;">
+      <span style="font-size:14px; color:#ffffff; font-weight:600;">
+          📍 <span id="navbarCentreName"></span>
+      </span>
+  </span>
+
+</li>
+
+
+
+  </span>
+</li>
+
 
         <!-- User Management Dropdown -->
-        <li class="nav-item dropdown"id="userManagementNav">
+        <li class="nav-item dropdown d-none"id="userManagementNav">
           <a class="nav-link dropdown-toggle" href="#" id="userManagementDropdown" role="button" data-bs-toggle="dropdown">
             User Management
           </a>
@@ -198,11 +234,20 @@
 <div class="sidebar">
   <div class="sidebar-content">
     
-    <h5>Filters</h5>
-    <label>Organization Name</label>
-    <select id="organizationSelect" class="form-select mb-3"><option value="">Select Organization</option></select>
-    <label>Centre Name</label>
-    <select id="centreSelect" class="form-select mb-3"><option value="">Select Centre</option></select>
+    <div id="orgFilter">
+  <label>Organization Name</label>
+  <select id="organizationSelect" class="form-select mb-3">
+    <option value="">Select Organization</option>
+  </select>
+</div>
+
+<div id="centreFilter">
+  <label>Centre Name</label>
+  <select id="centreSelect" class="form-select mb-3">
+    <option value="">Select Centre</option>
+  </select>
+</div>
+
 <!-- <hr>
 <h5>User Management</h5>
 <ul id="userManagementMenuItem" class="list-unstyled">
@@ -491,6 +536,33 @@ async function loadOrganizations(){
       orgSelect.value = userLinks[0].ORGANIZATION_ID;
       await loadCentres(orgSelect.value, true, userLinks[0].CENTRE_ID);
     }
+
+    // ⭐ NAVBAR ORGANIZATION LABEL UPDATE
+try {
+    const orgLabel = document.getElementById("navbarOrgName");
+    const orgWrapper = document.getElementById("navbarOrgLabel");
+
+    if (orgWrapper) orgWrapper.style.display = "block";
+
+    const selectedOrg = orgs.find(o => o.ORGANIZATION_ID == orgSelect.value);
+
+    if (selectedOrg && orgLabel) {
+        orgLabel.innerText = "Organization: " + selectedOrg.ORGANIZATION_NAME;
+    }
+} catch(e){console.log(e);}
+
+// ⭐ set navbar org + centre finally
+if (userLinks.length > 0) {
+
+    const orgName =
+        orgs.find(o => o.ORGANIZATION_ID == userLinks[0].ORGANIZATION_ID)?.ORGANIZATION_NAME || "";
+
+    const centreName =
+        centreData.find(c => c.CENTRE_ID == userLinks[0].CENTRE_ID)?.CENTRE_NAME || "";
+
+    setNavbarOrgCentre(orgName, centreName);
+}
+
   }catch(err){ console.error(err);}
 }
 
@@ -505,24 +577,63 @@ async function loadCentres(orgId, auto = false, userCentreId = null) {
       centreData = await res.json();
     }
 
-    // ✅ Only filter by organization
     let filtered = centreData.filter(c => c.ORGANIZATION_ID == orgId);
 
-    // ✅ Populate all centres under that organization
     filtered.forEach(c => {
       centreSelect.innerHTML += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`;
     });
 
-    // ✅ If auto-select is enabled, select the user's current centre
     if (auto && userCentreId) {
       centreSelect.value = userCentreId;
+      currentCentreId = userCentreId;
       loadDevices(userCentreId);
     }
+
+    /* ⭐⭐⭐ NAVBAR CENTRE NAME UPDATE ⭐⭐⭐ */
+    try {
+      const label = document.getElementById("navbarCentreName");
+      const labelWrapper = document.getElementById("navbarCentreLabel");
+
+      // 👉 navbar centre label dikhao
+      if (labelWrapper) labelWrapper.style.display = "block";
+
+      if (label) {
+
+        let centreObj = centreData.find(c => c.CENTRE_ID == currentCentreId);
+
+        if (!centreObj && centreSelect.value) {
+          centreObj = centreData.find(c => c.CENTRE_ID == centreSelect.value);
+        }
+
+        if (centreObj) {
+          label.innerHTML = " Centre: " + centreObj.CENTRE_NAME;
+        }
+      }
+    } catch (e) {
+      console.log(e);
+    }
+
+   const orgText =
+    document.getElementById("organizationSelect").selectedOptions[0]?.textContent || "";
+
+let centreText = "";
+
+if (centreSelect.value) {
+    centreText =
+        centreSelect.selectedOptions[0]?.textContent || "";
+} 
+else if (userCentreId) {
+    const c = centreData.find(c => c.CENTRE_ID == userCentreId);
+    centreText = c?.CENTRE_NAME || "";
+}
+
+setNavbarOrgCentre(orgText, centreText);
 
   } catch (err) {
     console.error(err);
   }
 }
+
 
 
 async function loadDevices(centreId){
@@ -716,14 +827,32 @@ if (res.ok) {
   }
 });
 
+// function handleRoleDisable() {
+//   if (currentUser.ROLE_ID !== 2) {
+
+//     const navItem = document.getElementById("userManagementNav");
+//     if (navItem) navItem.style.display = "none";
+//   }
+// }
+
 function handleRoleDisable() {
+
+  // 👉 NORMAL USER
   if (currentUser.ROLE_ID !== 2) {
 
-    const navItem = document.getElementById("userManagementNav");
-    if (navItem) {
-      navItem.style.display = "none";  // navbar dropdown hide
-    }
+      // hide ONLY org & centre filters
+      const org = document.getElementById("organizationSelect")?.parentElement;
+      const centre = document.getElementById("centreSelect")?.parentElement;
+
+      if (org) org.style.display = "none";
+      if (centre) centre.style.display = "none";
+
+      return;
   }
+
+  // 👉 ADMIN (everything visible)
+  const navItem = document.getElementById("userManagementNav");
+  if (navItem) navItem.classList.remove("d-none");
 }
 
 
@@ -1084,29 +1213,193 @@ if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshIn
 
 // ------------- DEVICE DASHBOARD -------------
 async function openDeviceDashboard(categoryId){
+
     currentCategoryId = categoryId;
+
     document.getElementById("deviceTypeCards").innerHTML="";
     document.getElementById("deviceDetailsContainer").style.display="block";
+
     const category = allCategories.find(c=>c.CATEGORY_ID===categoryId);
-    document.getElementById("deviceTypeTitle").textContent = category?.CATEGORY_NAME || categoryId;
+    document.getElementById("deviceTypeTitle").textContent =
+        category?.CATEGORY_NAME || categoryId;
 
     const devices = allDevices.filter(d=>d.CATEGORY_ID===categoryId);
     const deviceList = document.getElementById("deviceList");
     deviceList.innerHTML = "";
 
+    // 🔹 STEP 1: PEHLE CARD BANAAO
     devices.forEach(device=>{
         const div = document.createElement("div");
-        div.className="device-card bg-secondary";
-        div.style.cursor="pointer";
+        div.className = "device-card bg-secondary";
+        div.style.cursor = "pointer";
         div.id = `card_${device.DEVICE_ID}`;
-        div.innerHTML = `<h6>${device.DEVICE_NAME}</h6><p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p>`
-        ;
+
+        div.innerHTML = `
+            <h6>${device.DEVICE_NAME}</h6>
+            <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">
+                Loading...
+            </p>
+        `;
+
         div.addEventListener("click",()=>loadDeviceReadings(device));
+
         deviceList.appendChild(div);
     });
 
-   // startLiveUpdates(categoryId);
+    // 🔹 STEP 2: AB FAST LOADING STATUS + READING DO
+    const masterparameter = await fetch(API.masterparameter).then(r=>r.json());
+const masteruom = await fetch(API.masteruom).then(r=>r.json());
+
+devices.forEach(device=>{
+    loadCardReadingFast(device, masterparameter, masteruom);
+});
+
+
 }
+
+// async function loadCardReadingFast(device, masterparameter, masteruom){
+
+//     const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+//     const cardEl = document.getElementById(`card_${device.DEVICE_ID}`);
+
+//     try{
+//         const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
+//         const data = await res.json();
+
+//         if(!data.length){
+//             valueEl.innerText = "Offline";
+//             cardEl.className = "device-card bg-secondary";
+//             return;
+//         }
+
+//         const last = data[data.length-1];
+//         const dt = new Date(last.READING_DATE+"T"+last.READING_TIME);
+
+//         if(Date.now() - dt.getTime() > 15*60*1000){
+//             valueEl.innerText = "Offline";
+//             cardEl.className = "device-card bg-secondary";
+//             return;
+//         }
+
+//         // UOM resolve
+//         const param = masterparameter.find(p=>p.PARAMETER_ID==last.PARAMETER_ID);
+//         const uomObj = masteruom.find(u=>u.UOM_ID==param?.UOM_ID);
+//         const uom = uomObj?.UOM_NAME || "";
+
+//         valueEl.innerText = Math.round(last.READING) + " " + uom;
+//         cardEl.className = "device-card bg-success";
+//     }
+//     catch(err){
+//         valueEl.innerText = "Offline";
+//         cardEl.className = "device-card bg-secondary";
+//     }
+// }
+
+async function loadCardReadingFast(device, masterparameter, masteruom){
+
+    const cardEl = document.getElementById(`card_${device.DEVICE_ID}`);
+
+    // -------------------- CHECK INCUBATOR CATEGORY --------------------
+    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
+    const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
+
+    // ===============================================================
+    //      🌟 SPECIAL LOGIC ONLY FOR INCUBATOR DEVICES
+    // ===============================================================
+    if (isIncubator) {
+
+        // 👉 3 line placeholders already created earlier
+        const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
+        const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
+        const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
+
+        try{
+            const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
+            const data = await res.json();
+
+            if(!data.length){
+                p1.innerText = "Offline";
+                p2.innerText = "";
+                p3.innerText = "";
+                cardEl.className = "device-card bg-secondary";
+                return;
+            }
+
+            // group readings parameter-wise
+            let grouped = {};
+
+            data.forEach(r => {
+                if (!grouped[r.PARAMETER_ID]) grouped[r.PARAMETER_ID] = [];
+                grouped[r.PARAMETER_ID].push(r);
+            });
+
+            // latest 3 different parameters
+            let keys = Object.keys(grouped).slice(0, 3);
+            let displayTargets = [p1, p2, p3];
+
+            keys.forEach((k, idx) => {
+
+                const recs = grouped[k];
+                const last = recs[recs.length - 1];
+
+                const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
+                const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
+
+                displayTargets[idx].innerText =
+                    `${param?.PARAMETER_NAME || ''}: ${Math.round(last.READING)} ${uomObj?.UOM_NAME || ''}`;
+            });
+
+            cardEl.className = "device-card bg-success";
+        }
+        catch(err){
+            p1.innerText = "Offline";
+            cardEl.className = "device-card bg-secondary";
+        }
+
+        return;   // ⛔ STOP here so other device types are NOT affected
+    }
+
+    // ===============================================================
+    //      ⭐ ORIGINAL LOGIC FOR ALL OTHER DEVICES (UNCHANGED)
+    // ===============================================================
+
+    const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+
+    try{
+        const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
+        const data = await res.json();
+
+        if(!data.length){
+            valueEl.innerText = "Offline";
+            cardEl.className = "device-card bg-secondary";
+            return;
+        }
+
+        const last = data[data.length-1];
+        const dt = new Date(last.READING_DATE+"T"+last.READING_TIME);
+
+        if(Date.now() - dt.getTime() > 15*60*1000){
+            valueEl.innerText = "Offline";
+            cardEl.className = "device-card bg-secondary";
+            return;
+        }
+
+        const param = masterparameter.find(p=>p.PARAMETER_ID==last.PARAMETER_ID);
+        const uomObj = masteruom.find(u=>u.UOM_ID==param?.UOM_ID);
+        const uom = uomObj?.UOM_NAME || "";
+
+        valueEl.innerText = Math.round(last.READING) + " " + uom;
+        cardEl.className = "device-card bg-success";
+    }
+    catch(err){
+        valueEl.innerText = "Offline";
+        cardEl.className = "device-card bg-secondary";
+    }
+}
+
+
+   // startLiveUpdates(categoryId);
+
 
 //graph align
 // 👉 ADD THIS HERE
@@ -1340,18 +1633,40 @@ alarmBody.innerHTML = "";
 let activeCount = 0;
 
 alarms.forEach(a => {
+
     const isActive = a.IS_ACTIVE === 1;
     if (isActive) activeCount++;
+
+    // check incubator category
+    const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
+    const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
+
+    // get parameter name
+    const param = masterparameter.find(p => p.PARAMETER_ID == a.PARAMETER_ID);
+
     alarmBody.innerHTML += `
         <tr>
             <td>${device.DEVICE_NAME}</td>
-            <td>${a.READING ?? '-'}</td>
+
+            <td>
+                ${
+                    isIncubator 
+                    ? (param?.PARAMETER_NAME || "Unknown") + " → "
+                    : ""
+                }
+                ${a.READING ?? "-"}
+            </td>
+
             <td>${a.ALARM_DATE} ${a.ALARM_TIME}</td>
-            <td><span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
-                ${isActive ? 'Active' : 'Resolved'}
-            </span></td>
+
+            <td>
+                <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
+                    ${isActive ? 'Active' : 'Resolved'}
+                </span>
+            </td>
         </tr>`;
 });
+
 filterAlarmTableLast24h();
 
 document.getElementById("alarm24h").textContent =
@@ -1362,20 +1677,10 @@ document.getElementById("alarm24h").textContent =
 
 document.getElementById("activeAlarmCount").textContent = activeCount;
 
+
     // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
 if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
 
-// window.deviceGraphRefreshInterval = setInterval(() => {
-//     if (window.currentDeviceGraphDeviceId) {
-//         const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
-//         if (currentDevice) {
-//             console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
-//             loadDeviceReadings(currentDevice);
-//         }
-//     }
-// }, 30 * 60 * 1000); // 30 minutes
-
-    
     updateSummary();
 
 }
@@ -1439,7 +1744,20 @@ function updateLastRefreshTime() {
 // when page loads, read last saved time
 window.addEventListener("load", function () {
 
+    // ⭐ navbar labels force show (no flicker)
+    const centreLbl = document.getElementById("navbarCentreLabel");
+    if (centreLbl) centreLbl.style.display = "block";
+
+    const orgLbl = document.getElementById("navbarOrgLabel");
+    if (orgLbl) orgLbl.style.display = "block";
+
     const saved = localStorage.getItem("lastRefreshTime");
+
+    setNavbarOrgCentre(
+  localStorage.getItem("ORG_NAME"),
+  localStorage.getItem("CENTRE_NAME")
+);
+
 
     if (saved) {
 
@@ -1462,6 +1780,22 @@ window.addEventListener("load", function () {
             "Last refreshed: never";
     }
 });
+
+function setNavbarOrgCentre(orgName, centreName){
+
+    // show always
+    document.getElementById("navbarOrgLabel").style.display="block";
+    document.getElementById("navbarCentreLabel").style.display="block";
+
+    // set text values
+    document.getElementById("navbarOrgName").innerText = orgName || "-";
+    document.getElementById("navbarCentreName").innerText = centreName || "-";
+
+    // also store
+    localStorage.setItem("ORG_NAME", orgName || "");
+    localStorage.setItem("CENTRE_NAME", centreName || "");
+}
+
 
 
 
