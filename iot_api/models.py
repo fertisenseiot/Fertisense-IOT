@@ -31,14 +31,14 @@ SENDER_ID = "FRTLLP"
 # EMAIL_HOST_PASSWORD = 'akuu vulg ejlg ysbt'  # Gmail app password
 
 # ================== SMS Function ==================
-def send_sms(phone, messages):
+def send_sms(phone, message):
     params = {
         "user_name": SMS_USER,
         "user_password": SMS_PASS,
         "mobile": phone,
         "sender_id": SENDER_ID,
         "type": "F",
-        "text": messages
+        "text": message
     }
     # try:
     #     resp = requests.get(SMS_API_URL, params=params, timeout=10)
@@ -121,6 +121,8 @@ def send_normalized_alert(active_alarm):
     dev_name = device.DEVICE_NAME
     org_id = device.ORGANIZATION_ID
     centre_id = device.CENTRE_ID
+    param_id = active_alarm.PARAMETER_ID
+
 
     user_ids = list(
         UserOrganizationCentreLink.objects
@@ -137,13 +139,17 @@ def send_normalized_alert(active_alarm):
     phones = [u.PHONE for u in users if u.SEND_SMS]
     emails = [u.EMAIL for u in users if u.SEND_EMAIL]
 
-    messages = [
-    f"INFO!! The CO2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
-    f"INFO!! The O2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
-    f"INFO!! The Incubator temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
-    f"INFO!! The temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
-]
+    PARAMETER_NORMAL_MSG = {
+    8:f"INFO!! The CO2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
+    9:f"INFO!! The O2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
+    4:f"INFO!! The Incubator temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
+    1:f"INFO!! The temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
+}
 
+    message = PARAMETER_NORMAL_MSG.get(
+    param_id,
+    f"INFO!! The device readings are back to normal for {dev_name}. No action is required - Regards Fertisense LLP"
+    ).format(dev=dev_name)
 
    
 
@@ -161,14 +167,15 @@ def send_normalized_alert(active_alarm):
 
     # ---- Send SMS to each unique phone number ----
     for phone in unique_phones:
-        send_sms(phone, messages)
+        send_sms(phone, message)
 
     if emails:
-        subject = f"Device {dev_name}'s reading is now in acceptable range"
+        subject = f"Device {dev_name} | PARAMETER ID {param_id}'s reading is now in acceptable range"
 
     html_content = f"""
         <h2>Device Reading Normalized</h2>
         <p><strong>Device:</strong> {dev_name}</p>
+        <p><strong>Parameter ID:</strong> {param_id}</p>
         <p>The device's readings have now returned to a normal acceptable range.</p>
         <p>Regards,<br>Fertisense IoT Monitoring System</p>
     """
