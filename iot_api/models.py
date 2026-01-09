@@ -123,14 +123,11 @@ def send_normalized_alert(active_alarm):
     centre_id = device.CENTRE_ID
     param_id = active_alarm.PARAMETER_ID
 
-    PARAMETER_NAME_MAP = {
-    8: "CO2",
-    9: "O2",
-    4: "Incubator Temperature",
-    1: "Temperature",
-}
+    from .models import MasterParameter
 
-    param_name = PARAMETER_NAME_MAP.get(param_id, "Device Parameter")
+    param = MasterParameter.objects.filter(PARAMETER_ID=param_id).first()
+    param_name = param.PARAMETER_NAME if param else f"{param_id}"
+
 
 
 
@@ -180,13 +177,13 @@ def send_normalized_alert(active_alarm):
         send_sms(phone, message)
 
     if emails:
-        subject = f"Device {dev_name} | {param_name}'s reading is now in acceptable range"
+        subject = f"Device {dev_name} | {param_name} reading is now in acceptable range"
 
     html_content = f"""
         <h2>Device Reading Normalized</h2>
         <p><strong>Device:</strong> {dev_name}</p>
         <p><strong>{param_name}</strong></p>
-        <p>The device's readings have now returned to a normal acceptable range.</p>
+        <p>The device's {param_name} readings have now returned to a normal acceptable range.</p>
         <p>Regards,<br>Fertisense IoT Monitoring System</p>
     """
 
