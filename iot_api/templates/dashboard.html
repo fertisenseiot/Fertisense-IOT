@@ -190,7 +190,7 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app"; // direct IP
+const BASE_URL = "https://fertisense-iot-production.up.railway.app/"; // direct IP
 // const BASE_URL = "https://iot-production-95a1.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
@@ -218,26 +218,6 @@ const API = {
   mastersubscriptioninfo: BASE_URL +"/api/mastersubscriptioninfo/",
   masterplantype: BASE_URL +"/api/masterplantype/",
   mastersubscriptionhistory: BASE_URL +"/api/subscriptionhistory/"
-
-  //   masterorganizations: "http://127.0.0.1:8000/api/masterorganization/",
-  // mastercentre:        "http://127.0.0.1:8000/api/mastercentre/",
-  // masterdevices:       "http://127.0.0.1:8000/api/masterdevice/",
-  // mastersensor:        "http://127.0.0.1:8000/api/mastersensor/",
-  // masterparameter:     "http://127.0.0.1:8000/api/masterparameter/",
-  // masteruom:           "http://127.0.0.1:8000/api/masteruom/",
-  // createuser:          "http://127.0.0.1:8000/api/masteruser/",
-  // masterrole:          "http://127.0.0.1:8000/api/masterrole/",  
-  // // seuser:              "http://127.0.0.1:8000/api/seuser/",
-  // devicereadinglog:    "http://127.0.0.1:8000/api/devicereadinglog/",
-  // devicealarmlog:      "http://127.0.0.1:8000/api/devicealarmlog/",
-  // devicealarmcalllog:  "http://127.0.0.1:8000/api/devicealarmcalllog/",
-  // sensorparameterlink: "http://127.0.0.1:8000/api/sensorparameterlink/",
-  // devicesensorlink:    "http://127.0.0.1:8000/api/devicesensorlink/",
-  // compassdates:        "http://127.0.0.1:8000/api/compassdates/",
-  // // centreorganizationlink: "http://127.0.0.1:8000/api/centreorganizationlink/",
-  // userorganizationcentrelink: "http://127.0.0.1:8000/api/userorganizationcentrelink/",
-  // masternotificationtime: "http://127.0.0.1:8000/api/masternotificationtime/",
-  // devicecategory: "http://127.0.0.1:8000/api/devicecategory/"
 };
 
 // ===== Custom header labels =====
@@ -556,11 +536,11 @@ if (currentData.length) {
       // Map IDs → Names
       if (h === "ORG_ID" || h === "ORGANIZATION_ID") {
         const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]);
-        cellVal = org ? org.ORGANIZATION_NAME : row[h];
+        cellVal = org ? `${org.ORGANIZATION_NAME} (${org.ORGANIZATION_ID})` : row[h];
       }
       if (h === "CENTRE_ID") {
         const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]);
-        cellVal = centre ? centre.CENTRE_NAME : row[h];
+        cellVal = centre ? `${centre.CENTRE_NAME} (${centre.CENTRE_ID})` : row[h];
       }
       if (h === "CATEGORY_ID") {
         const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]);
@@ -568,7 +548,7 @@ if (currentData.length) {
       }
       if (h === "DEVICE_ID" && currentTable !== "masterdevices") {
         const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
-        cellVal = device ? device.DEVICE_NAME : row[h];
+        cellVal = device ? `${device.DEVICE_NAME} (${device.DEVICE_ID})` : row[h];
       }
       if (h === "Device_ID") {
         const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
@@ -577,11 +557,11 @@ if (currentData.length) {
       
       if (h === "SENSOR_ID" && currentTable !== "mastersensor") {
         const sensor = (dropdownData.sensors || []).find(s => s.SENSOR_ID == row[h]);
-        cellVal = sensor ? sensor.SENSOR_NAME : row[h];
+        cellVal = sensor ? `${sensor.SENSOR_NAME} (${sensor.SENSOR_ID})` : row[h];
       }
       if (h === "PARAMETER_ID" && currentTable !== "masterparameter") {
         const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == row[h]);
-        cellVal = param ? param.PARAMETER_NAME : row[h];
+        cellVal = param ? `${param.PARAMETER_NAME} (${param.PARAMETER_ID})` : row[h];
       }
       if (h === "USER_ID") {
         const user = (dropdownData.user || []).find(u => u.USER_ID == row[h]);
