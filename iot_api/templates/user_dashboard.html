@@ -132,7 +132,7 @@
 }
 
 /* Overlay text on hover */
-.device-card::after {
+/* .device-card::after {
   content: "View Graph";
   position: absolute;
   inset: 0;
@@ -150,7 +150,7 @@
 
 .device-card:hover::after {
   opacity: 1;
-}
+} */
 
 #orgFilter,
 #centreFilter{
@@ -160,6 +160,70 @@
 #organizationSelect,
 #centreSelect{
   visibility:hidden;
+}
+
+#deviceGraph{
+    position:absolute;
+    inset:0;
+}
+
+.graph-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+/* Left side buttons */
+.graph-toolbar .range-btns{
+    display:flex;
+    gap:8px;
+}
+
+.range-btns button{
+    min-width:120px;
+    height:34px;
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+}
+
+/* Right side AVG */
+#avgBox{
+    min-width:170px;
+    height:34px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:700;
+    cursor:default;
+    background:#198754;
+    color:#fff;
+    transition:all .3s ease;
+}
+
+#avgBox.low{
+    background:#ffc107;
+    color:#000;
+}
+#avgBox.high{
+    background:#dc3545;
+}
+
+.device-reading{
+   font-size:13px;   /* pehle bada tha, ab compact */
+   font-weight:600;
+   letter-spacing:0.4px;
+}
+
+.device-hint{
+   font-size:11px;
+   margin-top:4px;
+   color:#e6ffe6;
+   opacity:0.85;
+   text-align:center;
 }
 
 
@@ -179,20 +243,18 @@
       <ul class="navbar-nav">
 <li class="nav-item" style="display:flex; flex-direction:column; line-height:16px;">
 
-  <!-- ORG NAME -->
-  <span class="nav-link fw-bold" id="navbarOrgLabel" 
-        style="display:none; margin-left:-15px;">
-      <i class="bi bi-building"></i>
-      <span id="navbarOrgName" style="color:white; font-weight:700;"></span>
-  </span>
+<!-- ORG NAME -->
+<span class="nav-link fw-bold" id="navbarOrgLabel"
+      style="display:none; margin-left:-15px; color:white;">
+    Org: <span id="navbarOrgName" style="font-weight:700;"></span>
+</span>
 
-  <!-- CENTRE NAME -->
-  <span class="nav-link" id="navbarCentreLabel" 
-        style="display:none; margin-top:-6px; margin-left:-7px;">
-      <span style="font-size:14px; color:#ffffff; font-weight:600;">
-          📍 <span id="navbarCentreName"></span>
-      </span>
-  </span>
+<!-- CENTRE NAME -->
+<span class="nav-link" id="navbarCentreLabel"
+      style="display:none; margin-top:-6px; margin-left:-15px; color:white;">
+    Centre: <span id="navbarCentreName" style="font-weight:600;"></span>
+</span>
+
 
 </li>
 
@@ -313,12 +375,35 @@
           <p id="alarm24h" class="fs-6 fw-bold">0</p>
         </div>
       </div>
-      <div style="flex:1;background:#fff;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.1);padding:15px;">
-        <canvas id="deviceGraph" style="max-height:300px;"></canvas>
-      </div>
-    </div>
-    
-    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;">
+    <div style="flex:1;
+            background:#fff;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.08);
+            padding:12px;">
+
+    <!-- 🔥 GRAPH RANGE FILTER BUTTONS -->
+ <div class="graph-toolbar">
+
+  <div class="range-btns">
+<button class="btn btn-sm btn-outline-primary range-btn" data-min="10" onclick="setGraphRange(10)">Last 10 Min</button>
+<button class="btn btn-sm btn-outline-primary range-btn" data-min="60" onclick="setGraphRange(60)">Last 1 Hour</button>
+<button class="btn btn-sm btn-outline-primary range-btn" data-min="1440" onclick="setGraphRange(1440)">Last 1 Day</button>
+
+  </div>
+
+  <div id="avgBox">
+    Avg: --
+  </div>
+
+</div>
+
+
+<div id="graphWrapper" style="height:160px; width:100%; position:relative;">
+    <canvas id="deviceGraph"></canvas>
+</div>
+
+<div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;">
+
   
   <span id="lastRefreshText" style="font-size:0.8rem;color:#555;">
     Last refreshed: never
@@ -332,7 +417,7 @@
 
 <br>
 <br>
-
+<hr>
 
     <h5 class="mt-4 d-flex justify-content-between align-items-center">
       Alarm Log  <span class="badge bg-danger">Active Alarms   <span class="badge bg-danger" id="activeAlarmCount">0</span></span>
@@ -515,6 +600,8 @@ const API = {
 let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, currentUser=null;
 let currentCategoryId=null, liveUpdateInterval=null;
 window.currentDeviceGraphDeviceId = null;
+let graphRangeMinutes = 1440;   // default = 1 day
+
 
 // ------------- LOAD DATA -------------
 async function loadOrganizations(){
@@ -674,6 +761,18 @@ function updateSummary(){
     document.getElementById("totalDevices").textContent = total;
     document.getElementById("activeDevices").textContent = active;
     document.getElementById("offlineDevices").textContent = offline;
+}
+
+
+function setGraphRange(minutes){
+    graphRangeMinutes = minutes;
+
+    if(window.currentDeviceGraphDeviceId){
+        const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        if(d){
+            loadDeviceReadings(d);
+        }
+    }
 }
 
 
@@ -1088,15 +1187,38 @@ function manualRefresh(){
 
 function applyDateFilter(){
 
-    if(!currentCategoryId){
-        alert("Please select any device category first.");
+    const startInput = document.getElementById("startDateTime").value;
+    const endInput   = document.getElementById("endDateTime").value;
+
+    if(!startInput || !endInput){
+        alert("Please select both start and end date.");
         return;
     }
 
-    // Dashboard update
-    updateDashboardLive(currentCategoryId);
+    const start = new Date(startInput);
+    const end   = new Date(endInput);
 
-    // Graph update if device open
+    // ⛔ If end < start
+    if(end < start){
+        alert("End date must be after Start date.");
+        return;
+    }
+
+    // 🔥 Difference in days
+    const diffMs = end - start;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    // ⛔ Limit 3 days
+    if(diffDays > 3){
+        alert("⚠ You can view data for maximum 3 days only.");
+        return;
+    }
+
+    // ✅ Allowed → apply filter
+    if(currentCategoryId){
+        updateDashboardLive(currentCategoryId);
+    }
+
     if(window.currentDeviceGraphDeviceId){
         const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
         if(d){
@@ -1104,6 +1226,7 @@ function applyDateFilter(){
         }
     }
 }
+
 
 
 // ----------- DEVICE STATUS FIX (VOC FRIENDLY) -----------
@@ -1234,12 +1357,18 @@ async function openDeviceDashboard(categoryId){
         div.style.cursor = "pointer";
         div.id = `card_${device.DEVICE_ID}`;
 
-        div.innerHTML = `
-            <h6>${device.DEVICE_NAME}</h6>
-            <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">
-                Loading...
-            </p>
-        `;
+       div.innerHTML = `
+   <h6>${device.DEVICE_NAME}</h6>
+
+   <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">
+      Loading...
+   </p>
+
+   <div class="device-hint">
+      Click to view graph
+   </div>
+`;
+
 
         div.addEventListener("click",()=>loadDeviceReadings(device));
 
@@ -1446,6 +1575,13 @@ function groupByMinute(points, mode="average") {
 }
 
 async function loadDeviceReadings(device){
+  
+ // sirf pehli baar jab koi graph open ho
+  if (!window.currentDeviceGraphDeviceId) {
+      graphRangeMinutes = 10;
+      markActiveRange(10);
+  }
+
     window.currentDeviceGraphDeviceId = device.DEVICE_ID;
     const masterparameter = await fetch(API.masterparameter).then(r=>r.json());
     const masteruom = await fetch(API.masteruom).then(r=>r.json());
@@ -1453,9 +1589,19 @@ async function loadDeviceReadings(device){
     const endInput = document.getElementById("endDateTime").value;
 
     // 🔹 Default to last 24 hours
-    let start = startInput ? new Date(startInput) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-    let end = endInput ? new Date(endInput) : new Date();
-    const now = new Date();
+    let now = new Date();
+
+// user ne manual date diya?
+if(startInput && endInput){
+    start = new Date(startInput);
+    end = new Date(endInput);
+}else{
+    start = new Date(now.getTime() - graphRangeMinutes * 60 * 1000);
+    end   = now;   // 🔥 ALWAYS current time
+}
+
+
+    // const now = new Date();
 
     const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
 
@@ -1471,26 +1617,32 @@ let dataPoints = readingsDataRaw
     }))
     .filter(p => p.x >= start && p.x <= end);
 
-    // 👉 convert raw readings to 1-minute points
-const dataToPlot = groupByMinute(
-    dataPoints.map(p => ({ x: p.x, y: p.y })), 
-    "average"       // "last" bhi use kar sakte ho
-);
 
+// 🔹 Identify parameter FIRST
+const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(dataPoints[0]?.paramId));
 
-// 🔹 Detect if this category/device is VOC type
+// 🔹 Detect if VOC category
 const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
 const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
-// 🔹 If VOC category → keep only VOC readings
+// 🔹 If VOC → keep only VOC readings
 if (isVOC) {
     const vocParam = masterparameter.find(p => p.PARAMETER_NAME.toLowerCase().includes("voc"));
     if (vocParam) {
         dataPoints = dataPoints.filter(dp => String(dp.paramId) === String(vocParam.PARAMETER_ID));
     }
 }
-   // 🔹 Identify parameter name (VOC / Refricheck)
-    const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(dataPoints[0]?.paramId));
+
+    // 👉 convert raw readings to 1-minute points
+const dataToPlot = groupByMinute(
+    dataPoints.map(p => ({ x: p.x, y: p.y })), 
+    "average"       // "last" bhi use kar sakte ho
+);
+
+// 🔥 Update AVG box for selected time range
+updateAverageBox(dataToPlot, param, masteruom);
+
+
     const paramName = param?.PARAMETER_NAME?.toLowerCase() || "";
 
     // 🔹 Cap readings (limit Y values)
@@ -1521,7 +1673,10 @@ if (latest) {
     }
 
     // 🔹 Update UI
-    el.textContent = Math.round(readingVal) + ' ' + uom;
+    el.innerHTML = `<span class="device-reading">
+  ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
+</span>`;
+
     el.parentElement.className = `device-card ${colorClass}`;
     device.status = "active";
 } else {
@@ -1544,54 +1699,108 @@ gradient.addColorStop(1, "rgba(13,110,253,0)");
 window.deviceChart = new Chart(ctx, {
   type: "line",
   data: {
-    labels: dataPoints.map(p => p.x),
     datasets: [
       {
         label: device.DEVICE_NAME,
-        data: dataToPlot.map(p => p.y),
+
+        // 🔥 IMPORTANT FIX
+        data: dataToPlot,   // [{x:Date,y:Number}] directly
 
         borderColor: "#0d6efd",
         backgroundColor: gradient,
-
         fill: true,
         tension: 0.45,
-
         borderWidth: 2.5,
         pointRadius: 0,
-        pointHoverRadius: 2,
-      },
-    ],
+        pointHoverRadius: 2
+      }
+    ]
   },
 
   options: {
-    responsive: true,
-    maintainAspectRatio: false,
+  responsive: true,
+  maintainAspectRatio: false,
 
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        backgroundColor: "#111",
-        titleColor: "#fff",
-        bodyColor: "#fff",
-        displayColors: false,
-      },
-    },
-
-    scales: {
-      x: {
-        type: "time",
-        time: { tooltipFormat: "dd-MM-yyyy HH:mm" },
-        grid: { display: false },
-      },
-      y: {
-        beginAtZero: true,
-        grid: { color: "rgba(0,0,0,0.05)" },
-      },
-    },
+  // 🔥 SMOOTH SLIDE ANIMATION
+  animation: {
+    duration: 900,
+    easing: "easeInOutQuart"
   },
-});
+
+  transitions: {
+    active: {
+      animation: {
+        duration: 600
+      }
+    }
+  },
+
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: "#111",
+      titleColor: "#0d6efd",
+      bodyColor: "#fff",
+      displayColors: false,
+      callbacks: {
+        title: function(ctx) {
+          return new Date(ctx[0].parsed.x).toLocaleString();
+        },
+        label: function(ctx) {
+          return "Reading : " + ctx.parsed.y.toFixed(2);
+        }
+      }
+    }
+  },
+
+  scales: {
+    x: {
+      type: "time",
+      grid: { display: false }
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: "rgba(0,0,0,0.05)" }
+    }
+  }
+}
+}); 
+
+
+//   options: {
+//     responsive: true,
+//     maintainAspectRatio: false,
+
+//     plugins: {
+//       legend: { display: false },
+//       tooltip: {
+//         backgroundColor: "#111",
+//         titleColor: "#0d6efd",
+//         bodyColor: "#fff",
+//         displayColors: false,
+//         callbacks: {
+//           title: function(ctx) {
+//             return new Date(ctx[0].parsed.x).toLocaleString();
+//           },
+//           label: function(ctx) {
+//             return "Reading : " + ctx.parsed.y.toFixed(2);
+//           }
+//         }
+//       }
+//     },
+
+//     scales: {
+//       x: {
+//         type: "time",
+//         grid: { display: false }
+//       },
+//       y: {
+//         beginAtZero: true,
+//         grid: { color: "rgba(0,0,0,0.05)" }
+//       }
+//     }
+//   }
+// });
 
 
     // 🔹 Update alarms
@@ -1780,6 +1989,99 @@ window.addEventListener("load", function () {
             "Last refreshed: never";
     }
 });
+
+function updateAverageBox(dataPoints, param, masteruom) {
+
+    const avgBox = document.getElementById("avgBox");
+
+    if (!dataPoints.length || !param) {
+        avgBox.innerText = "Avg: --";
+        avgBox.style.background = "#e9ecef";
+        avgBox.style.color = "#000";
+        return;
+    }
+
+    // 🔹 Calculate average
+    const sum = dataPoints.reduce((a,b)=>a + b.y, 0);
+    const avg = sum / dataPoints.length;
+
+    // 🔹 UOM
+    const uomObj = masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID));
+    const uom = uomObj?.UOM_NAME || "";
+
+    // 🔹 Thresholds
+    const lower = parseFloat(param.LOWER_THRESHOLD || 0);
+    const upper = parseFloat(param.UPPER_THRESHOLD || 0);
+
+    let status = "Normal";
+    let bg = "#28a745"; // green
+
+    if (upper && avg > upper) {
+        status = "High";
+        bg = "#dc3545";
+    }
+    else if (lower && avg < lower) {
+        status = "Low";
+        bg = "#ffc107";
+    }
+
+    avgBox.innerText = `Avg: ${avg.toFixed(2)} ${uom} (${status})`;
+    avgBox.style.background = bg;
+    avgBox.style.color = "#fff";
+}
+
+// 🔁 Avg box click = change time range
+let avgRangeIndex = 0;
+const avgRanges = [10, 60, 1440];   // 10 min, 1 hour, 1 day
+
+function cycleAvgRange(){
+    avgRangeIndex = (avgRangeIndex + 1) % avgRanges.length;
+    setGraphRange(avgRanges[avgRangeIndex]);
+}
+
+function validateDateRangeLive(){
+
+    const startVal = document.getElementById("startDateTime").value;
+    const endVal   = document.getElementById("endDateTime").value;
+
+    if(!startVal || !endVal) return;
+
+    const start = new Date(startVal);
+    const end   = new Date(endVal);
+
+    if(end < start){
+        alert("End date must be after start date");
+        document.getElementById("endDateTime").value = "";
+        return;
+    }
+
+    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
+
+    if(diffDays > 3){
+        alert("⚠ You can select maximum 3 days only");
+        document.getElementById("endDateTime").value = "";
+    }
+}
+
+document.getElementById("startDateTime").addEventListener("change", validateDateRangeLive);
+document.getElementById("endDateTime").addEventListener("change", validateDateRangeLive);
+
+
+
+function markActiveRange(mins){
+  document.querySelectorAll(".range-btn").forEach(b=>{
+    b.classList.remove("btn-primary");
+    b.classList.add("btn-outline-primary");
+  });
+
+  const btn = document.querySelector(`[data-min='${mins}']`);
+  if(btn){
+    btn.classList.remove("btn-outline-primary");
+    btn.classList.add("btn-primary");
+  }
+}
+
+
 
 function setNavbarOrgCentre(orgName, centreName){
 
