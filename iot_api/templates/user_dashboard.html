@@ -397,6 +397,10 @@
 
 </div>
 
+<div id="graphParamLabel"
+     style="font-weight:700;font-size:14px;color:#0d6efd;">
+</div>
+
 
 <div id="graphWrapper" style="height:160px; width:100%; position:relative;">
     <canvas id="deviceGraph"></canvas>
@@ -601,6 +605,8 @@ let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, curren
 let currentCategoryId=null, liveUpdateInterval=null;
 window.currentDeviceGraphDeviceId = null;
 let graphRangeMinutes = 1440;   // default = 1 day
+window.currentGraphParameterId = null;   // incubator ke liye active parameter
+
 
 
 // ------------- LOAD DATA -------------
@@ -1256,14 +1262,26 @@ let status = "offline", displayVal = "Offline";
 
 if (deviceReadings.length > 0) {
     // Filter only VOC readings for VOC devices
-    const vocOnly = deviceReadings.filter(r => {
-        const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(r.PARAMETER_ID));
-        return param && param.PARAMETER_NAME.toLowerCase().includes("voc");
-    });
+   // 🔥 Sirf VOC category ke liye VOC filter
+const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
+const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
+
+let filteredReadings = deviceReadings;
+
+if(isVOC){
+   filteredReadings = deviceReadings.filter(r=>{
+      const param = masterparameter.find(p=>p.PARAMETER_ID==r.PARAMETER_ID);
+      return param?.PARAMETER_NAME?.toLowerCase().includes("voc");
+   });
+}
+
+// const latestReading = filteredReadings[filteredReadings.length-1];
+
 
     // Use latest VOC reading (if exists)
-    const latestVoc = vocOnly[vocOnly.length - 1];
-    const latestReading = latestVoc || deviceReadings[deviceReadings.length - 1]; // fallback
+const latestReading = filteredReadings[filteredReadings.length - 1] 
+                   || deviceReadings[deviceReadings.length - 1];
+
 
     const readingTime = new Date(latestReading.READING_DATE + 'T' + latestReading.READING_TIME);
     if (now - readingTime <= 15 * 60 * 1000) {
@@ -1346,6 +1364,15 @@ async function openDeviceDashboard(categoryId){
     document.getElementById("deviceTypeTitle").textContent =
         category?.CATEGORY_NAME || categoryId;
 
+      if(window.currentGraphParameterId){
+    const p = masterparameter.find(x=>x.PARAMETER_ID==window.currentGraphParameterId);
+    if(p){
+        document.getElementById("deviceTypeTitle").textContent =
+           device.DEVICE_NAME + " → " + p.PARAMETER_NAME;
+    }
+}
+
+
     const devices = allDevices.filter(d=>d.CATEGORY_ID===categoryId);
     const deviceList = document.getElementById("deviceList");
     deviceList.innerHTML = "";
@@ -1357,17 +1384,27 @@ async function openDeviceDashboard(categoryId){
         div.style.cursor = "pointer";
         div.id = `card_${device.DEVICE_ID}`;
 
-       div.innerHTML = `
-   <h6>${device.DEVICE_NAME}</h6>
+const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
+const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
 
-   <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">
-      Loading...
-   </p>
+if(isIncubator){
+  div.innerHTML = `
+    <h6>${device.DEVICE_NAME}</h6>
 
-   <div class="device-hint">
-      Click to view graph
-   </div>
-`;
+    <div id="param1_${device.DEVICE_ID}" class="device-reading">Loading...</div>
+    <div id="param2_${device.DEVICE_ID}" class="device-reading"></div>
+    <div id="param3_${device.DEVICE_ID}" class="device-reading"></div>
+
+    <div class="device-hint">Click to view graph</div>
+  `;
+}else{
+  div.innerHTML = `
+    <h6>${device.DEVICE_NAME}</h6>
+    <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p>
+    <div class="device-hint">Click to view graph</div>
+  `;
+}
+
 
 
         div.addEventListener("click",()=>loadDeviceReadings(device));
@@ -1435,97 +1472,150 @@ async function loadCardReadingFast(device, masterparameter, masteruom){
     // ===============================================================
     //      🌟 SPECIAL LOGIC ONLY FOR INCUBATOR DEVICES
     // ===============================================================
-    if (isIncubator) {
+if (isIncubator) {
 
-        // 👉 3 line placeholders already created earlier
-        const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
-        const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
-        const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
-
-        try{
-            const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
-            const data = await res.json();
-
-            if(!data.length){
-                p1.innerText = "Offline";
-                p2.innerText = "";
-                p3.innerText = "";
-                cardEl.className = "device-card bg-secondary";
-                return;
-            }
-
-            // group readings parameter-wise
-            let grouped = {};
-
-            data.forEach(r => {
-                if (!grouped[r.PARAMETER_ID]) grouped[r.PARAMETER_ID] = [];
-                grouped[r.PARAMETER_ID].push(r);
-            });
-
-            // latest 3 different parameters
-            let keys = Object.keys(grouped).slice(0, 3);
-            let displayTargets = [p1, p2, p3];
-
-            keys.forEach((k, idx) => {
-
-                const recs = grouped[k];
-                const last = recs[recs.length - 1];
-
-                const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
-                const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
-
-                displayTargets[idx].innerText =
-                    `${param?.PARAMETER_NAME || ''}: ${Math.round(last.READING)} ${uomObj?.UOM_NAME || ''}`;
-            });
-
-            cardEl.className = "device-card bg-success";
-        }
-        catch(err){
-            p1.innerText = "Offline";
-            cardEl.className = "device-card bg-secondary";
-        }
-
-        return;   // ⛔ STOP here so other device types are NOT affected
-    }
-
-    // ===============================================================
-    //      ⭐ ORIGINAL LOGIC FOR ALL OTHER DEVICES (UNCHANGED)
-    // ===============================================================
-
-    const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+    const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
+    const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
+    const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
 
     try{
         const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
         const data = await res.json();
 
-        if(!data.length){
-            valueEl.innerText = "Offline";
+        const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+
+        if(!ownReadings.length){
+            p1.innerText = "Offline";
+            p2.innerText = "";
+            p3.innerText = "";
             cardEl.className = "device-card bg-secondary";
             return;
         }
 
-        const last = data[data.length-1];
-        const dt = new Date(last.READING_DATE+"T"+last.READING_TIME);
+        let grouped = {};
+        ownReadings.forEach(r => {
+            if (!grouped[r.PARAMETER_ID]) grouped[r.PARAMETER_ID] = [];
+            grouped[r.PARAMETER_ID].push(r);
+        });
 
-        if(Date.now() - dt.getTime() > 15*60*1000){
-            valueEl.innerText = "Offline";
-            cardEl.className = "device-card bg-secondary";
-            return;
-        }
+        let keys = masterparameter
+            .filter(p => grouped[p.PARAMETER_ID])
+            .map(p => p.PARAMETER_ID)
+            .slice(0,3);
 
-        const param = masterparameter.find(p=>p.PARAMETER_ID==last.PARAMETER_ID);
-        const uomObj = masteruom.find(u=>u.UOM_ID==param?.UOM_ID);
-        const uom = uomObj?.UOM_NAME || "";
+        let displayTargets = [p1, p2, p3];
 
-        valueEl.innerText = Math.round(last.READING) + " " + uom;
-        cardEl.className = "device-card bg-success";
+keys.forEach((k, idx) => {
+    const recs = grouped[k];
+    const last = recs[recs.length - 1];
+
+    const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
+    const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
+
+displayTargets[idx].innerHTML = `
+  <div style="display:flex;
+            justify-content:space-between;
+            align-items:center;
+            width:100%;
+            margin-bottom:6px;">
+      <span>${param.PARAMETER_NAME}: ${Math.round(last.READING)} ${uomObj?.UOM_NAME || ''}</span>
+      <button class="btn btn-sm btn-light"
+        style="font-size:10px;padding:2px 8px;"
+        data-param="${param.PARAMETER_ID}">
+        View
+      </button>
+  </div>
+`;
+
+
+displayTargets[idx].querySelector("button").onclick = (e) => {
+    e.stopPropagation();
+
+    window.currentGraphParameterId = param.PARAMETER_ID;
+    window.manualGraphLock = true;   // 🔒 freeze auto refresh
+
+    loadDeviceReadings(device);
+
+    setTimeout(() => {
+        window.manualGraphLock = false;   // 🔓 unfreeze
+    }, 1000);
+};
+
+
+
+    displayTargets[idx].dataset.param = param.PARAMETER_ID;
+
+  displayTargets[idx].onclick = (e) => {
+    e.stopPropagation();
+
+    window.currentGraphParameterId = param.PARAMETER_ID;
+    window.manualGraphLock = true;     // 🔥 stop auto refresh
+
+    loadDeviceReadings(device);
+
+    // 1 second baad auto refresh wapas allow
+    setTimeout(() => {
+        window.manualGraphLock = false;
+    }, 1000);
+};
+});
+
+// 👇 forEach ke baad
+cardEl.className = "device-card bg-success";
+
     }
     catch(err){
-        valueEl.innerText = "Offline";
+        p1.innerText = "Offline";
+        p2.innerText = "";
+        p3.innerText = "";
         cardEl.className = "device-card bg-secondary";
     }
+
+    return;   // 🔥 incubator ke baad normal logic chalne se roko
 }
 
+
+// ===============================================================
+//      ⭐ ORIGINAL LOGIC FOR ALL OTHER DEVICES (UNCHANGED)
+// ===============================================================
+
+const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+
+try {
+
+    const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
+    const data = await res.json();
+
+    const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+
+    if(!ownReadings.length){
+        valueEl.innerText = "Offline";
+        cardEl.className = "device-card bg-secondary";
+        return;
+    }
+
+    const last = ownReadings[ownReadings.length - 1];
+    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
+
+    if(Date.now() - dt.getTime() > 15*60*1000){
+        valueEl.innerText = "Offline";
+        cardEl.className = "device-card bg-secondary";
+        return;
+    }
+
+    const param = masterparameter.find(p=>p.PARAMETER_ID==last.PARAMETER_ID);
+    const uomObj = masteruom.find(u=>u.UOM_ID==param?.UOM_ID);
+    const uom = uomObj?.UOM_NAME || "";
+
+    valueEl.innerText = Math.round(last.READING) + " " + uom;
+    cardEl.className = "device-card bg-success";
+
+}
+catch(err){
+    valueEl.innerText = "Offline";
+    cardEl.className = "device-card bg-secondary";
+}
+}
 
    // startLiveUpdates(categoryId);
 
@@ -1538,13 +1628,14 @@ function groupByMinute(points, mode="average") {
     const map = new Map();
 
     points.forEach(p => {
+        const d = p.x;
 
         const key =
-            p.x.getFullYear()+"-"+
-            (p.x.getMonth()+1)+"-"+
-            p.x.getDate()+" "+
-            p.x.getHours()+":"+
-            p.x.getMinutes();
+            d.getFullYear() + "-" +
+            String(d.getMonth()+1).padStart(2,"0") + "-" +
+            String(d.getDate()).padStart(2,"0") + "T" +
+            String(d.getHours()).padStart(2,"0") + ":" +
+            String(d.getMinutes()).padStart(2,"0") + ":00";
 
         if(!map.has(key)) map.set(key, []);
         map.get(key).push(p.y);
@@ -1553,29 +1644,26 @@ function groupByMinute(points, mode="average") {
     const result = [];
 
     map.forEach((values, key) => {
-
-        let value;
-
-        if(mode === "average") {
-            value = values.reduce((a,b)=>a+b,0) / values.length;
-        } else {
-            value = values[values.length-1];
-        }
+        let value =
+            mode==="average"
+            ? values.reduce((a,b)=>a+b,0)/values.length
+            : values[values.length-1];
 
         result.push({
-            x: new Date(key),
+            x: new Date(key),   // 🔥 ISO time
             y: value
         });
-
     });
 
-    result.sort((a,b)=>a.x - b.x);
-
+    result.sort((a,b)=>a.x-b.x);
     return result;
 }
 
+
 async function loadDeviceReadings(device){
-  
+     // 🔒 stop double / triple reload
+    if (window.manualGraphLock && !window.currentGraphParameterId) return;
+
  // sirf pehli baar jab koi graph open ho
   if (!window.currentDeviceGraphDeviceId) {
       graphRangeMinutes = 10;
@@ -1610,28 +1698,56 @@ if(startInput && endInput){
 // 🔹 Filter readings for this device (within selected time range)
 let dataPoints = readingsDataRaw
     .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+    //.filter(r => !window.currentGraphParameterId || String(r.PARAMETER_ID) === String(window.currentGraphParameterId))
     .map(r => ({
-        x: new Date(r.READING_DATE + 'T' + r.READING_TIME),
+        x: new Date(r.READING_DATE + "T" + r.READING_TIME),
         y: parseFloat(r.READING),
         paramId: r.PARAMETER_ID
     }))
     .filter(p => p.x >= start && p.x <= end);
 
 
+// 🔥 Incubator parameter filter (jab koi param click hua ho)
+if (window.currentGraphParameterId) {
+    dataPoints = dataPoints.filter(p =>
+        String(p.paramId) === String(window.currentGraphParameterId)
+    );
+}
+
+
 // 🔹 Identify parameter FIRST
-const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(dataPoints[0]?.paramId));
+if (!dataPoints.length) {
+    console.warn("No graph data for", device.DEVICE_NAME);
+    document.getElementById("avgBox").innerText = "Avg: --";
+    return;
+}
+
+// get selected parameter (incubator safe)
+let param = null;
+
+if (window.currentGraphParameterId) {
+    param = masterparameter.find(
+        p => String(p.PARAMETER_ID) === String(window.currentGraphParameterId)
+    );
+} else if (dataPoints.length) {
+    param = masterparameter.find(
+        p => String(p.PARAMETER_ID) === String(dataPoints[0].paramId)
+    );
+}
+
+
 
 // 🔹 Detect if VOC category
 const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
 const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
 // 🔹 If VOC → keep only VOC readings
-if (isVOC) {
-    const vocParam = masterparameter.find(p => p.PARAMETER_NAME.toLowerCase().includes("voc"));
-    if (vocParam) {
-        dataPoints = dataPoints.filter(dp => String(dp.paramId) === String(vocParam.PARAMETER_ID));
-    }
-}
+// if (isVOC) {
+//     const vocParam = masterparameter.find(p => p.PARAMETER_NAME.toLowerCase().includes("voc"));
+//     if (vocParam) {
+//         dataPoints = dataPoints.filter(dp => String(dp.paramId) === String(vocParam.PARAMETER_ID));
+//     }
+// }
 
     // 👉 convert raw readings to 1-minute points
 const dataToPlot = groupByMinute(
@@ -1651,37 +1767,48 @@ updateAverageBox(dataToPlot, param, masteruom);
         if (paramName.includes("refricheck") && p.y > 15) p.y = 15;
     });
 
-    // 🔹 Update current value
-    const latest = dataPoints[dataPoints.length - 1];
-    const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+  // 🔹 Update current value (INCUBATOR SAFE)
+const latest = dataPoints[dataPoints.length - 1];
+
+// detect incubator
+// const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
+const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
+
 if (latest) {
     const uomObj = param ? masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null;
     const uom = uomObj?.UOM_NAME || '';
     const readingVal = parseFloat(latest.y);
 
-    // 🔹 Fetch thresholds from masterparameter
-    const lower = parseFloat(param?.LOWER_THRESHOLD ?? 0);
-    const mid = parseFloat(param?.THRESHOLD ?? 0);
-    const upper = parseFloat(param?.UPPER_THRESHOLD ?? 0);
-
-    // 🔹 Decide color
-    let colorClass = "bg-success"; // default green
+    // 🔹 Threshold color
+    let colorClass = "bg-success";
     if (!isNaN(readingVal)) {
-        if (upper && readingVal > upper) colorClass = "bg-danger"; // High
-        else if (lower && readingVal < lower) colorClass = "bg-warning"; // Low
-        else colorClass = "bg-success"; // Normal
+        if (param?.UPPER_THRESHOLD && readingVal > param.UPPER_THRESHOLD) colorClass = "bg-danger";
+        else if (param?.LOWER_THRESHOLD && readingVal < param.LOWER_THRESHOLD) colorClass = "bg-warning";
     }
 
-    // 🔹 Update UI
-    el.innerHTML = `<span class="device-reading">
-  ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
-</span>`;
+    // 🔥 ONLY update currentTemp for NON-INCUBATOR
+    if (!isIncubator) {
+        const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+        if (el) {
+            el.innerHTML = `
+                <span class="device-reading">
+                    ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
+                </span>
+            `;
+            el.parentElement.className = `device-card ${colorClass}`;
+        }
+    }
 
-    el.parentElement.className = `device-card ${colorClass}`;
     device.status = "active";
-} else {
-    el.textContent = "Offline";
-    el.parentElement.className = "device-card bg-secondary";
+}
+else {
+    if (!isIncubator) {
+        const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+        if (el) {
+            el.textContent = "Offline";
+            el.parentElement.className = "device-card bg-secondary";
+        }
+    }
     device.status = "offline";
 }
 
@@ -1759,7 +1886,7 @@ window.deviceChart = new Chart(ctx, {
       grid: { display: false }
     },
     y: {
-      beginAtZero: true,
+      beginAtZero: false,
       grid: { color: "rgba(0,0,0,0.05)" }
     }
   }
@@ -1810,6 +1937,30 @@ const isVOCDevice = allCategories.find(c => c.CATEGORY_ID === currentCategoryId)
 
 // 🔹 Filter alarms
 let alarms = alarmsRaw.filter(a => a.DEVICE_ID === device.DEVICE_ID);
+
+// 🔥 ONLY selected parameter ka alarm dekho (Incubator logic)
+let filteredAlarms = alarms;
+
+if (window.currentGraphParameterId) {
+    filteredAlarms = alarms.filter(a =>
+        String(a.PARAMETER_ID) === String(window.currentGraphParameterId)
+    );
+}
+
+// 🔥 sirf selected parameter ka ACTIVE alarm
+const hasActiveAlarm = filteredAlarms.some(a => a.IS_ACTIVE === 1);
+
+const card = document.getElementById(`card_${device.DEVICE_ID}`);
+if (card) {
+    if (hasActiveAlarm) {
+        card.classList.remove("bg-success");
+        card.classList.add("bg-danger");
+    } else {
+        card.classList.remove("bg-danger");
+        card.classList.add("bg-success");
+    }
+}
+
 
 if (isVOCDevice) {
     alarms = alarms.filter(a => {
