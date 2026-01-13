@@ -1561,7 +1561,29 @@ displayTargets[idx].querySelector("button").onclick = (e) => {
 });
 
 // 👇 forEach ke baad
-cardEl.className = "device-card bg-success";
+// detect last reading time
+let latestTime = null;
+
+keys.forEach(k => {
+    const last = grouped[k][grouped[k].length - 1];
+    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
+    if (!latestTime || dt > latestTime) latestTime = dt;
+});
+
+// 15 min rule
+if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+    cardEl.className = "device-card bg-secondary";   // OFFLINE
+} else {
+    cardEl.className = "device-card bg-success";     // ONLINE
+}
+
+if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+    p1.innerText = "Offline";
+    p2.innerText = "";
+    p3.innerText = "";
+}
+
+
 
     }
     catch(err){
@@ -1661,6 +1683,8 @@ function groupByMinute(points, mode="average") {
 
 
 async function loadDeviceReadings(device){
+
+  
      // 🔒 stop double / triple reload
     if (window.manualGraphLock && !window.currentGraphParameterId) return;
 
@@ -1715,9 +1739,36 @@ if (window.currentGraphParameterId) {
 }
 
 
-// 🔹 Identify parameter FIRST
-if (!dataPoints.length) {
-    console.warn("No graph data for", device.DEVICE_NAME);
+// 🔥 ONLY for INCUBATOR: allow old data if offline
+if (
+   !dataPoints.length &&
+   allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)
+       ?.CATEGORY_NAME?.toLowerCase().includes("incubator")
+) {
+
+
+    dataPoints = readingsDataRaw
+        .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+        .map(r => ({
+            x: new Date(r.READING_DATE + "T" + r.READING_TIME),
+            y: parseFloat(r.READING),
+            paramId: r.PARAMETER_ID
+        }));
+
+    if (window.currentGraphParameterId) {
+        dataPoints = dataPoints.filter(p =>
+            String(p.paramId) === String(window.currentGraphParameterId)
+        );
+    }
+}
+
+// normal devices → still block graph
+if (
+   !dataPoints.length &&
+   !allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)
+       ?.CATEGORY_NAME?.toLowerCase().includes("incubator")
+) {
+
     document.getElementById("avgBox").innerText = "Avg: --";
     return;
 }
@@ -1802,15 +1853,19 @@ if (latest) {
     device.status = "active";
 }
 else {
-    if (!isIncubator) {
-        const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-        if (el) {
-            el.textContent = "Offline";
-            el.parentElement.className = "device-card bg-secondary";
+    device.status = "offline";
+
+    // 🔥 INCUBATOR offline handling
+    if (isIncubator) {
+        const card = document.getElementById(`card_${device.DEVICE_ID}`);
+        if (card) {
+            card.classList.remove("bg-success","bg-danger");
+            card.classList.add("bg-secondary");
         }
     }
-    device.status = "offline";
+    // normal devices untouched
 }
+
 
 
     // 🔹 Draw line chart
