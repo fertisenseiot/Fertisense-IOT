@@ -336,13 +336,18 @@ def twilio_call_status(request):
 
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
-    # Agar kisi ne call pick kar li
-    if call_status == "answered":
-        DeviceAlarmCallLog.objects.filter(
-            PHONE_NUM=to_number
-        ).update(
-            CALL_STATUS="ANSWERED",
-            LST_UPD_DT=timezone.now().date()
-        )
+    # 🔥 Agar kisi ne call utha li (Twilio sends 'completed')
+    if call_status == "completed":
+        last_call = DeviceAlarmCallLog.objects.filter(
+            PHONE_NUM=to_number,
+            CALL_STATUS="INITIATED"
+        ).order_by("-id").first()
+
+        if last_call:
+            last_call.CALL_STATUS = "ANSWERED"
+            last_call.LST_UPD_DT = timezone.now().date()
+            last_call.save()
+
+            print("✅ Alarm acknowledged by", to_number)
 
     return HttpResponse("OK")
