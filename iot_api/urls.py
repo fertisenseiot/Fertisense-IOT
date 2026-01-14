@@ -4,6 +4,8 @@ from django.urls import path, include
 from rest_framework import routers
 from . import views
 from .views import current_user_api, user_org_centre_api
+from .views import twilio_call_status
+
 
 
 from .views import (
@@ -50,5 +52,7 @@ urlpatterns = [
     path("api/userorgcentre/", user_org_centre_api, name="user_org_centre"),
     path('api/devicecheck/', views.devicecheck, name='devicecheck'),
     path('devicecheck/<int:device_id>/', views.devicecheck, name='devicecheck'),
+    path("twilio/call-status/", twilio_call_status),
+
     
 ]
