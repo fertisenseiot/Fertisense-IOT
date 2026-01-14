@@ -335,8 +335,8 @@ def twilio_call_status(request):
     to_number = request.POST.get("To")             # +9173...
 
     # normalize number
-    if to_number and to_number.startswith("+91"):
-        to_number = to_number.replace("+91", "")
+    to_number = request.POST.get("To")   # keep +91
+
 
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
