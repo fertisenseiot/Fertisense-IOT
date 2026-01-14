@@ -337,7 +337,7 @@ def twilio_call_status(request):
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
     # Agar kisi ne call pick kar li
-    if call_status == "completed":
+    if call_status == "answered":
         DeviceAlarmCallLog.objects.filter(
             PHONE_NUM=to_number
         ).update(
