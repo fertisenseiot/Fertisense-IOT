@@ -322,3 +322,27 @@ def devicecheck(request, device_id):
         "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None
     })
 
+# ================================
+# Twilio Call Status Webhook
+# ================================
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+
+@csrf_exempt
+def twilio_call_status(request):
+    call_sid = request.POST.get("CallSid")
+    call_status = request.POST.get("CallStatus")   # completed, answered, busy, no-answer
+    to_number = request.POST.get("To")
+
+    print("📞 Twilio Webhook:", call_sid, call_status, to_number)
+
+    # Agar kisi ne call pick kar li
+    if call_status == "completed":
+        DeviceAlarmCallLog.objects.filter(
+            PHONE_NUM=to_number
+        ).update(
+            CALL_STATUS="ANSWERED",
+            LST_UPD_DT=timezone.now().date()
+        )
+
+    return HttpResponse("OK")
