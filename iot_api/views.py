@@ -340,7 +340,8 @@ def twilio_call_status(request):
 
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
-    if call_status == "completed":
+    # 🔥 Only when user PICKS UP
+    if call_status == "answered":
         last_call = DeviceAlarmCallLog.objects.filter(
             PHONE_NUM=to_number,
             CALL_STATUS="INITIATED"
@@ -351,7 +352,5 @@ def twilio_call_status(request):
             last_call.LST_UPD_DT = timezone.now().date()
             last_call.save()
             print("✅ Alarm acknowledged by", to_number)
-        else:
-            print("❌ No matching INITIATED call found for", to_number)
 
     return HttpResponse("OK")
