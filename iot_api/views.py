@@ -331,18 +331,23 @@ from django.utils import timezone
 @csrf_exempt
 def twilio_call_status(request):
     call_sid = request.POST.get("CallSid")
-    call_status = request.POST.get("CallStatus")   # completed, answered, busy, no-answer
+    call_status = request.POST.get("CallStatus")   # initiated, ringing, in-progress, completed
     to_number = request.POST.get("To")
 
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
-    # Agar kisi ne call pick kar li
-    if call_status == "completed":
+    # Normalize number (remove +91)
+    if to_number and to_number.startswith("+91"):
+        to_number = to_number[3:]
+
+    # USER PICKED UP
+    if call_status == "in-progress":
         DeviceAlarmCallLog.objects.filter(
-            PHONE_NUM=to_number
+            PHONE_NUM__endswith=to_number
         ).update(
             CALL_STATUS="ANSWERED",
             LST_UPD_DT=timezone.now().date()
         )
+        print("✅ Call marked as ANSWERED for", to_number)
 
     return HttpResponse("OK")
