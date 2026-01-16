@@ -356,11 +356,14 @@ def twilio_call_status(request):
 
     # 🔥 CALL ENDED
     elif call_status == "completed":
-        DeviceAlarmCallLog.objects.filter(
+        updated = DeviceAlarmCallLog.objects.filter(
             CALL_SID=call_sid
+        ).exclude(                     # ⭐ KEY LINE
+            CALL_STATUS="ANSWERED"
         ).update(
             CALL_STATUS="COMPLETED",
             LST_UPD_DT=timezone.now()
         )
+        print("☎ CALL COMPLETED | rows updated:", updated)
 
     return HttpResponse("OK")
