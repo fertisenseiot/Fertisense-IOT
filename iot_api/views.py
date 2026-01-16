@@ -331,39 +331,30 @@ from django.utils import timezone
 
 @csrf_exempt
 def twilio_call_status(request):
-    if request.method != "POST":
-        return HttpResponse("Invalid", status=405)
-
     call_sid = request.POST.get("CallSid")
-    call_status = request.POST.get("CallStatus")   # initiated | ringing | in-progress | completed
-    to_number = request.POST.get("To")
-
-    print("📞 Twilio Webhook:", call_sid, call_status, to_number)
+    call_status = request.POST.get("CallStatus")
 
     if not call_sid:
-        return HttpResponse("Missing CallSid", status=400)
+        return HttpResponse("OK")
 
     # 🔥 HUMAN ANSWERED
     if call_status == "in-progress":
-        updated = DeviceAlarmCallLog.objects.filter(
+        DeviceAlarmCallLog.objects.filter(
             CALL_SID=call_sid
         ).update(
             CALL_STATUS="ANSWERED",
             LST_UPD_DT=timezone.now()
         )
 
-        print("✅ CALL ANSWERED | rows updated:", updated)
-
-    # 🔥 CALL ENDED
+    # 🔥 CALL ENDED BUT NOT ANSWERED
     elif call_status == "completed":
-        updated = DeviceAlarmCallLog.objects.filter(
-            CALL_SID=call_sid
-        ).exclude(                     # ⭐ KEY LINE
-            CALL_STATUS="ANSWERED"
+        DeviceAlarmCallLog.objects.filter(
+            CALL_SID=call_sid,
+            CALL_STATUS__isnull=True
         ).update(
-            CALL_STATUS="COMPLETED",
+            CALL_STATUS="NO_ANSWER",
             LST_UPD_DT=timezone.now()
         )
-        print("☎ CALL COMPLETED | rows updated:", updated)
 
     return HttpResponse("OK")
+
