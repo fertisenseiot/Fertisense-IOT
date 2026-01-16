@@ -326,42 +326,41 @@ def devicecheck(request, device_id):
 # Twilio Call Status Webhook
 # ================================
 from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from django.utils import timezone
 
 @csrf_exempt
 def twilio_call_status(request):
+    if request.method != "POST":
+        return HttpResponse("Invalid", status=405)
+
     call_sid = request.POST.get("CallSid")
-    call_status = request.POST.get("CallStatus")   # initiated, ringing, in-progress, completed
+    call_status = request.POST.get("CallStatus")   # initiated | ringing | in-progress | completed
     to_number = request.POST.get("To")
 
     print("📞 Twilio Webhook:", call_sid, call_status, to_number)
 
-    # Normalize number (remove +91)
-    if to_number and to_number.startswith("+91"):
-        to_number = to_number[3:]
+    if not call_sid:
+        return HttpResponse("Missing CallSid", status=400)
 
-    # # USER PICKED UP
-    # if call_status == "in-progress":
-    #     DeviceAlarmCallLog.objects.filter(
-    #         PHONE_NUM__endswith=to_number
-    #     ).update(
-    #         CALL_STATUS="ANSWERED",
-    #         LST_UPD_DT=timezone.now().date()
-    #     )
-    #     print("✅ Call marked as ANSWERED for", to_number)
-
-    # return HttpResponse("OK")
-    
-    # ONLY when a human answers
-    if call_status == "answered":
-        DeviceAlarmCallLog.objects.filter(
-            PHONE_NUM__endswith=to_number,
-            CALL_STATUS__isnull=True
+    # 🔥 HUMAN ANSWERED
+    if call_status == "in-progress":
+        updated = DeviceAlarmCallLog.objects.filter(
+            CALL_SID=call_sid
         ).update(
             CALL_STATUS="ANSWERED",
-            LST_UPD_DT=timezone.now().date()
+            LST_UPD_DT=timezone.now()
         )
 
-        print("☎ CONFIRMED ANSWER by", to_number)
+        print("✅ CALL ANSWERED | rows updated:", updated)
+
+    # 🔥 CALL ENDED
+    elif call_status == "completed":
+        DeviceAlarmCallLog.objects.filter(
+            CALL_SID=call_sid
+        ).update(
+            CALL_STATUS="COMPLETED",
+            LST_UPD_DT=timezone.now()
+        )
 
     return HttpResponse("OK")
