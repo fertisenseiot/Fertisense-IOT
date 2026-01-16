@@ -447,7 +447,7 @@ class DeviceAlarmCallLog(models.Model):
     PARAMETER_ID = models.IntegerField()
     ALARM_DATE = models.DateField()
     ALARM_TIME = models.TimeField()
-    PHONE_NUM = models.IntegerField()
+    PHONE_NUM = models.CharField(max_length=20)
     CALL_DATE = models.DateField()
     CALL_TIME = models.IntegerField()
     SMS_CALL_FLAG = models.IntegerField()
@@ -461,6 +461,13 @@ class DeviceAlarmCallLog(models.Model):
     DEVICE_ALARM_CALL_LOG_VER = models.TextField(null=True, blank=True)
     CHANNEL = models.IntegerField(null=True, blank=True)
     CHANNEL_CD = models.IntegerField(null=True, blank=True)
+    CALL_STATUS = models.CharField(max_length=20, null=True, blank=True)
+    CALL_SID = models.CharField(
+    max_length=64,
+    null=True,
+    blank=True,
+    db_index=True
+)
 
     class Meta:
         unique_together = (
