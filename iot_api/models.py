@@ -461,7 +461,16 @@ class DeviceAlarmCallLog(models.Model):
     DEVICE_ALARM_CALL_LOG_VER = models.TextField(null=True, blank=True)
     CHANNEL = models.IntegerField(null=True, blank=True)
     CHANNEL_CD = models.IntegerField(null=True, blank=True)
-    CALL_STATUS = models.CharField(max_length=20, null=True, blank=True)
+    class CallStatus(models.IntegerChoices):
+     PENDING = 0, 'Pending'   #matlab call abhi ki nahi gai
+     COMPLETED = 1, 'Completed'
+     FAILED = 2, 'Failed'
+     NO_ANSWER = 3, 'No Answer'
+
+    CALL_STATUS = models.IntegerField(
+    choices=CallStatus.choices,
+    default=CallStatus.PENDING
+)
     CALL_SID = models.CharField(
     max_length=64,
     null=True,
