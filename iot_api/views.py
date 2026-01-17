@@ -332,29 +332,27 @@ from django.utils import timezone
 @csrf_exempt
 def twilio_call_status(request):
     call_sid = request.POST.get("CallSid")
-    call_status = request.POST.get("CallStatus")
+    status = request.POST.get("CallStatus")
 
     if not call_sid:
-        return HttpResponse("OK")
+        return HttpResponse("Missing CallSid", status=400)
 
-    # 🔥 HUMAN ANSWERED
-    if call_status == "in-progress":
-        DeviceAlarmCallLog.objects.filter(
-            CALL_SID=call_sid
-        ).update(
-            CALL_STATUS="ANSWERED",
-            LST_UPD_DT=timezone.now()
-        )
+    if status == "completed":
+        new_status = 1  # COMPLETED
+    elif status == "no-answer":
+        new_status = 3  # NO ANSWER
+    elif status == "failed":
+        new_status = 2  # FAILED
+    else:
+        return HttpResponse("Ignored")
 
-    # 🔥 CALL ENDED BUT NOT ANSWERED
-    elif call_status == "completed":
-        DeviceAlarmCallLog.objects.filter(
-            CALL_SID=call_sid,
-            CALL_STATUS__isnull=True
-        ).update(
-            CALL_STATUS="NO_ANSWER",
-            LST_UPD_DT=timezone.now()
-        )
+    DeviceAlarmCallLog.objects.filter(
+        CALL_SID=call_sid
+    ).update(
+        CALL_STATUS=new_status,
+        LST_UPD_DT=timezone.now()
+    )
 
     return HttpResponse("OK")
+
 
