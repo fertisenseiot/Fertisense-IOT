@@ -329,26 +329,31 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.utils import timezone
 
+from .models import DeviceAlarmCallLog
+
+
 @csrf_exempt
 def twilio_call_status(request):
     if request.method != "POST":
         return HttpResponse("Method Not Allowed", status=405)
 
     call_sid = request.POST.get("CallSid")
-    status = request.POST.get("CallStatus")
+    call_status = request.POST.get("CallStatus")
 
     if not call_sid:
         return HttpResponse("Missing CallSid", status=400)
 
-    if status == "completed":
-        new_status = 1  # COMPLETED
-    elif status in ("no-answer", "busy", "canceled"):
-        new_status = 3  # NO ANSWER
-    elif status == "failed":
-        new_status = 2  # FAILED
+    # 🔹 Map Twilio → DB
+    if call_status == "completed":
+        new_status = 1      # ANSWERED
+    elif call_status in ("no-answer", "busy", "canceled"):
+        new_status = 3      # NO ANSWER
+    elif call_status == "failed":
+        new_status = 2      # FAILED
     else:
-        return HttpResponse(f"Ignored status: {status}")
+        return HttpResponse(f"Ignored status {call_status}")
 
+    # 🔹 Update DB
     DeviceAlarmCallLog.objects.filter(
         CALL_SID=call_sid,
         CALL_STATUS=0
@@ -357,6 +362,8 @@ def twilio_call_status(request):
         LST_UPD_DT=timezone.now()
     )
 
-    return HttpResponse("OK")
+    if new_status == 1:
+        return HttpResponse("Call answered. Alarm acknowledged.")
 
+    return HttpResponse("Call status updated.")
 
