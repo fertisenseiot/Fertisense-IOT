@@ -10,6 +10,37 @@ from sib_api_v3_sdk.rest import ApiException
 import pytz
 from django.utils import timezone
 
+# ======================
+# TWILIO HELPER (MODEL LEVEL)
+# ======================
+from twilio.rest import Client
+
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
+TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
+
+def make_robo_call(phone, message):
+    if not TWILIO_SID or not TWILIO_TOKEN or not TWILIO_NUMBER:
+        print("❌ Twilio ENV missing")
+        return None
+
+    try:
+        client = Client(TWILIO_SID, TWILIO_TOKEN)
+        call = client.calls.create(
+            to=phone,
+            from_=TWILIO_NUMBER,
+            twiml=f"<Response><Say voice='alice' language='en-IN'>{message}</Say></Response>",
+            timeout=60,
+            status_callback="https://fertisense-iot-production.up.railway.app/twilio/call-status/",
+            status_callback_event=["completed","busy","no-answer","failed"],
+        )
+        print("📞 Call placed:", call.sid)
+        return call.sid
+    except Exception as e:
+        print("❌ Call failed:", e)
+        return None
+
+
 # device_name =""
 dev_reading =""
 upth =""
@@ -445,13 +476,13 @@ class DeviceAlarmCallLog(models.Model):
     DEVICE_ID = models.IntegerField()
     SENSOR_ID = models.IntegerField()
     PARAMETER_ID = models.IntegerField()
+    ALARM_ID = models.IntegerField(db_index=True)
     ALARM_DATE = models.DateField()
     ALARM_TIME = models.TimeField()
-    ALARM_ID= models.IntegerField()
     PHONE_NUM = models.CharField(max_length=20)
     CALL_DATE = models.DateField()
-    CALL_TIME = models.IntegerField()
-    SMS_CALL_FLAG = models.IntegerField()
+    CALL_TIME = models.TimeField()
+    SMS_CALL_FLAG = models.IntegerField(default=1)
     REMARKS = models.CharField(max_length=200, null=True, blank=True)
     ORGANIZATION_ID = models.IntegerField()
     CENTRE_ID = models.IntegerField()
@@ -478,6 +509,21 @@ class DeviceAlarmCallLog(models.Model):
     blank=True,
     db_index=True
 )
+
+    def trigger_call(self, message):
+        from .models import make_robo_call
+
+        sid = make_robo_call(self.PHONE_NUM, message)
+        if sid:
+            self.CALL_SID = sid
+            self.CALL_STATUS = self.CallStatus.PENDING
+            self.save(update_fields=["CALL_SID","CALL_STATUS"])
+            return True
+
+        self.CALL_STATUS = self.CallStatus.FAILED
+        self.save(update_fields=["CALL_STATUS"])
+        return False
+
 
     class Meta:
         unique_together = (
