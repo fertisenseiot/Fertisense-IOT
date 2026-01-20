@@ -323,19 +323,28 @@ def devicecheck(request, device_id):
     })
 
 # ================================
-# Twilio Call Status Webhook
+# Twilio Call Status Webhook (FINAL)
 # ================================
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.utils import timezone
 from django.db import connection
-
-from twilio.rest import Client
+import pytz
 import os
 
+from twilio.rest import Client
 from .models import DeviceAlarmCallLog
 
+# ======================
+# TIMEZONE (IST)
+# ======================
+IST = pytz.timezone("Asia/Kolkata")
 
+def now_ist():
+    return timezone.now().astimezone(IST)
+
+def hhmmss(dt):
+    return dt.hour * 10000 + dt.minute * 100 + dt.second
 
 # ======================
 # TWILIO CONFIG
@@ -345,6 +354,7 @@ TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 
 twilio = Client(TWILIO_SID, TWILIO_TOKEN)
+
 
 
 # ======================
@@ -382,20 +392,13 @@ def build_message(ntf_typ, devnm):
 
 
 # ======================
-# GET NEXT OPERATOR (SAME ORG + CENTRE)
+# GET NEXT OPERATOR
+# NOTE: single operator ho to SAME number retry hoga
 # ======================
 def get_next_operator(alarm_id):
     cursor = connection.cursor()
 
-    # already tried numbers
-    cursor.execute("""
-        SELECT PHONE_NUM
-        FROM iot_api_devicealarmcalllog
-        WHERE ALARM_ID = %s
-    """, [alarm_id])
-    tried = [r[0] for r in cursor.fetchall()]
-
-    # get org + centre from device
+    # org + centre from device of this alarm
     cursor.execute("""
         SELECT ORGANIZATION_ID, CENTRE_ID
         FROM iot_api_masterdevice
@@ -412,6 +415,7 @@ def get_next_operator(alarm_id):
 
     org_id, centre_id = row
 
+    # pick FIRST operator (retry same if only one exists)
     cursor.execute("""
         SELECT mu.PHONE
         FROM userorganizationcentrelink u
@@ -420,14 +424,12 @@ def get_next_operator(alarm_id):
           AND u.CENTRE_ID_id = %s
           AND mu.ROLE_ID = 3
           AND mu.SEND_SMS = 1
-          AND mu.PHONE NOT IN %s
         ORDER BY mu.USER_ID
         LIMIT 1
-    """, [org_id, centre_id, tuple(tried) if tried else ('',)])
+    """, [org_id, centre_id])
 
     row = cursor.fetchone()
     return row[0] if row else None
-
 
 # ======================
 # MAKE ROBO CALL
@@ -443,7 +445,6 @@ def make_robo_call(phone, message):
     )
     return call.sid
 
-
 # ======================
 # TWILIO WEBHOOK (FINAL)
 # ======================
@@ -454,11 +455,11 @@ def twilio_call_status(request):
 
     call_sid = request.POST.get("CallSid")
     call_status = request.POST.get("CallStatus")
+    answered_by = request.POST.get("AnsweredBy")  # human / machine / unknown
 
     if not call_sid or not call_status:
         return HttpResponse("Missing data", status=400)
 
-    # ✅ HANDLE ONLY FINAL STATES
     FINAL_STATES = ("completed", "busy", "no-answer", "failed")
     if call_status not in FINAL_STATES:
         return HttpResponse("Ignored non-final state")
@@ -467,34 +468,40 @@ def twilio_call_status(request):
     if not call:
         return HttpResponse("Call not found")
 
-    now = timezone.now()
+    # 🛑 duplicate webhook protection
+    if call.CALL_STATUS != 0:
+        return HttpResponse("Already processed")
 
-    # ✅ Update date/time safely
+    now = now_ist()
+
     call.CALL_DATE = now.date()
-    call.CALL_TIME = now.hour * 10000 + now.minute * 100 + now.second
+    call.CALL_TIME = hhmmss(now)
+    call.LST_UPD_DT = now
 
-    # ✅ Map Twilio status → DB status
-    answered_by = request.POST.get("AnsweredBy")  # human / machine / unknown
-
+    # ✅ ANSWER ONLY IF HUMAN
     if call_status == "completed" and answered_by == "human":
         call.CALL_STATUS = 1   # ANSWERED
-    elif call_status in ("busy", "no-answer"):
+        call.save()
+        return HttpResponse("Answered by human")
+
+    # ❌ NOT ANSWERED
+    if call_status in ("busy", "no-answer"):
         call.CALL_STATUS = 3
     elif call_status == "failed":
         call.CALL_STATUS = 2
+    else:
+        call.CALL_STATUS = 3
 
-
-    call.LST_UPD_DT = now
     call.save()
 
-    # 🔒 HARD STOP: if ANY call answered for this alarm
+    # 🔒 HARD STOP: agar koi bhi call already answered
     if DeviceAlarmCallLog.objects.filter(
         ALARM_ID=call.ALARM_ID,
         CALL_STATUS=1
     ).exists():
         return HttpResponse("Alarm already acknowledged")
 
-    # ⛔ MAX RETRY LIMIT
+    # ⛔ MAX RETRY
     MAX_RETRY = 3
     attempts = DeviceAlarmCallLog.objects.filter(
         ALARM_ID=call.ALARM_ID
@@ -509,14 +516,19 @@ def twilio_call_status(request):
         return HttpResponse("No operator left")
 
     message = build_message(1, f"Device-{call.DEVICE_ID}")
-    new_sid = make_robo_call(next_phone, message)
+
+    try:
+        new_sid = make_robo_call(next_phone, message)
+    except Exception as e:
+        print("❌ Twilio call failed:", e)
+        return HttpResponse("Call creation failed")
 
     DeviceAlarmCallLog.objects.create(
         ALARM_ID=call.ALARM_ID,
         DEVICE_ID=call.DEVICE_ID,
         PHONE_NUM=next_phone,
         CALL_DATE=now.date(),
-        CALL_TIME=now.hour * 10000 + now.minute * 100 + now.second,
+        CALL_TIME=hhmmss(now),
         CALL_SID=new_sid,
         CALL_STATUS=0  # PENDING
     )
