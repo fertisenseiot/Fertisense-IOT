@@ -439,7 +439,7 @@ def make_robo_call(phone, message):
         twiml=f"<Response><Say voice='alice' language='en-IN'>{message}</Say></Response>",
         timeout=60,
         status_callback="https://fertisense-iot-production.up.railway.app/twilio/call-status/",
-        status_callback_event=["answered", "completed", "busy", "no-answer", "failed"],
+        status_callback_event=["completed", "busy", "no-answer", "failed"],
     )
     return call.sid
 
@@ -455,57 +455,61 @@ def twilio_call_status(request):
     call_sid = request.POST.get("CallSid")
     call_status = request.POST.get("CallStatus")
 
-    if not call_sid:
-        return HttpResponse("Missing CallSid", status=400)
+    if not call_sid or not call_status:
+        return HttpResponse("Missing data", status=400)
+
+    # ✅ HANDLE ONLY FINAL STATES
+    FINAL_STATES = ("completed", "busy", "no-answer", "failed")
+    if call_status not in FINAL_STATES:
+        return HttpResponse("Ignored non-final state")
 
     call = DeviceAlarmCallLog.objects.filter(CALL_SID=call_sid).first()
     if not call:
-        return HttpResponse("Call not found", status=404)
+        return HttpResponse("Call not found")
 
     now = timezone.now()
 
-    # ✅ INTEGER TIME (MODEL SAFE)
+    # ✅ Update date/time safely
     call.CALL_DATE = now.date()
     call.CALL_TIME = now.hour * 10000 + now.minute * 100 + now.second
-    call.LST_UPD_DT = now.date()
 
-    # ✅ STATUS (AS PER YOUR ENUM)
-    if call_status == "completed":
-        call.CALL_STATUS = 1   # COMPLETED
-        call.save()
-        return HttpResponse("Answered")
+    # ✅ Map Twilio status → DB status
+    answered_by = request.POST.get("AnsweredBy")  # human / machine / unknown
 
-    elif call_status in ("no-answer", "busy", "canceled"):
-        call.CALL_STATUS = 3   # NO_ANSWER
-
+    if call_status == "completed" and answered_by == "human":
+        call.CALL_STATUS = 1   # ANSWERED
+    elif call_status in ("busy", "no-answer"):
+        call.CALL_STATUS = 3
     elif call_status == "failed":
-        call.CALL_STATUS = 2   # FAILED
+        call.CALL_STATUS = 2
 
-    else:
-        return HttpResponse("Ignored")
 
+    call.LST_UPD_DT = now
     call.save()
 
-    # 🔒 stop if already answered
+    # 🔒 HARD STOP: if ANY call answered for this alarm
     if DeviceAlarmCallLog.objects.filter(
         ALARM_ID=call.ALARM_ID,
         CALL_STATUS=1
     ).exists():
-        return HttpResponse("Already handled")
+        return HttpResponse("Alarm already acknowledged")
 
-    # ⛔ max retry = 3
-    if DeviceAlarmCallLog.objects.filter(ALARM_ID=call.ALARM_ID).count() >= 3:
-        return HttpResponse("Max retries reached")
+    # ⛔ MAX RETRY LIMIT
+    MAX_RETRY = 3
+    attempts = DeviceAlarmCallLog.objects.filter(
+        ALARM_ID=call.ALARM_ID
+    ).count()
 
-    # 📞 NEXT CALL
+    if attempts >= MAX_RETRY:
+        return HttpResponse("Max retry reached")
+
+    # 📞 IMMEDIATE NEXT CALL
     next_phone = get_next_operator(call.ALARM_ID)
     if not next_phone:
-        return HttpResponse("No more operators")
+        return HttpResponse("No operator left")
 
-    new_sid = make_robo_call(
-        next_phone,
-        build_message(1, f"Device-{call.DEVICE_ID}")
-    )
+    message = build_message(1, f"Device-{call.DEVICE_ID}")
+    new_sid = make_robo_call(next_phone, message)
 
     DeviceAlarmCallLog.objects.create(
         ALARM_ID=call.ALARM_ID,
@@ -514,7 +518,7 @@ def twilio_call_status(request):
         CALL_DATE=now.date(),
         CALL_TIME=now.hour * 10000 + now.minute * 100 + now.second,
         CALL_SID=new_sid,
-        CALL_STATUS=0
+        CALL_STATUS=0  # PENDING
     )
 
     return HttpResponse("Next call triggered")
