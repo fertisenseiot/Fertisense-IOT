@@ -328,10 +328,124 @@ def devicecheck(request, device_id):
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 from django.utils import timezone
+from django.db import connection
+
+from twilio.rest import Client
+import os
 
 from .models import DeviceAlarmCallLog
 
 
+# ======================
+# TWILIO CONFIG
+# ======================
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
+TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
+
+twilio = Client(TWILIO_SID, TWILIO_TOKEN)
+
+
+# ======================
+# MESSAGE BUILDER
+# ======================
+def build_message(ntf_typ, devnm):
+    messages = {
+        1: f"WARNING!! The Temperature of {devnm} has dipped below the lower limit. Please take necessary action- Regards Fertisense LLP",
+        2: f"WARNING!! The Temperature of {devnm} has crossed the higher limit. Please take necessary action- Regards Fertisense LLP",
+        3: f"WARNING!! The {devnm} is offline. Please take necessary action- Regards Fertisense LLP",
+        4: f"WARNING!! The level of liquid nitrogen in {devnm} is low. Please take necessary action- Regards Fertisense LLP",
+        5: f"INFO!! The device {devnm} is back online. No action is required - Regards Fertisense LLP",
+        6: f"INFO!! The level of Liquid Nitrogen is back to normal for {devnm}. No action is required - Regards Fertisense LLP",
+        7: f"INFO!! The temperature levels are back to normal for {devnm}. No action is required - Regards Fertisense LLP",
+        8: f"WARNING!! The room temperature reading in {devnm} has dipped below the lower limit. Please take necessary action- Regards Fertisense LLP",
+        9: f"WARNING!! The room temperature reading in {devnm} has gone above the higher limit. Please take necessary action- Regards Fertisense LLP",
+        10: f"INFO!! The room temperature levels are back to normal in {devnm}. No action is required - Regards Fertisense LLP",
+        11: f"WARNING!! The humidity reading in {devnm} has dipped below the lower limit. Please take necessary action- Regards Fertisense LLP",
+        12: f"WARNING!! The humidity reading in {devnm} has gone above the higher limit. Please take necessary action- Regards Fertisense LLP",
+        13: f"INFO!! The humidity levels are back to normal in {devnm}. No action is required - Regards Fertisense LLP",
+        14: f"WARNING!! The VOC reading in {devnm} has dipped below the lower limit. Please take necessary action- Regards Fertisense LLP",
+        15: f"WARNING!! The VOC reading in {devnm} has gone above the higher limit. Please take necessary action- Regards Fertisense LLP",
+        16: f"INFO!! The VOC levels are back to normal in {devnm}. No action is required - Regards Fertisense LLP",
+        17: f"WARNING!! The CO2 reading in {devnm} has dipped below the lower limit. Please take necessary action - Regards Fertisense LLP",
+        18: f"WARNING!! The CO2 reading in {devnm} has gone above the higher limit. Please take necessary action - Regards Fertisense LLP",
+        19: f"INFO!! The CO2 levels are back to normal in {devnm}. No action is required - Regards Fertisense LLP",
+        20: f"WARNING!! The O2 reading in {devnm} has dipped below the lower limit. Please take necessary action - Regards Fertisense LLP",
+        21: f"WARNING!! The O2 reading in {devnm} has gone above the higher limit. Please take necessary action - Regards Fertisense LLP",
+        22: f"INFO!! The O2 levels are back to normal in {devnm}. No action is required - Regards Fertisense LLP",
+        23: f"WARNING!! The Incubator temperature of {devnm} has crossed the higher limit. Please take necessary action - Regards Fertisense LLP",
+        24: f"WARNING!! The Incubator temperature of {devnm} has dipped below the lower limit. Please take necessary action - Regards Fertisense LLP",
+        25: f"INFO!! The Incubator temperature levels are back to normal for {devnm}. No action is required - Regards Fertisense LLP",
+    }
+    return messages.get(ntf_typ, f"Alert for {devnm} - Regards Fertisense LLP")
+
+
+# ======================
+# GET NEXT OPERATOR (SAME ORG + CENTRE)
+# ======================
+def get_next_operator(alarm_id):
+    cursor = connection.cursor()
+
+    # already tried numbers
+    cursor.execute("""
+        SELECT PHONE_NUM
+        FROM iot_api_devicealarmcalllog
+        WHERE ALARM_ID = %s
+    """, [alarm_id])
+    tried = [r[0] for r in cursor.fetchall()]
+
+    # get org + centre from device
+    cursor.execute("""
+        SELECT ORGANIZATION_ID, CENTRE_ID
+        FROM iot_api_masterdevice
+        WHERE DEVICE_ID = (
+            SELECT DEVICE_ID
+            FROM iot_api_devicealarmcalllog
+            WHERE ALARM_ID = %s
+            LIMIT 1
+        )
+    """, [alarm_id])
+    row = cursor.fetchone()
+    if not row:
+        return None
+
+    org_id, centre_id = row
+
+    cursor.execute("""
+        SELECT mu.PHONE
+        FROM userorganizationcentrelink u
+        JOIN master_user mu ON mu.USER_ID = u.USER_ID_id
+        WHERE u.ORGANIZATION_ID_id = %s
+          AND u.CENTRE_ID_id = %s
+          AND mu.ROLE_ID = 3
+          AND mu.SEND_SMS = 1
+          AND mu.PHONE NOT IN %s
+        ORDER BY mu.USER_ID
+        LIMIT 1
+    """, [org_id, centre_id, tuple(tried) if tried else ('',)])
+
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+# ======================
+# MAKE ROBO CALL
+# ======================
+def make_robo_call(phone, message):
+    call = twilio.calls.create(
+        to=phone,
+        from_=TWILIO_NUMBER,
+        twiml=f"<Response><Say voice='alice' language='en-IN'>{message}</Say></Response>",
+        timeout=60,
+        status_callback="https://fertisense-iot-production.up.railway.app/twilio/call-status/",
+        status_callback_event=["answered", "completed", "busy", "no-answer", "failed"],
+    )
+    return call.sid
+
+
+# ======================
+# TWILIO WEBHOOK (FINAL)
+# ======================
 @csrf_exempt
 def twilio_call_status(request):
     if request.method != "POST":
@@ -343,28 +457,64 @@ def twilio_call_status(request):
     if not call_sid:
         return HttpResponse("Missing CallSid", status=400)
 
-    # 🔹 Map Twilio → DB
-    if call_status == "completed":
-        new_status = 1      # ANSWERED
-    elif call_status in ("no-answer", "busy", "canceled"):
-        new_status = 3      # NO ANSWER
-    elif call_status == "failed":
-        new_status = 2      # FAILED
-    else:
-        return HttpResponse(f"Ignored status {call_status}")
+    call = DeviceAlarmCallLog.objects.filter(CALL_SID=call_sid).first()
+    if not call:
+        return HttpResponse("Call not found")
 
-    # 🔹 Update DB
-    DeviceAlarmCallLog.objects.filter(
-        CALL_SID=call_sid,
+    # ---- status mapping ----
+    if call_status == "completed":
+        call.CALL_STATUS = 1   # ANSWERED
+        call.LST_UPD_DT = timezone.now()
+        call.save()
+        return HttpResponse("Answered")
+
+    elif call_status in ("no-answer", "busy", "canceled"):
+        call.CALL_STATUS = 3   # NO ANSWER
+
+    elif call_status == "failed":
+        call.CALL_STATUS = 2   # FAILED
+
+    else:
+        return HttpResponse("Ignored")
+
+    call.LST_UPD_DT = timezone.now()
+    call.save()
+
+    # 🔒 if already answered by someone else → STOP
+    if DeviceAlarmCallLog.objects.filter(
+        ALARM_ID=call.ALARM_ID,
+        CALL_STATUS=1
+    ).exists():
+        return HttpResponse("Already handled")
+
+    # 🔁 prevent parallel retries
+    if DeviceAlarmCallLog.objects.filter(
+        ALARM_ID=call.ALARM_ID,
         CALL_STATUS=0
-    ).update(
-        CALL_STATUS=new_status,
-        LST_UPD_DT=timezone.now()
+    ).exclude(id=call.id).exists():
+        return HttpResponse("Retry already in progress")
+
+    # ⛔ max retry limit
+    if DeviceAlarmCallLog.objects.filter(ALARM_ID=call.ALARM_ID).count() >= 3:
+        return HttpResponse("Max retries reached")
+
+    # 📞 NEXT CALL IMMEDIATELY
+    next_phone = get_next_operator(call.ALARM_ID)
+    if not next_phone:
+        return HttpResponse("No more operators")
+
+    message = build_message(1, f"Device-{call.DEVICE_ID}")
+    new_sid = make_robo_call(next_phone, message)
+
+    DeviceAlarmCallLog.objects.create(
+        ALARM_ID=call.ALARM_ID,
+        DEVICE_ID=call.DEVICE_ID,
+        PHONE_NUM=next_phone,
+        CALL_DATE=timezone.now().date(),
+        CALL_TIME=timezone.now().time(),
+        CALL_SID=new_sid,
+        CALL_STATUS=0
     )
 
-    if new_status == 1:
-        return HttpResponse("Call answered. Alarm acknowledged.")
+    return HttpResponse("Next call triggered")
 
-    return HttpResponse("Call status updated.")
-
-#
