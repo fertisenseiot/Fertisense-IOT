@@ -336,6 +336,7 @@ import os
 from .models import DeviceAlarmCallLog
 
 
+
 # ======================
 # TWILIO CONFIG
 # ======================
@@ -459,17 +460,23 @@ def twilio_call_status(request):
 
     call = DeviceAlarmCallLog.objects.filter(CALL_SID=call_sid).first()
     if not call:
-        return HttpResponse("Call not found")
+        return HttpResponse("Call not found", status=404)
 
-    # ---- status mapping ----
+    now = timezone.now()
+
+    # ✅ INTEGER TIME (MODEL SAFE)
+    call.CALL_DATE = now.date()
+    call.CALL_TIME = now.hour * 10000 + now.minute * 100 + now.second
+    call.LST_UPD_DT = now.date()
+
+    # ✅ STATUS (AS PER YOUR ENUM)
     if call_status == "completed":
-        call.CALL_STATUS = 1   # ANSWERED
-        call.LST_UPD_DT = timezone.now()
+        call.CALL_STATUS = 1   # COMPLETED
         call.save()
         return HttpResponse("Answered")
 
     elif call_status in ("no-answer", "busy", "canceled"):
-        call.CALL_STATUS = 3   # NO ANSWER
+        call.CALL_STATUS = 3   # NO_ANSWER
 
     elif call_status == "failed":
         call.CALL_STATUS = 2   # FAILED
@@ -477,44 +484,37 @@ def twilio_call_status(request):
     else:
         return HttpResponse("Ignored")
 
-    call.LST_UPD_DT = timezone.now()
     call.save()
 
-    # 🔒 if already answered by someone else → STOP
+    # 🔒 stop if already answered
     if DeviceAlarmCallLog.objects.filter(
         ALARM_ID=call.ALARM_ID,
         CALL_STATUS=1
     ).exists():
         return HttpResponse("Already handled")
 
-    # 🔁 prevent parallel retries
-    if DeviceAlarmCallLog.objects.filter(
-        ALARM_ID=call.ALARM_ID,
-        CALL_STATUS=0
-    ).exclude(id=call.id).exists():
-        return HttpResponse("Retry already in progress")
-
-    # ⛔ max retry limit
+    # ⛔ max retry = 3
     if DeviceAlarmCallLog.objects.filter(ALARM_ID=call.ALARM_ID).count() >= 3:
         return HttpResponse("Max retries reached")
 
-    # 📞 NEXT CALL IMMEDIATELY
+    # 📞 NEXT CALL
     next_phone = get_next_operator(call.ALARM_ID)
     if not next_phone:
         return HttpResponse("No more operators")
 
-    message = build_message(1, f"Device-{call.DEVICE_ID}")
-    new_sid = make_robo_call(next_phone, message)
+    new_sid = make_robo_call(
+        next_phone,
+        build_message(1, f"Device-{call.DEVICE_ID}")
+    )
 
     DeviceAlarmCallLog.objects.create(
         ALARM_ID=call.ALARM_ID,
         DEVICE_ID=call.DEVICE_ID,
         PHONE_NUM=next_phone,
-        CALL_DATE=timezone.now().date(),
-        CALL_TIME=timezone.now().time(),
+        CALL_DATE=now.date(),
+        CALL_TIME=now.hour * 10000 + now.minute * 100 + now.second,
         CALL_SID=new_sid,
         CALL_STATUS=0
     )
 
     return HttpResponse("Next call triggered")
-
