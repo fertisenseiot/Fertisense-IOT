@@ -355,6 +355,10 @@ TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 
 twilio = Client(TWILIO_SID, TWILIO_TOKEN)
 
+print("TWILIO_SID =", TWILIO_SID)
+print("TWILIO_TOKEN =", "SET" if TWILIO_TOKEN else "MISSING")
+print("TWILIO_NUMBER =", TWILIO_NUMBER)
+
 
 
 # ======================
