@@ -385,17 +385,54 @@ def twilio_call_status(request):
     if not call:
         return HttpResponse("OK")
 
-    # duplicate safety
+    # 🔒 duplicate protection
     if call.CALL_STATUS != 0:
         return HttpResponse("OK")
 
+    # ---------- UPDATE STATUS ----------
     if status == "completed":
-        call.CALL_STATUS = 1        # ANSWERED
+        call.CALL_STATUS = 1   # ANSWERED
+        call.save()
+        return HttpResponse("Answered → STOP")
+
     elif status in ("busy", "no-answer"):
-        call.CALL_STATUS = 3        # NO ANSWER
+        call.CALL_STATUS = 3   # NO ANSWER
     else:
-        call.CALL_STATUS = 2        # FAILED
+        call.CALL_STATUS = 2   # FAILED
 
     call.save()
-    return HttpResponse("OK")
 
+    # ---------- STOP IF ANY CALL ANSWERED ----------
+    if DeviceAlarmCallLog.objects.filter(
+        ALARM_ID=call.ALARM_ID,
+        CALL_STATUS=1
+    ).exists():
+        return HttpResponse("Handled")
+
+    # ---------- FIND NEXT OPERATOR ----------
+    next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
+
+    if not next_phone:
+        return HttpResponse("No operator left")
+
+    # ---------- IMMEDIATE NEXT CALL ----------
+    message = f"Critical alert for Device {call.DEVICE_ID}"
+    new_sid = make_robo_call(next_phone, message)
+
+    DeviceAlarmCallLog.objects.create(
+        ALARM_ID=call.ALARM_ID,
+        DEVICE_ID=call.DEVICE_ID,
+        SENSOR_ID=call.SENSOR_ID,
+        PARAMETER_ID=call.PARAMETER_ID,
+        ALARM_DATE=call.ALARM_DATE,
+        ALARM_TIME=call.ALARM_TIME,
+        PHONE_NUM=next_phone,
+        CALL_DATE=timezone.now().date(),
+        CALL_TIME=timezone.now().time(),
+        ORGANIZATION_ID=call.ORGANIZATION_ID,
+        CENTRE_ID=call.CENTRE_ID,
+        CALL_SID=new_sid,
+        CALL_STATUS=0
+    )
+
+    return HttpResponse("Next call triggered")
