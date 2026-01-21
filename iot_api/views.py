@@ -324,15 +324,17 @@ def devicecheck(request, device_id):
 
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from .models import make_robo_call
 from django.db import transaction
 from django.http import HttpResponse
 from django.db import connection
+
 from .models import DeviceAlarmCallLog
+from .models import make_robo_call
 
 
-
-
+# --------------------------------------------------
+# GET NEXT OPERATOR (excluding previous phone)
+# --------------------------------------------------
 def get_next_operator(alarm_id, exclude_phone):
     cursor = connection.cursor()
 
@@ -357,10 +359,10 @@ def get_next_operator(alarm_id, exclude_phone):
         SELECT mu.PHONE
         FROM userorganizationcentrelink u
         JOIN master_user mu ON mu.USER_ID = u.USER_ID_id
-        WHERE u.ORGANIZATION_ID_id=%s
-          AND u.CENTRE_ID_id=%s
-          AND mu.ROLE_ID=3
-          AND mu.PHONE !=%s
+        WHERE u.ORGANIZATION_ID_id = %s
+          AND u.CENTRE_ID_id = %s
+          AND mu.ROLE_ID = 3
+          AND mu.PHONE != %s
         ORDER BY mu.USER_ID
         LIMIT 1
     """, [org_id, centre_id, exclude_phone])
@@ -368,6 +370,10 @@ def get_next_operator(alarm_id, exclude_phone):
     row = cursor.fetchone()
     return row[0] if row else None
 
+
+# --------------------------------------------------
+# TWILIO STATUS WEBHOOK (FINAL)
+# --------------------------------------------------
 @csrf_exempt
 @transaction.atomic
 def twilio_call_status(request):
@@ -378,22 +384,27 @@ def twilio_call_status(request):
     if not call_sid:
         return HttpResponse("OK")
 
-    call = DeviceAlarmCallLog.objects.select_for_update().filter(
-        CALL_SID=call_sid
-    ).first()
+    call = (
+        DeviceAlarmCallLog.objects
+        .select_for_update()
+        .filter(CALL_SID=call_sid)
+        .first()
+    )
 
     if not call:
         return HttpResponse("OK")
 
-    # 🔒 duplicate protection
+    # 🔒 duplicate webhook protection
     if call.CALL_STATUS != 0:
         return HttpResponse("OK")
 
-    # ---------- UPDATE STATUS ----------
-    if status == "completed":
+    # --------------------------------------------------
+    # UPDATE CURRENT CALL STATUS
+    # --------------------------------------------------
+    if status in ("completed", "answered"):
         call.CALL_STATUS = 1   # ANSWERED
         call.save()
-        return HttpResponse("Answered → STOP")
+        return HttpResponse("Answered - Stop flow")
 
     elif status in ("busy", "no-answer"):
         call.CALL_STATUS = 3   # NO ANSWER
@@ -402,23 +413,45 @@ def twilio_call_status(request):
 
     call.save()
 
-    # ---------- STOP IF ANY CALL ANSWERED ----------
+    # --------------------------------------------------
+    # STOP if any call already answered
+    # --------------------------------------------------
     if DeviceAlarmCallLog.objects.filter(
         ALARM_ID=call.ALARM_ID,
         CALL_STATUS=1
     ).exists():
         return HttpResponse("Handled")
 
-    # ---------- FIND NEXT OPERATOR ----------
-    next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
+    # --------------------------------------------------
+    # MAX RETRY GUARD (IMPORTANT)
+    # --------------------------------------------------
+    attempts = DeviceAlarmCallLog.objects.filter(
+        ALARM_ID=call.ALARM_ID
+    ).count()
 
+    if attempts >= 3:
+        return HttpResponse("Max retry reached")
+
+    # --------------------------------------------------
+    # FIND NEXT OPERATOR
+    # --------------------------------------------------
+    next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
     if not next_phone:
         return HttpResponse("No operator left")
 
-    # ---------- IMMEDIATE NEXT CALL ----------
+    # --------------------------------------------------
+    # TRIGGER NEXT CALL
+    # --------------------------------------------------
     message = f"Critical alert for Device {call.DEVICE_ID}"
     new_sid = make_robo_call(next_phone, message)
 
+    # ❌ Twilio call creation failed (trial / auth / unverified)
+    if not new_sid:
+        return HttpResponse("Call creation failed")
+
+    # --------------------------------------------------
+    # LOG NEXT CALL (ONLY IF SID EXISTS)
+    # --------------------------------------------------
     DeviceAlarmCallLog.objects.create(
         ALARM_ID=call.ALARM_ID,
         DEVICE_ID=call.DEVICE_ID,
@@ -432,7 +465,8 @@ def twilio_call_status(request):
         ORGANIZATION_ID=call.ORGANIZATION_ID,
         CENTRE_ID=call.CENTRE_ID,
         CALL_SID=new_sid,
-        CALL_STATUS=0
+        CALL_STATUS=0   # PENDING
     )
 
     return HttpResponse("Next call triggered")
+
