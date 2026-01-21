@@ -372,74 +372,30 @@ def get_next_operator(alarm_id, exclude_phone):
 @transaction.atomic
 def twilio_call_status(request):
 
-
     call_sid = request.POST.get("CallSid")
-    call_status = request.POST.get("CallStatus")
+    status = request.POST.get("CallStatus")
 
     if not call_sid:
-        return HttpResponse("No SID")
-    
-    call = (
-    DeviceAlarmCallLog.objects
-    .select_for_update()
-    .filter(CALL_SID=call_sid)
-    .first()
-)
+        return HttpResponse("OK")
 
-    
+    call = DeviceAlarmCallLog.objects.select_for_update().filter(
+        CALL_SID=call_sid
+    ).first()
+
     if not call:
-        return HttpResponse("Call not found")
+        return HttpResponse("OK")
 
-    # 🔒 duplicate protection
+    # duplicate safety
     if call.CALL_STATUS != 0:
-        return HttpResponse("Already handled")
+        return HttpResponse("OK")
 
-    # ---- status map ----
-    if call_status == "completed":
-        call.CALL_STATUS = 1
-        call.save()
-        return HttpResponse("Answered → STOP")
-
-    elif call_status in ("busy","no-answer"):
-        call.CALL_STATUS = 3
+    if status == "completed":
+        call.CALL_STATUS = 1        # ANSWERED
+    elif status in ("busy", "no-answer"):
+        call.CALL_STATUS = 3        # NO ANSWER
     else:
-        call.CALL_STATUS = 2
+        call.CALL_STATUS = 2        # FAILED
 
     call.save()
+    return HttpResponse("OK")
 
-    # 🔒 STOP if any call answered
-    if DeviceAlarmCallLog.objects.filter(
-        ALARM_ID=call.ALARM_ID,
-        CALL_STATUS=1
-    ).exists():
-        return HttpResponse("Handled")
-
-    # ⛔ max retry
-    attempts = DeviceAlarmCallLog.objects.filter(
-        ALARM_ID=call.ALARM_ID,
-        CALL_STATUS__in=[2,3]
-    ).count()
-
-    if attempts >= 3:
-        return HttpResponse("Max retry")
-
-    # 📞 IMMEDIATE NEXT CALL
-    next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
-    if not next_phone:
-        return HttpResponse("No operator")
-
-    message = f"Critical alert for Device {call.DEVICE_ID}"
-
-    new_sid = make_robo_call(next_phone, message)
-
-    DeviceAlarmCallLog.objects.create(
-        ALARM_ID=call.ALARM_ID,
-        DEVICE_ID=call.DEVICE_ID,
-        PHONE_NUM=next_phone,
-        CALL_DATE=timezone.now().date(),
-        CALL_TIME=timezone.now().time(),
-        CALL_SID=new_sid,
-        CALL_STATUS=0
-    )
-
-    return HttpResponse("Next call triggered")
