@@ -24,8 +24,14 @@ def make_robo_call(phone, message):
         print("❌ Twilio ENV missing")
         return None
 
+        # 🔒 HARD GUARD (MOST IMPORTANT)
+    if not phone or not phone.startswith("+91"):
+        print("❌ BLOCKED NON-INDIA NUMBER:", phone)
+        return None
+
     try:
         client = Client(TWILIO_SID, TWILIO_TOKEN)
+        print("📞 TWILIO CALL TO:", phone)
         call = client.calls.create(
             to=phone,
             from_=TWILIO_NUMBER,
