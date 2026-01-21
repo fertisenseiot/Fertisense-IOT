@@ -330,7 +330,7 @@ from django.db import connection
 
 from .models import DeviceAlarmCallLog
 from .models import make_robo_call
-from.models import normalize_phone
+# from.models import normalize_phone
 
 # --------------------------------------------------
 # GET NEXT OPERATOR (excluding previous phone)
@@ -443,15 +443,7 @@ def twilio_call_status(request):
     # TRIGGER NEXT CALL
     # --------------------------------------------------
     message = f"Critical alert for Device {call.DEVICE_ID}"
-    # new_sid = make_robo_call(next_phone, message)
-    # 🔥 STEP A: normalize number
-   # next_phone = normalize_phone(next_phone)
-
-    print("☎ FINAL CALLING NUMBER =", next_phone)
-
-    # 🔥 STEP B: call twilio
     new_sid = make_robo_call(next_phone, message)
-
 
     # ❌ Twilio call creation failed (trial / auth / unverified)
     if not new_sid:
