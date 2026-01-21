@@ -445,7 +445,7 @@ def twilio_call_status(request):
     message = f"Critical alert for Device {call.DEVICE_ID}"
     # new_sid = make_robo_call(next_phone, message)
     # 🔥 STEP A: normalize number
-    next_phone = normalize_phone(next_phone)
+   # next_phone = normalize_phone(next_phone)
 
     print("☎ FINAL CALLING NUMBER =", next_phone)
 
