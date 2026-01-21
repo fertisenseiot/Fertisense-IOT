@@ -330,7 +330,6 @@ from django.db import connection
 
 from .models import DeviceAlarmCallLog
 from .models import make_robo_call
-# from.models import normalize_phone
 
 # --------------------------------------------------
 # GET NEXT OPERATOR (excluding previous phone)
@@ -436,8 +435,16 @@ def twilio_call_status(request):
     # FIND NEXT OPERATOR
     # --------------------------------------------------
     next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
+    # 🔒 HARD GUARD (VERY IMPORTANT)
     if not next_phone:
-        return HttpResponse("No operator left")
+         return HttpResponse("No operator left")
+    
+    print("📞 NEXT OPERATOR FROM DB =", next_phone)
+
+
+    if not next_phone.startswith("+91"):
+        print("❌ BLOCKED NON-INDIA NUMBER IN VIEW:", next_phone)
+        return HttpResponse("Invalid phone number")
 
     # --------------------------------------------------
     # TRIGGER NEXT CALL
