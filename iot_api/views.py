@@ -1,3 +1,4 @@
+views.py
 # iot_api/views.py
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -322,158 +323,40 @@ def devicecheck(request, device_id):
         "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None
     })
 
+# ================================
+# Twilio Call Status Webhook
+# ================================
 from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from django.db import transaction
 from django.http import HttpResponse
-from django.db import connection
+from django.utils import timezone
 
-from .models import DeviceAlarmCallLog
-from .models import make_robo_call
-
-# --------------------------------------------------
-# GET NEXT OPERATOR (excluding previous phone)
-# --------------------------------------------------
-def get_next_operator(alarm_id, exclude_phone):
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        SELECT ORGANIZATION_ID, CENTRE_ID
-        FROM iot_api_masterdevice
-        WHERE DEVICE_ID = (
-            SELECT DEVICE_ID
-            FROM iot_api_devicealarmcalllog
-            WHERE ALARM_ID = %s
-            LIMIT 1
-        )
-    """, [alarm_id])
-
-    row = cursor.fetchone()
-    if not row:
-        return None
-
-    org_id, centre_id = row
-
-    cursor.execute("""
-        SELECT mu.PHONE
-        FROM userorganizationcentrelink u
-        JOIN master_user mu ON mu.USER_ID = u.USER_ID_id
-        WHERE u.ORGANIZATION_ID_id = %s
-          AND u.CENTRE_ID_id = %s
-          AND mu.ROLE_ID = 3
-          AND mu.PHONE != %s
-        ORDER BY mu.USER_ID
-        LIMIT 1
-    """, [org_id, centre_id, exclude_phone])
-
-    row = cursor.fetchone()
-    return row[0] if row else None
-
-
-# --------------------------------------------------
-# TWILIO STATUS WEBHOOK (FINAL)
-# --------------------------------------------------
 @csrf_exempt
-@transaction.atomic
 def twilio_call_status(request):
+    if request.method != "POST":
+        return HttpResponse("Method Not Allowed", status=405)
 
     call_sid = request.POST.get("CallSid")
     status = request.POST.get("CallStatus")
 
     if not call_sid:
-        return HttpResponse("OK")
+        return HttpResponse("Missing CallSid", status=400)
 
-    call = (
-        DeviceAlarmCallLog.objects
-        .select_for_update()
-        .filter(CALL_SID=call_sid)
-        .first()
-    )
-
-    if not call:
-        return HttpResponse("OK")
-
-    # 🔒 duplicate webhook protection
-    if call.CALL_STATUS != 0:
-        return HttpResponse("OK")
-
-    # --------------------------------------------------
-    # UPDATE CURRENT CALL STATUS
-    # --------------------------------------------------
-    if status in ("completed", "answered"):
-        call.CALL_STATUS = 1   # ANSWERED
-        call.save()
-        return HttpResponse("Answered - Stop flow")
-
-    elif status in ("busy", "no-answer"):
-        call.CALL_STATUS = 3   # NO ANSWER
+    if status == "completed":
+        new_status = 1  # COMPLETED
+    elif status in ("no-answer", "busy", "canceled"):
+        new_status = 3  # NO ANSWER
+    elif status == "failed":
+        new_status = 2  # FAILED
     else:
-        call.CALL_STATUS = 2   # FAILED
+        return HttpResponse(f"Ignored status: {status}")
 
-    call.save()
-
-    # --------------------------------------------------
-    # STOP if any call already answered
-    # --------------------------------------------------
-    if DeviceAlarmCallLog.objects.filter(
-        ALARM_ID=call.ALARM_ID,
-        CALL_STATUS=1
-    ).exists():
-        return HttpResponse("Handled")
-
-    # --------------------------------------------------
-    # MAX RETRY GUARD (IMPORTANT)
-    # --------------------------------------------------
-    attempts = DeviceAlarmCallLog.objects.filter(
-        ALARM_ID=call.ALARM_ID
-    ).count()
-
-    if attempts >= 3:
-        return HttpResponse("Max retry reached")
-
-    # --------------------------------------------------
-    # FIND NEXT OPERATOR
-    # --------------------------------------------------
-    next_phone = get_next_operator(call.ALARM_ID, call.PHONE_NUM)
-    # 🔒 HARD GUARD (VERY IMPORTANT)
-    if not next_phone:
-         return HttpResponse("No operator left")
-    
-    print("📞 NEXT OPERATOR FROM DB =", next_phone)
-
-
-    if not next_phone.startswith("+91"):
-        print("❌ BLOCKED NON-INDIA NUMBER IN VIEW:", next_phone)
-        return HttpResponse("Invalid phone number")
-
-    # --------------------------------------------------
-    # TRIGGER NEXT CALL
-    # --------------------------------------------------
-    message = f"Critical alert for Device {call.DEVICE_ID}"
-    new_sid = make_robo_call(next_phone, message)
-
-    # ❌ Twilio call creation failed (trial / auth / unverified)
-    if not new_sid:
-        return HttpResponse("Call creation failed")
-
-    # --------------------------------------------------
-    # LOG NEXT CALL (ONLY IF SID EXISTS)
-    # --------------------------------------------------
-    DeviceAlarmCallLog.objects.create(
-        ALARM_ID=call.ALARM_ID,
-        DEVICE_ID=call.DEVICE_ID,
-        SENSOR_ID=call.SENSOR_ID,
-        PARAMETER_ID=call.PARAMETER_ID,
-        ALARM_DATE=call.ALARM_DATE,
-        ALARM_TIME=call.ALARM_TIME,
-        PHONE_NUM=next_phone,
-        CALL_DATE=timezone.now().date(),
-        CALL_TIME=timezone.now().time(),
-        ORGANIZATION_ID=call.ORGANIZATION_ID,
-        CENTRE_ID=call.CENTRE_ID,
-        CALL_SID=new_sid,
-        CALL_STATUS=0   # PENDING
+    DeviceAlarmCallLog.objects.filter(
+        CALL_SID=call_sid,
+        CALL_STATUS=0
+    ).update(
+        CALL_STATUS=new_status,
+        LST_UPD_DT=timezone.now()
     )
 
-    return HttpResponse("Next call triggered")
+    return HttpResponse("OK")
 
