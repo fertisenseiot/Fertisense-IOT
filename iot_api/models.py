@@ -515,6 +515,8 @@ class DeviceAlarmLog(models.Model):
     CHANNEL_CD = models.IntegerField(null=True, blank=True)
         # 🔥 New field
     IS_ACTIVE = models.IntegerField(default=1)
+     # 🔥 YE LINE ADD KARO
+    FIRST_SMS_SENT = models.BooleanField(default=False)
     
     class Meta:
         db_table = "devicealarmlog"
