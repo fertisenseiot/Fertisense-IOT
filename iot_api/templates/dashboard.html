@@ -1101,11 +1101,16 @@ else if(k.endsWith("_at") || k.endsWith("_time"))
   type = "datetime-local";
 
     else if(k.includes("upper")||k.includes("lower")||k.includes("value")||k.includes("threshold")||k.endsWith("_id")) type="number";
+    let stepAttr = "";
+if (type === "number") {
+    stepAttr = `step="any"`;   // allow decimals like 4.5, 8.75, etc.
+}
+  const isTextType = type === "text";
 
     fieldsDiv.innerHTML += `
       <div class="mb-3">
         <label class="form-label">${key}</label>
-        <input class="form-control" name="${key}" value="${row[key]??''}" type="${type}" oninput="this.value = formatFirstWord(this.value)">
+        <input class="form-control" name="${key}" value="${row[key]??''}" type="${type}" ${isTextType ? 'oninput="this.value = formatFirstWord(this.value)"':''}>
       </div>`;
   });
 
