@@ -190,8 +190,8 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app"; // direct IP
-// const BASE_URL = "https://iot-production-95a1.up.railway.app";
+//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+ const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
 
@@ -301,6 +301,22 @@ async function fetchJSON(url){
 }
 function logout(){ fetch('/logout/').then(()=>window.location='/login/'); }
 function formatTitle(table) {
+
+  function calculateSubscriptionStatus(row) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const start = new Date(row.Subscription_Start_date);
+  start.setHours(0,0,0,0);
+
+  const end = new Date(row.Subcription_End_date);
+  end.setHours(0,0,0,0);
+
+  if (today < start) return "Future";
+  if (today > end) return "Expired";
+  return "Active";
+}
+
   if (!table) return "";
 
   let t = table;
@@ -395,6 +411,50 @@ function sortDescending(table, data) {
 
   return data; // fallback: as is
 }
+
+function calculateSubscriptionStatus(row) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const start = new Date(row.Subscription_Start_date);
+  start.setHours(0, 0, 0, 0);
+
+  const end = row.Subcription_End_date
+    ? new Date(row.Subcription_End_date)
+    : null;
+
+  if (end) end.setHours(0, 0, 0, 0);
+
+  if (today < start) return "Future";
+  if (end && today > end) return "Expired";
+  return "Active";
+}
+
+function calculateSubscriptionStatus(row) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const start = new Date(row.Subscription_Start_date);
+  start.setHours(0,0,0,0);
+
+  const end = row.Subcription_End_date
+    ? new Date(row.Subcription_End_date)
+    : null;
+
+  if (end) end.setHours(0,0,0,0);
+
+  // 🔥 CORE LOGIC
+  if (end && end < today) {
+    return "Expired";
+  }
+
+  if (start > today) {
+    return "Future";
+  }
+
+  return "Active";
+}
+
 
 
 // ===== load & draw table =====
@@ -525,7 +585,37 @@ if (currentTable === "masterparameter") displayHeaders.push("PARAMETER_ID");
   // ----- Render table body -----
 if (currentData.length) {
   tbody.innerHTML = currentData.map((row, rowIdx) => {
+    
+let computedStatus = null;
+
+if (currentTable === "mastersubscriptionhistory") {
+  const today = new Date();
+
+  const start = new Date(row.Subscription_Start_date);
+  const end   = row.Subcription_End_date
+    ? new Date(row.Subcription_End_date)
+    : null;
+
+  if (end && end < today) {
+    computedStatus = "Expired";
+  } else if (start > today) {
+    computedStatus = "Future";
+  } else {
+    computedStatus = "Active";
+  }
+}
+
+
+
     let rowCells = headers.filter(h => h !== "PASSWORD").map(h => {
+     
+      
+    // ✅ STATUS: plain text only
+    if (currentTable === "mastersubscriptionhistory" && h === "Status") {
+      const computedStatus = calculateSubscriptionStatus(row);
+      return `<td>${computedStatus}</td>`;
+    }
+
       let cellVal = row[h] ?? "";
 
       // PK → S_NO numbering
@@ -588,12 +678,25 @@ if (currentData.length) {
 
 
       // Format date
-      if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
-        const options = { year: "numeric", month: "short", day: "2-digit" };
-        cellVal = new Date(cellVal).toLocaleDateString("en-GB", options);
-      }
+      // if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
+      //   const options = { year: "numeric", month: "short", day: "2-digit" };
+      //   cellVal = new Date(cellVal).toLocaleDateString("en-GB", options);
+      // }
 
-      return `<td>${cellVal}</td>`;
+      // return `<td>${cellVal}</td>`;
+
+
+// sirf display formatting
+if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
+  cellVal = new Date(cellVal).toLocaleDateString("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit"
+  });
+}
+
+return `<td>${cellVal}</td>`;
+
     }).join("");
 
     // ✅ Manually append ID column for master tables
@@ -612,13 +715,33 @@ if (currentData.length) {
     const noActions = (currentTable === "devicealarmlog" || currentTable === "devicereadinglog");
 
 if (currentTable === "mastersubscriptionhistory") {
-  return `<tr class="${row.Status === 'Expired' ? 'expired-row' : ''}">${rowCells}${noActions ? "" : `
+
+  const computedStatus = calculateSubscriptionStatus(row);
+  const pk = PRIMARY_KEYS[currentTable];
+  const rowId = row[pk];
+
+  return `<tr class="${computedStatus === 'Expired' ? 'expired-row' : ''}">
+    ${rowCells}
+
+
+
+    <!-- ACTIONS COLUMN -->
     <td>
-      <button class="btn btn-sm btn-warning" onclick='editRow(${JSON.stringify(row)})'><i class="bi bi-pencil"></i></button>
-      <button class="btn btn-sm btn-success" onclick='renew(${JSON.stringify(idVal)})'>Renew</button>
-    </td>`}
-  </tr>`;  
+      <button class="btn btn-sm btn-warning"
+        onclick='editRow(${JSON.stringify(row)})'>
+        <i class="bi bi-pencil"></i>
+      </button>
+
+      <button class="btn btn-sm btn-success"
+        onclick='renew(${rowId})'>
+        Renew
+      </button>
+    </td>
+  </tr>`;
 }
+
+
+
 
 if (currentTable === "masterdevices") {
   return `<tr class="${row.DEVICE_STATUS === 1 ? '' : 'inactive-row'}">
