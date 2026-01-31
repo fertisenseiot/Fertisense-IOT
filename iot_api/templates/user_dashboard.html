@@ -770,16 +770,42 @@ function updateSummary(){
 }
 
 
+// function setGraphRange(minutes){
+//     graphRangeMinutes = minutes;
+
+//     if(window.currentDeviceGraphDeviceId){
+//         const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+//         if(d){
+//             loadDeviceReadings(d);
+//         }
+//     }
+// }
 function setGraphRange(minutes){
+
     graphRangeMinutes = minutes;
 
+    // 🔥 FIX ACTIVE BUTTON STATE
+    document.querySelectorAll(".range-btn").forEach(btn=>{
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-outline-primary");
+    });
+
+    const activeBtn = document.querySelector(`[data-range="${minutes}"]`);
+    if(activeBtn){
+        activeBtn.classList.remove("btn-outline-primary");
+        activeBtn.classList.add("btn-primary");
+    }
+
     if(window.currentDeviceGraphDeviceId){
-        const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        const d = allDevices.find(
+            x => x.DEVICE_ID === window.currentDeviceGraphDeviceId
+        );
         if(d){
             loadDeviceReadings(d);
         }
     }
 }
+
 
 
 function showCategoryCards(){
@@ -1683,18 +1709,23 @@ function groupByMinute(points, mode="average") {
 
 
 async function loadDeviceReadings(device){
+// 🔐 HARD GRAPH CONTEXT LOCK
+window.currentDeviceGraphDeviceId = device.DEVICE_ID;
 
-  
+// ⏱️ DEFAULT GRAPH RANGE (FIRST LOAD ONLY)
+if (typeof window.graphRangeInitialized === "undefined") {
+    graphRangeMinutes = 10;        // default = Last 10 Min
+    markActiveRange(10);           // UI highlight
+    window.graphRangeInitialized = true;
+}
+
+
      // 🔒 stop double / triple reload
     if (window.manualGraphLock && !window.currentGraphParameterId) return;
 
- // sirf pehli baar jab koi graph open ho
-  if (!window.currentDeviceGraphDeviceId) {
-      graphRangeMinutes = 10;
-      markActiveRange(10);
-  }
+ 
 
-    window.currentDeviceGraphDeviceId = device.DEVICE_ID;
+    // window.currentDeviceGraphDeviceId = device.DEVICE_ID;
     const masterparameter = await fetch(API.masterparameter).then(r=>r.json());
     const masteruom = await fetch(API.masteruom).then(r=>r.json());
     const startInput = document.getElementById("startDateTime").value;
@@ -1711,11 +1742,39 @@ if(startInput && endInput){
     start = new Date(now.getTime() - graphRangeMinutes * 60 * 1000);
     end   = now;   // 🔥 ALWAYS current time
 }
+// 🔍 DEBUG: graph context check
+console.log(
+  "GRAPH CONTEXT =>",
+  "DEVICE:", window.currentDeviceGraphDeviceId,
+  "PARAM:", window.currentGraphParameterId,
+  "RANGE:", graphRangeMinutes
+);
 
 
     // const now = new Date();
 
     const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
+
+
+    // 🔐 HARD PARAMETER LOCK (FIRST LOAD ONLY)
+// 👉 reading se hi parameter lock karo (safe for multi-parameter devices)
+if (!window.currentGraphParameterId && readingsDataRaw.length) {
+
+    const firstReading = readingsDataRaw.find(
+        r => r.DEVICE_ID === device.DEVICE_ID
+    );
+
+    if (firstReading) {
+        window.currentGraphParameterId = firstReading.PARAMETER_ID;
+    }
+}
+console.log(
+  "GRAPH CONTEXT =>",
+  "DEVICE:", window.currentDeviceGraphDeviceId,
+  "PARAM:", window.currentGraphParameterId,
+  "RANGE:", graphRangeMinutes
+);
+
 
     // 🔹 Filter readings only for this device and within last 24 hours
 // 🔹 Filter readings only for this device and within last 24 hours
@@ -1729,6 +1788,30 @@ let dataPoints = readingsDataRaw
         paramId: r.PARAMETER_ID
     }))
     .filter(p => p.x >= start && p.x <= end);
+
+// 🔒 HARD PARAMETER LOCK BASED ON DEVICE CATEGORY
+// const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
+// const categoryName = category?.CATEGORY_NAME?.toLowerCase() || "";
+
+// dataPoints = dataPoints.filter(p => {
+//     const param = masterparameter.find(mp => mp.PARAMETER_ID == p.paramId);
+//     if (!param) return false;
+
+//     const pname = param.PARAMETER_NAME.toLowerCase();
+
+//     // 🔹 Refricheck → FRIDGE only
+//     if (categoryName.includes("refricheck") || categoryName.includes("fridge")) {
+//         return pname.includes("fridge");
+//     }
+
+//     // 🔹 Cryosafe → CRYO only
+//     if (categoryName.includes("cryo")) {
+//         return pname.includes("cryo");
+//     }
+
+//     return true;
+// });
+
 
 
 // 🔥 Incubator parameter filter (jab koi param click hua ho)
