@@ -151,6 +151,7 @@ def send_normalized_alert(active_alarm):
     9:f"INFO!! The O2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
     4:f"INFO!! The Incubator temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
     1:f"INFO!! The temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
+    # 5: f"INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
 }
 
     message = PARAMETER_NORMAL_MSG.get(
@@ -223,6 +224,12 @@ class DeviceReadingLog(models.Model):
 
         # 🔹 Step 2: Save reading entry
         super().save(*args, **kwargs)
+
+        
+        # 🔥🔥🔥 YAHI EXACT JAGAH HAI 🔥🔥🔥
+        # 🔥 READING AAYI = DEVICE ONLINE
+        # 🔔 SMS + EMAIL DONO YAHIN SE JAYENGE
+        send_online_only_sms(self.DEVICE_ID)
 
         # 🔹 Step 3: Fetch parameter
         try:
@@ -657,16 +664,72 @@ class Master_Plan_Type(models.Model):
         db_table = 'Master_Plan_Type'
 
 
-from datetime import date, timedelta
-from django.db import models, transaction
+# from datetime import date, timedelta
+# from django.db import models, transaction
+# from datetime import date
+# from django.db import models, transaction
+
+# class SubscriptionHistory(models.Model):
+#     STATUS_CHOICES = (
+#         ('Future', 'Future'),   # Scheduled subscription
+#         ('Active', 'Active'),   # Currently active
+#         ('Expired', 'Expired'), # Already ended
+#     )
+
+#     id = models.AutoField(primary_key=True)
+#     Device_ID = models.IntegerField()
+#     Subscription_Start_date = models.DateField()
+#     Subcription_End_date = models.DateField(null=True, blank=True)
+#     Subscription_ID = models.IntegerField(null=True, blank=True)
+#     Plan_ID = models.IntegerField(null=True, blank=True)
+#     Payment_Date = models.DateField(null=True, blank=True)
+#     Status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Future')
+
+#     class Meta:
+#         db_table = 'Subcription_History'
+#         unique_together = ('Device_ID', 'Subscription_Start_date')
+#         verbose_name = 'Subscription History'
+#         verbose_name_plural = 'Subscription Histories'
+
+#     def __str__(self):
+#         return f"Device {self.Device_ID} | {self.Status} | Start {self.Subscription_Start_date}"
+#     def save(self, *args, **kwargs): today = date.today() # 1️⃣ Decide status based on dates if self.Subcription_End_date and self.Subcription_End_date < today: self.Status = 'Expired' elif self.Subscription_Start_date > today: self.Status = 'Future' else: self.Status = 'Active' with transaction.atomic(): # 2️⃣ Adjust other subscriptions for same device overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk) for o in overlaps: o_today_status = None # Expire if end date passed if o.Subcription_End_date and o.Subcription_End_date < today: o.Status = 'Expired' # Future → Active if start date reached elif o.Subscription_Start_date <= today and (not o.Subcription_End_date or o.Subcription_End_date >= today): o.Status = 'Active' # Otherwise future elif o.Subscription_Start_date > today: o.Status = 'Future' o.save() super().save(*args, **kwargs)
+
+# def save(self, *args, **kwargs):
+#     today = date.today()
+
+#     # 1️⃣ Decide status of current subscription
+#     if self.Subcription_End_date and self.Subcription_End_date < today:
+#         self.Status = 'Expired'
+#     elif self.Subscription_Start_date > today:
+#         self.Status = 'Future'
+#     else:
+#         self.Status = 'Active'
+
+#     super().save(*args, **kwargs)  # Save current first
+
+#     # 2️⃣ Update other subscriptions WITHOUT calling their save()
+#     overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk)
+
+#     for o in overlaps:
+#         if o.Subcription_End_date and o.Subcription_End_date < today:
+#             new_status = 'Expired'
+#         elif o.Subscription_Start_date > today:
+#             new_status = 'Future'
+#         else:
+#             new_status = 'Expired'   # OLD subscriptions should NEVER be active
+
+#         SubscriptionHistory.objects.filter(pk=o.pk).update(Status=new_status)
+
 from datetime import date
-from django.db import models, transaction
+from django.db import models
 
 class SubscriptionHistory(models.Model):
+
     STATUS_CHOICES = (
-        ('Future', 'Future'),   # Scheduled subscription
-        ('Active', 'Active'),   # Currently active
-        ('Expired', 'Expired'), # Already ended
+        ('Future', 'Future'),
+        ('Active', 'Active'),
+        ('Expired', 'Expired'),
     )
 
     id = models.AutoField(primary_key=True)
@@ -681,38 +744,19 @@ class SubscriptionHistory(models.Model):
     class Meta:
         db_table = 'Subcription_History'
         unique_together = ('Device_ID', 'Subscription_Start_date')
-        verbose_name = 'Subscription History'
-        verbose_name_plural = 'Subscription Histories'
 
-    def __str__(self):
-        return f"Device {self.Device_ID} | {self.Status} | Start {self.Subscription_Start_date}"
-    def save(self, *args, **kwargs): today = date.today() # 1️⃣ Decide status based on dates if self.Subcription_End_date and self.Subcription_End_date < today: self.Status = 'Expired' elif self.Subscription_Start_date > today: self.Status = 'Future' else: self.Status = 'Active' with transaction.atomic(): # 2️⃣ Adjust other subscriptions for same device overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk) for o in overlaps: o_today_status = None # Expire if end date passed if o.Subcription_End_date and o.Subcription_End_date < today: o.Status = 'Expired' # Future → Active if start date reached elif o.Subscription_Start_date <= today and (not o.Subcription_End_date or o.Subcription_End_date >= today): o.Status = 'Active' # Otherwise future elif o.Subscription_Start_date > today: o.Status = 'Future' o.save() super().save(*args, **kwargs)
+@property
+def computed_status(self):
+        today = date.today()
 
-def save(self, *args, **kwargs):
-    today = date.today()
+        if today < self.Subscription_Start_date:
+            return "Future"
 
-    # 1️⃣ Decide status of current subscription
-    if self.Subcription_End_date and self.Subcription_End_date < today:
-        self.Status = 'Expired'
-    elif self.Subscription_Start_date > today:
-        self.Status = 'Future'
-    else:
-        self.Status = 'Active'
+        if self.Subcription_End_date and today > self.Subcription_End_date:
+            return "Expired"
 
-    super().save(*args, **kwargs)  # Save current first
+        return "Active"
 
-    # 2️⃣ Update other subscriptions WITHOUT calling their save()
-    overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk)
-
-    for o in overlaps:
-        if o.Subcription_End_date and o.Subcription_End_date < today:
-            new_status = 'Expired'
-        elif o.Subscription_Start_date > today:
-            new_status = 'Future'
-        else:
-            new_status = 'Expired'   # OLD subscriptions should NEVER be active
-
-        SubscriptionHistory.objects.filter(pk=o.pk).update(Status=new_status)
 
 
 class DeviceStatusAlarmLog(models.Model):
@@ -741,3 +785,83 @@ class DeviceStatusAlarmLog(models.Model):
 
     class Meta:
         db_table = "device_status_alarm_log"
+
+
+def send_online_only_sms(device_id):
+    from .models import DeviceStatusAlarmLog
+
+    now_dt = timezone.now().astimezone(IST)
+    d = now_dt.date()
+    t = now_dt.time().replace(microsecond=0)
+
+    # last record nikaalo
+    alarm = DeviceStatusAlarmLog.objects.filter(
+        DEVICE_ID=device_id
+    ).order_by('-DEVICE_STATUS_ALARM_ID').first()
+
+    # ❌ agar record hi nahi → pehli baar online, SMS mat bhejo
+    if not alarm:
+        return
+
+    # ❌ agar pehle hi online SMS ja chuka
+    if alarm.IS_ACTIVE == 0:
+        return
+
+    # ✅ bas yahi ek baar SMS
+    send_device_online_alert(device_id)
+
+    alarm.IS_ACTIVE = 0
+    alarm.UPDATED_ON_DATE = d
+    alarm.UPDATED_ON_TIME = t
+    alarm.SMS_DATE = d
+    alarm.SMS_TIME = t
+    alarm.save()
+
+    print("✅ Online SMS sent once")
+
+
+
+def send_device_online_alert(device_id):
+    from .models import MasterDevice, UserOrganizationCentreLink, MasterUser
+
+    device = MasterDevice.objects.filter(DEVICE_ID=device_id).first()
+    if not device:
+        return
+
+    dev_name = device.DEVICE_NAME
+    org_id = device.ORGANIZATION_ID
+    centre_id = device.CENTRE_ID
+
+    # Users linked to org + centre
+    user_ids = UserOrganizationCentreLink.objects.filter(
+        ORGANIZATION_ID_id=org_id,
+        CENTRE_ID_id=centre_id
+    ).values_list('USER_ID_id', flat=True)
+
+    users = MasterUser.objects.filter(USER_ID__in=user_ids)
+
+    # ✅ FINAL ONLINE MESSAGE (tumhara approved msg)
+    message = f"5: INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
+
+    # 📲 SMS
+    phones = set()
+    for u in users:
+        if u.SEND_SMS and u.PHONE:
+            for p in u.PHONE.split(","):
+                phones.add(p.strip())
+
+    for phone in phones:
+        send_sms(phone, message)
+
+    # 📧 Email
+    subject = f"Device Back Online | {dev_name}"
+    html_content = f"""
+        <h2>Device Back Online</h2>
+        <p>The device <strong>{dev_name}</strong> is now online and functioning normally.</p>
+        <p>No action is required.</p>
+        <p>Regards,<br>Fertisense IoT Monitoring System</p>
+    """
+
+    for u in users:
+        if u.SEND_EMAIL and u.EMAIL:
+            send_email_brevo(u.EMAIL, subject, html_content)
