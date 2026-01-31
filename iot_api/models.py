@@ -841,7 +841,7 @@ def send_device_online_alert(device_id):
     users = MasterUser.objects.filter(USER_ID__in=user_ids)
 
     # ✅ FINAL ONLINE MESSAGE (tumhara approved msg)
-    message = f"5: INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
+    message = f"INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
 
     # 📲 SMS
     phones = set()
