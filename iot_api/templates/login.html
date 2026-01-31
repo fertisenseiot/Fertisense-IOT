@@ -33,11 +33,14 @@
         <div class="login-card">
             <h3 class="text-center mb-4">IoT Dashboard Login</h3>
 
-            {% if error %}
-            <div class="alert alert-danger" role="alert">
-                {{ error }}
-            </div>
-            {% endif %}
+       {% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-danger" role="alert">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
 
             <form method="POST">
                 {% csrf_token %}
@@ -55,7 +58,7 @@
             </form>
 
             <div class="mt-3 text-center">
-                <small>Forgot password? Contact Admin</small>
+                <small>Forgot password? Contact FertisenseLLP</small>
             </div>
         </div>
     </div>
