@@ -161,6 +161,9 @@ class MasterUserSerializer(serializers.ModelSerializer):
     SEND_SMS = serializers.BooleanField(required=False)
     SEND_EMAIL = serializers.BooleanField(required=False)
 
+    # ✅ MULTIPLE EMAILS ALLOWED
+    EMAIL = serializers.CharField()
+
     class Meta:
         model = MasterUser
         fields = [
@@ -182,14 +185,17 @@ class MasterUserSerializer(serializers.ModelSerializer):
         }
 
     def validate_PASSWORD(self, value):
-        """Strong password validation"""
+        """Strong password validation
+           BUT NO HASHING
+        """
         # Minimum 8 chars, 1 upper, 1 lower, 1 digit, 1 special char
         regex = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$'
         if not re.match(regex, value):
             raise serializers.ValidationError(
                 "Password must be min 8 chars, include 1 uppercase, 1 lowercase, 1 number, and 1 special character."
             )
-        return make_password(value)  # Hash the password before saving
+        # return make_password(value)  # Hash the password before saving
+        return value
         
 # -------------------------
 # User Organization Centre Link
