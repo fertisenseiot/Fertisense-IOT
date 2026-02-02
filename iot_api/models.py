@@ -282,45 +282,43 @@ class DeviceReadingLog(models.Model):
                 )
                 print(f"🚨 New Alarm created for device {self.DEVICE_ID}")
         else:
-           # 🔹 Step 6: Handle normalized alarm (SAFE)
-            #if not breached:
+           # 🔹 Step 6: Handle normalized alarm
 
-                # 🔁 Always re-fetch latest ACTIVE alarm from DB
-                active_alarm = (
-                    DeviceAlarmLog.objects
-                    .filter(
-                        DEVICE_ID=self.DEVICE_ID,
-                        SENSOR_ID=self.SENSOR_ID,
-                        PARAMETER_ID=self.PARAMETER_ID,
-                        IS_ACTIVE=1
+                    # Always fetch latest active alarm
+                    active_alarm = (
+                        DeviceAlarmLog.objects
+                        .filter(
+                            DEVICE_ID=self.DEVICE_ID,
+                            SENSOR_ID=self.SENSOR_ID,
+                            PARAMETER_ID=self.PARAMETER_ID,
+                            IS_ACTIVE=1
+                        )
+                        .order_by('-id')
+                        .first()
                     )
-                    .order_by('-id')
-                    .first()
-                )
 
-                # ❌ No active alarm → nothing to normalize
-                if not active_alarm:
-                    return
+                    # ❌ No active alarm → nothing to do
+                    if not active_alarm:
+                        return
 
-                # ❌ Breach SMS kabhi gaya hi nahi → no normalize SMS
-                if not active_alarm.SMS_DATE or not active_alarm.SMS_TIME:
-                    return
+                    # 🔔 CASE-1: Breach SMS was sent → send normalized SMS
+                    if active_alarm.SMS_DATE and active_alarm.SMS_TIME:
+                        print("✅ Alarm normalized after breach, sending normalized SMS")
+                        send_normalized_alert(active_alarm)
+                    else:
+                        # 🟡 CASE-2: Fast normalize → no SMS
+                        print("ℹ Alarm normalized quickly, no breach SMS was sent")
 
-                print(f"✅ Alarm normalized for device {self.DEVICE_ID}, sending notifications...")
-                send_normalized_alert(active_alarm)
+                    # 🔒 ALWAYS close the alarm
+                    active_alarm.IS_ACTIVE = 0
+                    active_alarm.LST_UPD_DT = norm_date
+                    active_alarm.NORMALIZED_DATE = norm_date
+                    active_alarm.NORMALIZED_TIME = norm_time
 
-                # 🔹 Update all normalized timestamps in IST
-                active_alarm.IS_ACTIVE = 0
-                active_alarm.LST_UPD_DT = norm_date
-                active_alarm.NORMALIZED_DATE = norm_date
-                active_alarm.NORMALIZED_TIME = norm_time
-                active_alarm.NORMALIZED_SMS_DATE = norm_date
-                active_alarm.NORMALIZED_SMS_TIME = norm_time
-                active_alarm.NORMALIZED_EMAIL_DATE = norm_date
-                active_alarm.NORMALIZED_EMAIL_TIME = norm_time
-                active_alarm.save()
+                    active_alarm.save()
 
-                print(f"📧 Normalization timestamps updated for device {self.DEVICE_ID}")
+                    print(f"✅ Alarm closed for device {self.DEVICE_ID}")
+
 
 
 
