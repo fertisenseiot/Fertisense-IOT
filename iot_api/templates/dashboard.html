@@ -906,7 +906,12 @@ if (currentTable === "createuser") {
 
       <div class="col-md-6 mb-3">
         <label class="form-label">Email</label>
-        <input type="email" class="form-control" name="EMAIL" value="${row.EMAIL ?? ''}">
+        <input type="text"
+       class="form-control"
+       name="EMAIL"
+       value="${row.EMAIL ?? ''}"
+       placeholder="Enter one or more emails separated by comma">
+
         <div class="form-check mt-2">
           <input class="form-check-input" type="checkbox" name="SEND_EMAIL" ${row.SEND_EMAIL ? "checked" : ""}>
           <label class="form-check-label">Send Email</label>
@@ -1237,26 +1242,45 @@ if (type === "number") {
       </div>`;
   });
 
-  // ===== Dependent dropdown logic (ONLY if NOT centreorganizationlink) =====
-  // if(currentTable !== "centreorganizationlink"){
-  //   const orgDropdownDep = fieldsDiv.querySelector('select[name="ORG_ID"], select[name="ORGANIZATION_ID"]');
-  //   const centreDropdownDep = fieldsDiv.querySelector('select[name="CENTRE_ID"]');
-  //   if(orgDropdownDep && centreDropdownDep){
-  //     function updateCentres(){
-  //       const orgId = orgDropdownDep.value;
-  //       const selectedCentre = centreDropdownDep.getAttribute('data-selected-centre') || "";
-  //       const filteredCentres = (dropdownData.centres || []).filter(c => c.ORGANIZATION_ID == orgId);
-  //       centreDropdownDep.innerHTML = '<option value="">-- Choose Centre --</option>' +
-  //         filteredCentres.map(c=>`<option value="${c.CENTRE_ID}" ${c.CENTRE_ID==selectedCentre?'selected':''}>${c.CENTRE_NAME}</option>`).join('');
-  //     }
-  //     if(row["CENTRE_ID"]) centreDropdownDep.setAttribute('data-selected-centre', row["CENTRE_ID"]);
-  //     orgDropdownDep.addEventListener('change', ()=>{
-  //       centreDropdownDep.setAttribute('data-selected-centre',''); 
-  //       updateCentres();
-  //     });
-  //     updateCentres(); // initial populate
-  //   }
-  // }
+  // ===== Dependent dropdown logic (ONLY if NOT userorganizationcentrelink) =====
+if (currentTable === "userorganizationcentrelink") {
+  const orgDropdown = fieldsDiv.querySelector(
+    'select[name="ORG_ID"], select[name="ORGANIZATION_ID"]'
+  );
+  const centreDropdown = fieldsDiv.querySelector(
+    'select[name="CENTRE_ID"]'
+  );
+
+  if (orgDropdown && centreDropdown) {
+
+    function updateCentres() {
+      const orgId = orgDropdown.value;
+
+      const filteredCentres = (dropdownData.centres || [])
+        .filter(c => String(c.ORGANIZATION_ID) === String(orgId));
+
+      centreDropdown.innerHTML =
+        `<option value="">-- Choose Centre --</option>` +
+        filteredCentres.map(c =>
+          `<option value="${c.CENTRE_ID}">
+            ${c.CENTRE_NAME}
+          </option>`
+        ).join("");
+    }
+
+    // 🔁 On organization change
+    orgDropdown.addEventListener("change", () => {
+      updateCentres();
+    });
+
+    // 🔁 Initial load (edit mode)
+    if (row.ORGANIZATION_ID) {
+      updateCentres();
+      centreDropdown.value = row.CENTRE_ID || "";
+    }
+  }
+}
+
 }
 
 
