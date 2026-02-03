@@ -497,6 +497,7 @@ class DeviceAlarmCallLog(models.Model):
     SENSOR_ID = models.IntegerField()
     PARAMETER_ID = models.IntegerField()
     ALARM_ID = models.IntegerField(db_index=True)
+    DEVICE_STATUS_ALARM_ID = models.IntegerField(null=True, blank=True)
     ALARM_DATE = models.DateField()
     ALARM_TIME = models.TimeField()
     PHONE_NUM = models.CharField(max_length=20)
