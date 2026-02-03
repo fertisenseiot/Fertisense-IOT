@@ -498,8 +498,8 @@ class DeviceAlarmCallLog(models.Model):
     PARAMETER_ID = models.IntegerField(null=True, blank=True)
     ALARM_ID = models.IntegerField(null=True, blank=True)
     DEVICE_STATUS_ALARM_ID = models.IntegerField(null=True, blank=True)
-    ALARM_DATE = models.DateField()
-    ALARM_TIME = models.TimeField()
+    ALARM_DATE = models.DateField(null=True,blank=True)
+    ALARM_TIME = models.TimeField(null=True,blank=True)
     PHONE_NUM = models.CharField(max_length=20)
     CALL_DATE = models.DateField()
     CALL_TIME = models.TimeField()
@@ -548,8 +548,8 @@ class DeviceAlarmLog(models.Model):
     DEVICE_ID = models.IntegerField()
     SENSOR_ID = models.IntegerField()
     PARAMETER_ID = models.IntegerField()
-    ALARM_DATE = models.DateField(null=True, blank=True)   # record create hone par date
-    ALARM_TIME = models.TimeField(null=True, blank=True) 
+    ALARM_DATE = models.DateField(auto_now_add=True)   # record create hone par date
+    ALARM_TIME = models.TimeField(auto_now_add=True) 
     READING = models.FloatField(null=True, blank=True)
     NORMALIZED_DATE = models.DateField(null=True, blank=True)
     NORMALIZED_TIME=models.TimeField(null=True,blank=True)
