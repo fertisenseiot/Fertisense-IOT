@@ -548,8 +548,8 @@ class DeviceAlarmLog(models.Model):
     DEVICE_ID = models.IntegerField()
     SENSOR_ID = models.IntegerField()
     PARAMETER_ID = models.IntegerField()
-    ALARM_DATE = models.DateField(auto_now_add=True)   # record create hone par date
-    ALARM_TIME = models.TimeField(auto_now_add=True) 
+    ALARM_DATE = models.DateField(null=True, blank=True)   # record create hone par date
+    ALARM_TIME = models.TimeField(null=True, blank=True) 
     READING = models.FloatField(null=True, blank=True)
     NORMALIZED_DATE = models.DateField(null=True, blank=True)
     NORMALIZED_TIME=models.TimeField(null=True,blank=True)
