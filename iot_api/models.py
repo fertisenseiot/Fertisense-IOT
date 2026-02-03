@@ -494,9 +494,9 @@ class DeviceSensorLink(models.Model):
 # -------------------------
 class DeviceAlarmCallLog(models.Model):
     DEVICE_ID = models.IntegerField()
-    SENSOR_ID = models.IntegerField()
-    PARAMETER_ID = models.IntegerField()
-    ALARM_ID = models.IntegerField(db_index=True)
+    SENSOR_ID = models.IntegerField(null=True, blank=True)
+    PARAMETER_ID = models.IntegerField(null=True, blank=True)
+    ALARM_ID = models.IntegerField(null=True, blank=True)
     DEVICE_STATUS_ALARM_ID = models.IntegerField(null=True, blank=True)
     ALARM_DATE = models.DateField()
     ALARM_TIME = models.TimeField()
@@ -532,9 +532,14 @@ class DeviceAlarmCallLog(models.Model):
 )
     class Meta:
         unique_together = (
-            'DEVICE_ID','SENSOR_ID','PARAMETER_ID','ALARM_DATE','ALARM_TIME',
-            'PHONE_NUM','CALL_DATE','CALL_TIME','SMS_CALL_FLAG'
-        )
+    'DEVICE_ID',
+    'PHONE_NUM',
+    'CALL_DATE',
+    'CALL_TIME',
+    'SMS_CALL_FLAG',
+    'CALL_SID'
+)
+
 
 # -------------------------
 # 8️⃣ Device Alarm Log
