@@ -321,6 +321,12 @@ class DeviceReadingLog(models.Model):
                     if active_alarm.SMS_DATE and active_alarm.SMS_TIME:
                         print("✅ Alarm normalized after breach, sending normalized SMS")
                         send_normalized_alert(active_alarm)
+
+                              # 🔥 Save normalized SMS date/time
+                        active_alarm.NORMALIZED_SMS_DATE = norm_date
+                        active_alarm.NORMALIZED_SMS_TIME = norm_time
+                        active_alarm.NORMALIZED_EMAIL_DATE = norm_date
+                        active_alarm.NORMALIZED_EMAIL_TIME = norm_time
                     else:
                         # 🟡 CASE-2: Fast normalize → no SMS
                         print("ℹ Alarm normalized quickly, no breach SMS was sent")
