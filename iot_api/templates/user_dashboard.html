@@ -11,9 +11,74 @@
 <style>body {
   margin: 0;
   padding: 0;
-  display: flex;
   min-height: 100vh;
   background: #f9fafb;
+}
+
+.navbar{
+  height:56px !important;
+  min-height:56px !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  display:flex;
+  align-items:center;
+}
+
+/* =========================
+   🖥️ DESKTOP LAYOUT FIX
+   (Mobile ko touch nahi karega)
+========================= */
+@media (min-width: 993px) {
+
+  body {
+    display: block;   /* 🔥 desktop me flex band */
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 56px;                 /* navbar height */
+    left: 0;
+    width: 260px;
+    height: calc(100vh - 56px);
+  }
+
+   .navbar .navbar-nav .nav-item{
+    white-space: nowrap;
+  }
+
+  .content {
+    margin-left: 260px;
+    padding-top: 80px;
+  }
+
+  .desktop-org-card button{
+    padding:1px 6px;
+    font-size:10px;
+  }
+    .org-title{
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .centre-title{
+    font-size: 12px;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .desktop-org-card i{
+    font-size: 12px;
+    opacity: 0.9;
+  }
+  .desktop-centre {
+    font-size: 11px;
+    opacity: 0.85;
+  }
 }
 
 .navbar {
@@ -31,13 +96,14 @@
   background: #f8f9fa;
   border-right: 1px solid #dee2e6;
   position: fixed;
-  top: 70px;
+  top: 56px;          /* Bootstrap navbar height */
   bottom: 0;
   left: 0;
   overflow-y: auto;
   padding: 20px;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  z-index: 1040;
 }
+
 
 .sidebar h5 {
   font-weight: 600;
@@ -78,7 +144,7 @@
 /* Content area */
 .content {
   margin-left: 260px;
-  padding: 90px 25px 25px;
+  padding: 75px 25px 25px;
   flex: 1;
   overflow-x: hidden;
   transition: margin-left 0.3s ease;
@@ -86,9 +152,16 @@
 
 /* Responsive Fix */
 @media (max-width: 992px) {
+   .desktop-navbar{
+    display:none !important;
+  }
   .sidebar {
     position: fixed;
-    left: -260px;
+    top: 56px;
+    left: -210px;
+    width: 210px;
+    height: calc(100vh - 56px);
+    z-index: 2000;
     transition: left 0.3s ease;
   }
 
@@ -96,11 +169,40 @@
     left: 0;
   }
 
+  /* ⭐ content kabhi shift nahi hoga mobile me */
   .content {
-    margin-left: 0;
-    padding-top: 90px;
+    margin-left: 0 !important;
   }
+
+  .content.shifted {
+    margin-left: 0 !important;
+  }
+
+    .navbar-collapse {
+    background: linear-gradient(90deg, #0d6efd, #0a58ca);
+    padding: 10px;
+  }
+
+  .navbar-nav {
+    align-items: flex-start;
+  }
+
+  #navbarOrgLabel,
+  #navbarCentreLabel {
+    margin-left: 0 !important;
+    font-size: 13px;
+  }
+
+  .mobile-user-info{
+   background:#ffffff;
+   padding:10px;
+   border-radius:10px;
+   box-shadow:0 2px 6px rgba(0,0,0,0.08);
+   font-size:13px;
 }
+}
+
+
 
 #deviceTypeCards { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-top:50px; }
 .device-type-card { flex:1 1 calc(33.33% - 10px); max-width:calc(33.33% - 10px); height:120px; background:linear-gradient(135deg,#0d6efd,#6610f2); color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); cursor:pointer; transition:0.3s; }
@@ -226,133 +328,186 @@
    text-align:center;
 }
 
-/* =====================================================
-   📱 MOBILE UI FIX (ADD THIS AT THE END OF CSS)
-   ===================================================== */
+@media (min-width:769px){
+   .alarm-24h-wrapper{
+      margin-left:-200px;
+   }
+}
+/* ===========================
+   📱 MOBILE ALARM TABLE FIX
+   Desktop untouched
+=========================== */
+@media (max-width: 768px) {
+  
+  /* ✅ DEVICE CARD COMPACT */
+.device-card{
+    padding:8px;
+    min-height:auto;
+    max-width:100%;
+     box-shadow:0 2px 6px rgba(0,0,0,0.1);
+   margin-bottom: 2px !important;
+}
 
-@media (max-width: 576px) {
+.device-card h6{
+    font-size:14px;
+    margin-bottom:4px;
+}
 
-  /* ===== BODY / CONTENT ===== */
-  body {
-    flex-direction: column;
+.device-reading{
+    font-size:12px;
+}
+
+ #deviceList{
+     margin-bottom:8px !important;
   }
 
-  .content {
-    margin-left: 0 !important;
-    padding: 75px 10px 15px;
+.device-hint{
+    font-size:10px;
   }
 
-  /* ===== SIDEBAR ===== */
-  .sidebar {
-    top: 56px;              /* navbar ke niche */
-    width: 240px;
-    padding: 12px;
+  #deviceTypeCards{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-content:flex-start;
+    min-height:auto;        /* ⭐ vertical center */
+    gap:15px;
+    margin-top:10px !important;
+}
+
+.device-type-card{
+    flex:0 0 70%;
+    max-width:70%;
+}
+    hr{
+    margin:12px 0;
   }
 
-  .sidebar h5 {
-    font-size: 14px;
+
+  .alarm-table thead {
+    display: none;
   }
 
-  .sidebar .summary-card {
-    padding: 6px;
+  .alarm-table,
+  .alarm-table tbody,
+  .alarm-table tr,
+  .alarm-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .alarm-table tr {
+    background: #fff;
     border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    min-height: 160px;
   }
 
-  .sidebar .summary-card h6 {
-    font-size: 12px;
-  }
-
-  .sidebar .summary-card p {
-    font-size: 14px;
-  }
-
-  /* ===== DEVICE TYPE CARDS (Dashboard top) ===== */
-  #deviceTypeCards {
-    margin-top: 20px;
-    gap: 10px;
-  }
-
-  .device-type-card {
-    flex: 1 1 100%;
-    max-width: 100%;
-    height: 90px;
+  .alarm-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
     font-size: 13px;
+    border: none;
+    color: #000;
+    white-space: normal;
+    word-break: break-word;
   }
 
-  /* ===== DEVICE LIST ===== */
-  #deviceList {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+  .alarm-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #555;
+    flex: 0 0 48%;
   }
 
-  #deviceList .device-card {
-    max-width: 100%;
-    min-width: 100%;
-    padding: 8px;
+  .alarm-table td span.badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+    /* 🔥 Stack graph + alarm vertically */
+  .graph-section-wrapper {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .device-card h6 {
-    font-size: 13px;
-    margin-bottom: 4px;
+   /* 🔥 Total Alarms (24h) card mobile fix */
+  .alarm-24h-wrapper {
+    margin-left: 0 !important;
+    width: 100%;
+    display:flex;
+    order: -1;              /* 🔥 sabse upar le aayega (mobile) */
   }
 
-  .device-reading {
-    font-size: 12px;
+.alarm-24h-wrapper > div{
+   box-shadow:0 2px 6px rgba(0,0,0,0.1);
+   margin-bottom:2px !important;
+   margin-left:0 !important;
+   width:40%;
+   max-width:220px;
+   padding:5px !important;
+   border-radius:8px !important;
+}
+  .alarm-24h-wrapper h6{
+    font-size:12px !important;
+    margin-bottom:2px !important;
   }
 
-  .device-hint {
-    font-size: 10px;
+  #alarm24h{
+    font-size:16px !important;
+    margin:0 !important;
+  }
+  
+  .graph-section-wrapper + div,
+  .graph-section-wrapper > div:last-child{
+     padding:8px !important;
   }
 
-  /* ===== GRAPH TOOLBAR ===== */
+    /* 🔥 Stack graph + alarm vertically */
+  .graph-section-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap:6px !important;
+  } 
+
+   /* 🔥 Graph toolbar mobile layout */
   .graph-toolbar {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+    margin-bottom:6px;
   }
 
   .graph-toolbar .range-btns {
-    display: flex;
-    gap: 6px;
+    justify-content: space-between;
+    width: 100%;
   }
-
-  .range-btns button {
-    flex: 1;
-    min-width: auto;
-    height: 32px;
-    font-size: 11px;
-    padding: 0;
+   
+  .range-btns button{
+    min-width:auto;
+    height:30px;
+    font-size:11px;
+    padding:3px 8px;
   }
 
   #avgBox {
-    width: 100%;
-    height: 32px;
-    font-size: 12px;
-  }
-
-  /* ===== GRAPH ===== */
-  #graphWrapper {
-    height: 220px;
-  }
-
-  /* ===== ALARM TABLE ===== */
-  .table {
+    width: 4%;
+    margin:auto;
+    height: 28px;
     font-size: 11px;
+    padding:4px;
   }
 
-  #alarmLog td {
-    padding: 6px;
+   #graphWrapper {
+    height: 190px;   /* 🔥 thoda extra space */
   }
 
-  /* ===== NAVBAR TEXT ===== */
-  #navbarOrgLabel,
-  #navbarCentreLabel {
-    font-size: 11px;
-    line-height: 14px;
-  }
+  
 }
-
 
 
 </style>
@@ -366,29 +521,33 @@
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-      <ul class="navbar-nav">
-<li class="nav-item" style="display:flex; flex-direction:column; line-height:16px;">
+<div class="collapse navbar-collapse justify-content-end desktop-navbar" id="navbarNav">
+  <ul class="navbar-nav align-items-center gap-3">
 
-<!-- ORG NAME -->
-<span class="nav-link fw-bold" id="navbarOrgLabel"
-      style="display:none; margin-left:-15px; color:white;">
-    Org: <span id="navbarOrgName" style="font-weight:700;"></span>
-</span>
-
-<!-- CENTRE NAME -->
-<span class="nav-link" id="navbarCentreLabel"
-      style="display:none; margin-top:-6px; margin-left:-15px; color:white;">
-    Centre: <span id="navbarCentreName" style="font-weight:600;"></span>
-</span>
-
-
-</li>
-
-
-
+    <!-- ORG -->
+<li class="nav-item text-white small d-flex flex-column me-2">
+  <span style="font-weight:600;">
+    Org: <span id="navbarOrgName"></span>
   </span>
-</li>
+
+    <!-- CENTRE -->
+<span style="font-size:12px; opacity:.9;">
+    Centre: <span id="navbarCentreName"></span>
+  </span>
+    </li>
+
+    <!-- LOGOUT -->
+    <li class="nav-item">
+      <button class="btn btn-sm btn-outline-light"
+              style="font-size:12px;"
+              onclick="logout()">
+        Logout
+      </button>
+    </li>
+
+  </ul>
+</div>
+
 
 
         <!-- User Management Dropdown -->
@@ -410,9 +569,9 @@
         </li>
 
         <!-- Logout -->
-        <li class="nav-item">
+        <!-- <li class="nav-item">
           <a class="nav-link" href="#" onclick="logout()">Logout</a>
-        </li>
+        </li> -->
 
       </ul>
     </div>
@@ -422,6 +581,26 @@
 
 <div class="sidebar">
   <div class="sidebar-content">
+
+    <!-- ⭐ Mobile User Info -->
+<div class="mobile-user-info d-lg-none mb-3">
+
+  <div class="fw-bold text-primary">
+     Org: <span id="mobileOrgName">-</span>
+  </div>
+
+  <div class="fw-semibold">
+     Centre: <span id="mobileCentreName">-</span>
+  </div>
+
+  <button class="btn btn-sm btn-outline-danger mt-2 w-100"
+          onclick="logout()">
+     Logout
+  </button>
+
+  <hr>
+</div>
+
     
     <div id="orgFilter">
   <label>Organization Name</label>
@@ -488,6 +667,14 @@
   <div id="deviceDetailsContainer">
     <button class="btn btn-sm btn-secondary mb-3" onclick="backToDashboard()">← Back</button>
     <h4 id="deviceTypeTitle"></h4>
+    <p id="deviceHintText"
+   style="text-align:center;
+          font-size:13px;
+          color:#030405;
+          margin-bottom:10px;">
+     Click On Device Card To See The Details
+</p>
+
    
     <!-- <button class="btn btn-primary btn-sm" onclick="manualRefresh()">
   Refresh Data
@@ -495,10 +682,19 @@
 
 
     <div id="deviceList" class="mb-1"></div>        
-    <div style="max-width:700px;margin:auto;display:flex;gap:15px;align-items:flex-start;">
-      <div style="flex:0 0 150px;display:flex;flex-direction:column;gap:10px;margin-left:-200px;">
-        <div style="max-width:250px;background:#dc3545;color:#fff;border-radius:10px;padding:8px;text-align:center; margin-left:20px;" class="mb-3">
-          <h6 style="font-size:0.8rem;margin-bottom:4px;">Total Alarms (24h)</h6>
+    <div class="graph-section-wrapper" 
+         style="max-width:700px;margin:auto;display:flex;gap:15px;align-items:flex-start;">
+    
+        <div class="alarm-24h-wrapper"
+            style="flex:0 0 150px;
+            display:flex;
+            flex-direction:column;
+            gap:10px;">
+
+        <div class="mb-3"
+         style="max-width:250px;background:#dc3545;color:#fff;border-radius:10px;padding:8px;text-align:center; margin-left:20px;" class="mb-3">
+         
+         <h6 style="font-size:0.8rem;margin-bottom:4px;">Total Alarms (24h)</h6>
           <p id="alarm24h" class="fs-6 fw-bold">0</p>
         </div>
       </div>
@@ -536,9 +732,10 @@
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;">
 
   
-  <span id="lastRefreshText" style="font-size:0.8rem;color:#555;">
-    Last refreshed: never
-  </span>
+ <span id="lastRefreshText"
+      style="display:none; font-size:0.8rem; color:#555;">
+</span>
+
 
   <button type="button" class="btn btn-sm btn-outline-primary" onclick="manualRefresh()">
     <i class="bi bi-arrow-clockwise"></i> Refresh Data
@@ -553,20 +750,20 @@
     <h5 class="mt-4 d-flex justify-content-between align-items-center">
       Alarm Log  <span class="badge bg-danger">Active Alarms   <span class="badge bg-danger" id="activeAlarmCount">0</span></span>
     </h5>
-   <div class="table-responsive">
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Device</th>
-        <th>Alarm</th>
-        <th>Time</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="alarmLog"></tbody>
-  </table>
-</div>
+    <table class="table table-striped alarm-table">
+     <thead>
+  <tr>
+    <th>Device</th>
+    <th>Alarm</th>
+    <th>Raised Time</th>
+    <th>Alarm Resolution Time</th>
+    <th>Status</th>
+  </tr>
+</thead>
 
+      <tbody id="alarmLog"></tbody>
+    </table>
+  </div>
 
   <!-- User Management Section -->
 
@@ -721,8 +918,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL ="http://127.0.0.1:8000";
 //const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -875,8 +1072,13 @@ async function loadDevices(centreId){
     allCategories = await catRes.json();
     updateSummary();
     showCategoryCards();
+    updateSummaryLive();
+
   }catch(err){console.error(err);}
 }
+
+
+
 
 // ------------- DASHBOARD UI -------------
 function clearFilters(){
@@ -904,6 +1106,23 @@ function updateSummary(){
     document.getElementById("totalDevices").textContent = total;
     document.getElementById("activeDevices").textContent = active;
     document.getElementById("offlineDevices").textContent = offline;
+}
+
+function formatDateTimeDDMMYY(dateStr, timeStr){
+  if(!dateStr || !timeStr) return "-";
+
+  const d = new Date(dateStr + "T" + timeStr);
+
+  if (isNaN(d)) return "-";
+
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+
+  return `${dd}-${mm}-${yy} ${hh}:${min}`;
 }
 
 
@@ -1547,9 +1766,12 @@ async function openDeviceDashboard(categoryId){
         div.id = `card_${device.DEVICE_ID}`;
 
 const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
-const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
+const isMultiParam =
+  category?.CATEGORY_NAME?.toLowerCase().includes("incubator") ||
+  category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
-if(isIncubator){
+
+if(isMultiParam){
   div.innerHTML = `
     <h6>${device.DEVICE_NAME}</h6>
 
@@ -1557,13 +1779,13 @@ if(isIncubator){
     <div id="param2_${device.DEVICE_ID}" class="device-reading"></div>
     <div id="param3_${device.DEVICE_ID}" class="device-reading"></div>
 
-    <div class="device-hint">Click to view graph</div>
+    <div class="device-hint">Click to view </div>
   `;
 }else{
   div.innerHTML = `
     <h6>${device.DEVICE_NAME}</h6>
     <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p>
-    <div class="device-hint">Click to view graph</div>
+    <div class="device-hint">Click to view </div>
   `;
 }
 
@@ -1626,15 +1848,21 @@ devices.forEach(device=>{
 async function loadCardReadingFast(device, masterparameter, masteruom){
 
     const cardEl = document.getElementById(`card_${device.DEVICE_ID}`);
+     
+     // ✅ FIX: category yahin define karo
+    const category = allCategories.find(
+        c => c.CATEGORY_ID === device.CATEGORY_ID
+    );
 
     // -------------------- CHECK INCUBATOR CATEGORY --------------------
-    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
-    const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
+const isMultiParam =
+  category?.CATEGORY_NAME?.toLowerCase().includes("incubator") ||
+  category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
     // ===============================================================
     //      🌟 SPECIAL LOGIC ONLY FOR INCUBATOR DEVICES
     // ===============================================================
-if (isIncubator) {
+if (isMultiParam) {
 
     const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
     const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
@@ -1765,6 +1993,11 @@ if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
 
 const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
 
+if (!valueEl) {
+    console.warn("Value element not found for device:", device.DEVICE_ID);
+    return;
+}
+
 try {
 
     const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
@@ -1772,7 +2005,7 @@ try {
 
     const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
 
-    if(!ownReadings.length){
+    if (!ownReadings.length) {
         valueEl.innerText = "Offline";
         cardEl.className = "device-card bg-secondary";
         return;
@@ -1781,21 +2014,21 @@ try {
     const last = ownReadings[ownReadings.length - 1];
     const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
 
-    if(Date.now() - dt.getTime() > 15*60*1000){
+    if (Date.now() - dt.getTime() > 15 * 60 * 1000) {
         valueEl.innerText = "Offline";
         cardEl.className = "device-card bg-secondary";
         return;
     }
 
-    const param = masterparameter.find(p=>p.PARAMETER_ID==last.PARAMETER_ID);
-    const uomObj = masteruom.find(u=>u.UOM_ID==param?.UOM_ID);
+    const param = masterparameter.find(p => p.PARAMETER_ID == last.PARAMETER_ID);
+    const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
     const uom = uomObj?.UOM_NAME || "";
 
     valueEl.innerText = Math.round(last.READING) + " " + uom;
     cardEl.className = "device-card bg-success";
 
-}
-catch(err){
+} catch (err) {
+    console.error(err);
     valueEl.innerText = "Offline";
     cardEl.className = "device-card bg-secondary";
 }
@@ -1833,10 +2066,19 @@ function groupByMinute(points, mode="average") {
             ? values.reduce((a,b)=>a+b,0)/values.length
             : values[values.length-1];
 
-        result.push({
-            x: new Date(key),   // 🔥 ISO time
-            y: Math.round(value)   // 🔥 decimal hata diya
-        });
+const base = Math.round(value);
+
+// 🔥 micro lift (sirf visual ke liye)
+const lifted =
+  points.length > 1
+    ? base + (Math.random() * 0.08 - 0.04)
+    : base;
+
+result.push({
+  x: new Date(key),
+  y: lifted
+});
+
     });
 
     result.sort((a,b)=>a.x-b.x);
@@ -2025,6 +2267,43 @@ const dataToPlot = groupByMinute(
     "average"       // "last" bhi use kar sakte ho
 );
 
+// ⭐ STEP 1 — Alarm API YAHAN FETCH KARO
+const alarmsRaw = await (await fetch(
+    API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`
+)).json();
+
+/* 🔴 Alarm marker points */
+const alarmPoints = [];
+
+alarmsRaw.forEach(a => {
+
+    if (a.DEVICE_ID !== device.DEVICE_ID) return;
+
+    // agar incubator ya multi param device hai
+    if (
+        window.currentGraphParameterId &&
+        String(a.PARAMETER_ID) !== String(window.currentGraphParameterId)
+    ) return;
+
+    const alarmTime = new Date(
+        (a.ALARM_DATE || a.CREATED_DATE || a.DATE) + "T" +
+        (a.ALARM_TIME || a.CREATED_TIME)
+    );
+
+    // nearest reading dhundo
+    const closest = dataToPlot.find(p =>
+        Math.abs(new Date(p.x) - alarmTime) < 60000
+    );
+
+    if (closest) {
+        alarmPoints.push({
+            x: closest.x,
+            y: closest.y
+        });
+    }
+
+});
+
 // 🔥 Update AVG box for selected time range
 updateAverageBox(dataToPlot, param, masteruom);
 
@@ -2121,21 +2400,35 @@ gradient.addColorStop(1, "rgba(13,110,253,0)");
 window.deviceChart = new Chart(ctx,{
   type: "line",
   data: {
-    datasets: [
-      {
-        label: device.DEVICE_NAME,
-        data: dataToPlot,
-        borderColor: "#0d6efd",
-        backgroundColor: gradient,
-        fill: false,
-        tension: 0.25,
-        cubicInterpolationMode: 'monotone',
-        borderWidth: 2.5,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-        hitRadius: 15         // hover easy
-      }
-    ]
+datasets: [
+
+  // 🔵 Normal graph line
+  {
+    label: device.DEVICE_NAME,
+    data: dataToPlot,
+    borderColor: "#0d6efd",
+    backgroundColor: gradient,
+    fill: false,
+    tension: 0.25,
+    cubicInterpolationMode: 'monotone',
+    borderWidth: 2.5,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    hitRadius: 15
+  },
+
+  // 🔴 Alarm red dots
+  {
+    label: "Alarms",
+    data: alarmPoints,
+    showLine: false,
+    pointBackgroundColor: "red",
+    pointBorderColor: "white",
+    pointRadius: 5,
+    pointHoverRadius: 7
+  }
+
+]
   },
 
   options: {
@@ -2144,10 +2437,13 @@ window.deviceChart = new Chart(ctx,{
 
     plugins: {
       legend: { display: false },
+
+      
       tooltip: {
         callbacks: {
-          label: ctx => "Reading : " + Math.round(ctx.parsed.y)
+          label: ctx => "Reading : " + Math.round(ctx.raw.y)
         }
+
       }
     },
 
@@ -2158,14 +2454,14 @@ window.deviceChart = new Chart(ctx,{
       },
       y: {
         beginAtZero: false,
-        grace: '0.5%',
-        grid: { color: "rgba(0,0,0,0.05)" },
+        grace: '15%',
+        grid: { color: "rgba(0,0,0,0.06)" },
 
         ticks: {
-          stepSize: 1,
-          precision: 0,
-          callback: function(value){
-            return value;}
+           autoSkip: true,
+           maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8,
+           precision: 0,
+           padding: 6
 
         }
       }
@@ -2176,6 +2472,9 @@ window.deviceChart = new Chart(ctx,{
   plugins: [step5TicksPlugin]
 });
 
+// ✅ YAHI ADD KARNA HAI
+document.getElementById("lastRefreshText").style.display = "inline";
+updateLastRefreshTime();
 
 // window.deviceChart = new Chart(ctx,{
 //   type: "line",
@@ -2298,12 +2597,30 @@ window.deviceChart = new Chart(ctx,{
 
 
     // 🔹 Update alarms
-    const alarmsRaw = await (await fetch(API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
+    // const alarmsRaw = await (await fetch(API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
+
    // 🔹 Detect VOC category
 const isVOCDevice = allCategories.find(c => c.CATEGORY_ID === currentCategoryId)?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
 // 🔹 Filter alarms
-let alarms = alarmsRaw.filter(a => a.DEVICE_ID === device.DEVICE_ID);
+// const now = new Date();
+
+let alarms = alarmsRaw.filter(a => {
+
+    if (a.DEVICE_ID !== device.DEVICE_ID) return false;
+
+    const alarmTime = new Date(
+        (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + "T" +
+        (a.ALARM_TIME || a.CREATED_TIME || '')
+    );
+
+    // ❌ invalid date guard
+    if (isNaN(alarmTime)) return false;
+
+    // ✅ ONLY LAST 24 HOURS
+    return (now - alarmTime) <= (24 * 60 * 60 * 1000);
+});
+
 
 // 🔥 ONLY selected parameter ka alarm dekho (Incubator logic)
 let filteredAlarms = alarms;
@@ -2371,29 +2688,76 @@ alarms.forEach(a => {
     // get parameter name
     const param = masterparameter.find(p => p.PARAMETER_ID == a.PARAMETER_ID);
 
-    alarmBody.innerHTML += `
-        <tr>
-            <td>${device.DEVICE_NAME}</td>
+//     alarmBody.innerHTML += `
+//         <tr>
+//             <td>${device.DEVICE_NAME}</td>
 
-            <td>
-                ${
-                    isIncubator 
-                    ? (param?.PARAMETER_NAME || "Unknown") + " → "
-                    : ""
-                }
-                ${a.READING ?? "-"}
-            </td>
+//             <td>
+//                 ${
+//                     isIncubator 
+//                     ? (param?.PARAMETER_NAME || "Unknown") + " → "
+//                     : ""
+//                 }
+//                 ${a.READING ?? "-"}
+//             </td>
 
-            <td>${a.ALARM_DATE} ${a.ALARM_TIME}</td>
+//             <td>${a.ALARM_DATE} ${a.ALARM_TIME}</td>
 
-            <td>
-                <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
-                    ${isActive ? 'Active' : 'Resolved'}
-                </span>
-            </td>
-        </tr>`;
+//             <td>
+//                 <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
+//                     ${isActive ? 'Active' : 'Resolved'}
+//                 </span>
+//             </td>
+//         </tr>`;
+// });
+
+const raisedTime = formatDateTimeDDMMYY(a.ALARM_DATE, a.ALARM_TIME);
+
+// 🔹 Resolution time (sirf resolved alarm ke liye)
+const resolutionTime =
+    !isActive
+        ? formatDateTimeDDMMYY(
+            a.RESOLVED_DATE || a.NORMALIZED_DATE || a.ALARM_DATE,
+            a.RESOLVED_TIME || a.NORMALIZED_TIME || a.ALARM_TIME
+          )
+        : "-";
+
+alarmBody.innerHTML += `
+    <tr>
+        <!-- Device -->
+        <td data-label="Device">
+          ${device.DEVICE_NAME}</td>
+
+        <!-- Alarm (integer value) -->
+        <td data-label="Alarm">
+            ${
+                isIncubator
+                ? (param?.PARAMETER_NAME || "Unknown") + " → "
+                : ""
+            }
+             ${a.READING !== null
+        ? Math.round(a.READING) + " " + 
+          (masteruom.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "")
+          : "-"
+          }
+        </td>
+
+        <!-- Raised Time -->
+        <td data-label="Raised Time">
+          ${raisedTime}</td>
+
+        <!-- Alarm Resolution Time -->
+        <td data-label="Resolution Time">
+          ${resolutionTime}</td>
+
+        <!-- Status (unchanged) -->
+        <td data-label="Status">
+            <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
+                ${isActive ? 'Active' : 'Resolved'}
+            </span>
+        </td>
+    </tr>`;
 });
-
 filterAlarmTableLast24h();
 
 document.getElementById("alarm24h").textContent =
@@ -2413,8 +2777,27 @@ if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshIn
 }
 
 document.querySelector('.navbar-toggler').addEventListener('click', () => {
+
   document.querySelector('.sidebar').classList.toggle('active');
+
 });
+
+
+
+/* ⭐ OPTIONAL PRO UX */
+document.addEventListener("click", function(e){
+
+  const sidebar = document.querySelector(".sidebar");
+  const toggle = document.querySelector(".navbar-toggler");
+
+  if(!sidebar.contains(e.target) && !toggle.contains(e.target)){
+      sidebar.classList.remove("active");
+  }
+
+});
+
+
+
 
 
 // Event listeners
@@ -2604,8 +2987,8 @@ function markActiveRange(mins){
 function setNavbarOrgCentre(orgName, centreName){
 
     // show always
-    document.getElementById("navbarOrgLabel").style.display="block";
-    document.getElementById("navbarCentreLabel").style.display="block";
+   // document.getElementById("navbarOrgLabel").style.display="block";
+   // document.getElementById("navbarCentreLabel").style.display="block";
 
     // set text values
     document.getElementById("navbarOrgName").innerText = orgName || "-";
@@ -2614,6 +2997,52 @@ function setNavbarOrgCentre(orgName, centreName){
     // also store
     localStorage.setItem("ORG_NAME", orgName || "");
     localStorage.setItem("CENTRE_NAME", centreName || "");
+
+    document.getElementById("mobileOrgName").innerText = orgName || "-";
+document.getElementById("mobileCentreName").innerText = centreName || "-";
+
+}
+
+async function updateSummaryLive(){
+
+    if(!currentCentreId) return;
+
+    try{
+
+        const readingsDataRaw = await (
+            await fetch(API.devicereadinglog + `?centre=${currentCentreId}`)
+        ).json();
+
+        const now = new Date();
+
+        allDevices.forEach(device=>{
+
+            const deviceReadings = readingsDataRaw
+                .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+                .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
+
+            const latest = deviceReadings[deviceReadings.length-1];
+
+            if(!latest){
+                device.status = "offline";
+                return;
+            }
+
+            const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
+
+            device.status =
+                (now - readingTime <= 15*60*1000)
+                ? "active"
+                : "offline";
+
+        });
+
+        updateSummary();
+
+    }
+    catch(err){
+        console.error("Summary Live Error:",err);
+    }
 }
 
 
@@ -2626,6 +3055,9 @@ function setNavbarOrgCentre(orgName, centreName){
 
     // 🔹 Add role-based access control
     handleRoleDisable();
+
+        // 🔥 START LIVE SUMMARY
+    setInterval(updateSummaryLive,10000);
 })();
 
 </script>
