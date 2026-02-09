@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
-from rest_framework.permissions import AllowAny, IsAuthenticated
+# from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
@@ -235,18 +235,58 @@ def current_user_api(request):
         "ROLE_ID": role,
     })
 
-
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def user_org_centre_api(request):
-    """Return user's Organization and Centre mapping"""
-    user_id = request.GET.get("USER_ID")
-    if not user_id:
-        return Response({"error": "USER_ID required"}, status=400)
+    """
+    Return logged-in user's Organization & Centre mapping
+    SESSION BASED (FINAL)
+    """
 
-    links = UserOrganizationCentreLink.objects.filter(USER_ID=user_id)
+    user_id = request.session.get("user_id")
+
+    if not user_id:
+        return Response(
+            {"detail": "Not logged in"},
+            status=401
+        )
+
+    links = UserOrganizationCentreLink.objects.filter(
+        USER_ID_id=user_id
+    )
+
     serializer = UserOrganizationCentreLinkSerializer(links, many=True)
     return Response(serializer.data)
+
+
+# @api_view(["GET"])
+# @permission_classes([AllowAny])
+# def user_org_centre_api(request):
+#     """
+#     Return user's Organization and Centre mapping
+#     SAFE VERSION — undefined / empty handle karega
+#     """
+
+#     user_id = request.GET.get("USER_ID")
+
+#     # 🔒 SAFETY NET (MOST IMPORTANT)
+#     if not user_id or user_id == "undefined":
+#         return Response(
+#             {"error": "Invalid or missing USER_ID"},
+#             status=400
+#         )
+
+#     try:
+#         user_id = int(user_id)
+#     except ValueError:
+#         return Response(
+#             {"error": "USER_ID must be a number"},
+#             status=400
+#         )
+
+#     links = UserOrganizationCentreLink.objects.filter(USER_ID=user_id)
+#     serializer = UserOrganizationCentreLinkSerializer(links, many=True)
+#     return Response(serializer.data)
 
 
 # from datetime import date
@@ -290,38 +330,63 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import MasterDevice, MasterSubscriptionInfo, Master_Plan_Type, SubscriptionHistory
+from datetime import date
+
 
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def devicecheck(request, device_id):
 
-    # ✅ Check if device exists
     device = get_object_or_404(MasterDevice, DEVICE_ID=device_id)
+    today = date.today()
 
-    # ✅ Get latest subscription history entry for this device
-    sub = SubscriptionHistory.objects.filter(Device_ID=device_id).last()
+    # 1️⃣ Pehle ACTIVE subscription dhundo
+    sub = (
+        SubscriptionHistory.objects
+        .filter(
+            Device_ID=device_id,
+            Subscription_Start_date__lte=today,
+            Subcription_End_date__gte=today
+        )
+        .order_by('-Subscription_Start_date')
+        .first()
+    )
+
+    # 2️⃣ Agar active nahi mili → FUTURE subscription
+    if not sub:
+        sub = (
+            SubscriptionHistory.objects
+            .filter(
+                Device_ID=device_id,
+                Subscription_Start_date__gt=today
+            )
+            .order_by('Subscription_Start_date')
+            .first()
+        )
+
+    # 3️⃣ Agar kuch bhi nahi mila
     if not sub:
         return Response({
             "device_id": device_id,
             "plan_type": None,
-            "valid_till": None
+            "valid_till": None,
+            "status": "No Subscription"
         })
 
-    # ✅ Fetch plan type
     plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
-    plan_type = plan.Plan_Name if plan else "Unknown"
 
-    # ✅ Fetch package name
-    # package = MasterSubscriptionInfo.objects.filter(Subscription_ID=sub.Subscription_ID).first()
-    # package_name = package.Package_Name if package else "Unknown"
-
-    # ✅ Return final response
     return Response({
         "device_id": device_id,
-        "plan_type": plan_type,
-        "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None
+        "plan_type": plan.Plan_Name if plan else "Unknown",
+        "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
+        "status": (
+            "Future" if today < sub.Subscription_Start_date
+            else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
+            else "Active"
+        )
     })
+
 
 # ================================
 # Twilio Call Status Webhook
