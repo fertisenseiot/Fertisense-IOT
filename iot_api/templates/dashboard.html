@@ -190,7 +190,7 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
-//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
@@ -1243,7 +1243,7 @@ if (type === "number") {
   });
 
   // ===== Dependent dropdown logic (ONLY if NOT userorganizationcentrelink) =====
-if (currentTable === "userorganizationcentrelink") {
+if (currentTable === "userorganizationcentrelink" || currentTable === "masterdevices") {
   const orgDropdown = fieldsDiv.querySelector(
     'select[name="ORG_ID"], select[name="ORGANIZATION_ID"]'
   );
@@ -1294,6 +1294,22 @@ function closeModal(){
 
 // ===== submit (add / edit) =====
 document.getElementById('crudForm').addEventListener('submit', async function(e){
+
+  // ❌ undefined / empty values backend ko mat bhejo
+Object.keys(payload).forEach(k => {
+  if (payload[k] === "" || payload[k] === undefined) {
+    delete payload[k];
+  }
+});
+
+ // 🔥 Mandatory fields check
+if (currentTable === "userorganizationcentrelink") {
+  if (!payload.USER_ID || !payload.ORGANIZATION_ID || !payload.CENTRE_ID) {
+    alert("USER, ORGANIZATION aur CENTRE select karna mandatory hai");
+    return;
+  }
+}
+
   e.preventDefault();
   const form = new FormData(this); 
   let payload = {};
