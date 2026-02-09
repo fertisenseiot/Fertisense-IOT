@@ -920,7 +920,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+ // const BASE_URL ="http://127.0.0.1:8000";
 //const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -934,6 +934,7 @@ const API = {
   masteruom: BASE_URL + "/api/masteruom/",
   createuser: BASE_URL+"/api/masteruser/",
   masterparameter: BASE_URL + "/api/masterparameter/",
+  devicestatusalarmlog: BASE_URL + "/api/devicestatusalarmlog"
 };
 
 // 🔥 GLOBAL CACHES
@@ -955,10 +956,26 @@ window.currentGraphParameterId = null;   // incubator ke liye active parameter
 // ------------- LOAD DATA -------------
 async function loadOrganizations(){
   try{
-    const userRes = await fetch(BASE_URL + "/api/currentuser/");
-    currentUser = await userRes.json();
-    const linkRes = await fetch(API.userorganizationcentrelink + `?USER_ID=${currentUser.USER_ID}`);
+const userRes = await fetch(BASE_URL + "/api/currentuser/", {
+  credentials: "include"
+});
+currentUser = await userRes.json();
+
+   
+    if (!currentUser || !currentUser.USER_ID) {
+    console.error("❌ currentUser not ready", currentUser);
+    return;
+} // added on saturday
+
+    const linkRes = await fetch(API.userorganizationcentrelink, {
+    credentials: "include"
+});
+
     const userLinks = await linkRes.json();
+    if (!Array.isArray(userLinks)) {
+  console.error("❌ userorgcentre API failed", userLinks);
+  return;   // ⛔ yahin function stop
+}
     const allowedOrgIds = userLinks.map(l => l.ORGANIZATION_ID);
 
     const res = await fetch(API.masterorganizations);
@@ -1417,8 +1434,16 @@ async function loadUsersForLink() {
 // 🔹 Load organizations (current user allowed only)
 async function loadOrganizationsForLink() {
   try{
-    const resLinks = await fetch(API.userorganizationcentrelink + `?USER_ID=${currentUser.USER_ID}`);
-    const links = await resLinks.json();
+    const linkRes = await fetch(API.userorganizationcentrelink, {
+  credentials: "include"
+});
+
+     const links = await linkRes.json();   // ✅ CORRECT
+
+     if (!Array.isArray(links)) {
+  console.error("❌ userorgcentre API did not return array", links);
+  return;
+}
     const allowedOrgIds = [...new Set(links.map(l=>l.ORGANIZATION_ID))];
 
     const resOrgs = await fetch(API.masterorganizations);
@@ -1497,7 +1522,9 @@ document.getElementById("saveUserLinkBtn").addEventListener("click", async () =>
 
 async function loadUserOrgCentreLinks() {
   try {
-    const res = await fetch(API.userorganizationcentrelinks);
+    const res = await fetch(API.userorganizationcentrelinks, {
+  credentials: "include"
+});
     let links = await res.json();
 
     // 🔹 Get all users, orgs, centres to map names
@@ -1565,7 +1592,11 @@ function backToDashboard(){
   window.currentDeviceGraphDeviceId = null;
 }
 
-function logout(){ fetch('/logout/').then(()=>window.location='/login/'); }
+function logout(){
+  fetch('/logout/', { credentials: "include" })
+    .then(()=>window.location='/login/');
+}
+
 
 // ------------- LIVE UPDATES -------------
 // ------------- LIVE UPDATES -------------
@@ -2314,6 +2345,12 @@ const alarmsRaw = await (await fetch(
     API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`
 )).json();
 
+// ⭐ STEP 1.1 — DEVICE OFFLINE / ONLINE ALARM FETCH
+const statusAlarmsRaw = await (await fetch(
+    API.devicestatusalarmlog + `?device=${device.DEVICE_ID}`
+)).json();
+
+
 /* 🔴 Alarm marker points */
 const alarmPoints = [];
 
@@ -2663,6 +2700,26 @@ let alarms = alarmsRaw.filter(a => {
     return (now - alarmTime) <= (24 * 60 * 60 * 1000);
 });
 
+const offlineEvents = statusAlarmsRaw.map(s => ({
+    DEVICE_ID: s.DEVICE_ID,
+
+    PARAMETER_ID: null, // status alarm
+
+    ALARM_TEXT: "DEVICE OFFLINE",
+
+    // 🔴 offline kab hua
+    ALARM_DATE: s.CREATED_ON_DATE,
+    ALARM_TIME: s.CREATED_ON_TIME,
+
+    // 🟢 online kab hua
+    RESOLVED_DATE: s.IS_ACTIVE === 0 ? s.UPDATED_ON_DATE : null,
+    RESOLVED_TIME: s.IS_ACTIVE === 0 ? s.UPDATED_ON_TIME : null,
+
+    IS_ACTIVE: s.IS_ACTIVE
+}));
+
+
+
 
 // 🔥 ONLY selected parameter ka alarm dekho (Incubator logic)
 let filteredAlarms = alarms;
@@ -2696,6 +2753,9 @@ if (isVOCDevice) {
 }
 
 // Use robust sorting like devicealarmlog
+// 🔥 PARAMETER + OFFLINE ALARMS MERGE
+// alarms = [...alarms, ...offlineEvents];
+
 alarms = alarms.sort((a, b) => {
     const aDateTime = new Date(
         (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || '')
@@ -2716,6 +2776,45 @@ alarms = alarms.sort((a, b) => {
 
 const alarmBody = document.getElementById("alarmLog");
 alarmBody.innerHTML = "";
+const deviceStatusAlarm = statusAlarmsRaw
+  .filter(s => s.DEVICE_ID === device.DEVICE_ID)
+  .sort((a,b)=>{
+    const aTime = new Date(a.CREATED_ON_DATE + "T" + a.CREATED_ON_TIME);
+    const bTime = new Date(b.CREATED_ON_DATE + "T" + b.CREATED_ON_TIME);
+    return bTime - aTime;
+  })[0]; // 🔥 latest only
+
+if (deviceStatusAlarm) {
+
+  const raisedTime = formatDateTimeDDMMYY(
+    deviceStatusAlarm.CREATED_ON_DATE,
+    deviceStatusAlarm.CREATED_ON_TIME
+  );
+
+  const resolvedTime =
+    deviceStatusAlarm.IS_ACTIVE === 0
+      ? formatDateTimeDDMMYY(
+          deviceStatusAlarm.UPDATED_ON_DATE,
+          deviceStatusAlarm.UPDATED_ON_TIME
+        )
+      : "-";
+
+  alarmBody.innerHTML += `
+    <tr>
+      <td data-label="Device">${device.DEVICE_NAME}</td>
+      <td data-label="Alarm">DEVICE OFFLINE</td>
+      <td data-label="Raised Time">${raisedTime}</td>
+      <td data-label="Resolution Time">${resolvedTime}</td>
+      <td data-label="Status">
+        <span class="badge ${deviceStatusAlarm.IS_ACTIVE ? "bg-danger" : "bg-success"}">
+          ${deviceStatusAlarm.IS_ACTIVE ? "Active" : "Resolved"}
+        </span>
+      </td>
+    </tr>
+  `;
+}
+
+
 let activeCount = 0;
 
 alarms.forEach(a => {
@@ -2728,7 +2827,10 @@ alarms.forEach(a => {
     const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
 
     // get parameter name
-    const param = masterparameter.find(p => p.PARAMETER_ID == a.PARAMETER_ID);
+const param = a.PARAMETER_ID
+    ? masterparameter.find(p => p.PARAMETER_ID == a.PARAMETER_ID)
+    : null;
+
 
 //     alarmBody.innerHTML += `
 //         <tr>
@@ -2764,6 +2866,8 @@ const resolutionTime =
           )
         : "-";
 
+        
+
 alarmBody.innerHTML += `
     <tr>
         <!-- Device -->
@@ -2771,18 +2875,23 @@ alarmBody.innerHTML += `
           ${device.DEVICE_NAME}</td>
 
         <!-- Alarm (integer value) -->
-        <td data-label="Alarm">
-            ${
-                isIncubator
-                ? (param?.PARAMETER_NAME || "Unknown") + " → "
-                : ""
-            }
-             ${a.READING !== null
-        ? Math.round(a.READING) + " " + 
-          (masteruom.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "")
+       <td data-label="Alarm">
+  ${
+    a.ALARM_TEXT
+      ? a.ALARM_TEXT
+      : (
+          isIncubator
+            ? (param?.PARAMETER_NAME || "Unknown") + " → "
+            : ""
+        ) +
+        (a.READING !== null
+          ? Math.round(a.READING) + " " +
+            (masteruom.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "")
           : "-"
-          }
-        </td>
+        )
+  }
+</td>
+
 
         <!-- Raised Time -->
         <td data-label="Raised Time">
