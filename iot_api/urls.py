@@ -12,7 +12,7 @@ from .views import (
     DeviceReadingLogViewSet, MasterDeviceViewSet, CompassDatesViewSet,
     MasterOrganizationViewSet, MasterParameterViewSet, MasterSensorViewSet,
     SeUserViewSet, SensorParameterLinkViewSet, DeviceSensorLinkViewSet,
-    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet)
+    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet)
 
 # Router setup
 router = routers.DefaultRouter()
@@ -39,6 +39,7 @@ router.register(r'mastersubscriptioninfo', MasterSubscriptionInfoViewSet)
 router.register(r'masterplantype', MasterPlanTypeViewSet)
 router.register(r'subscriptionhistory', Subscription_HistoryViewSet)
 router.register(r'devicestatusalarmlog', DeviceStatusAlarmLogViewSet)
+router.register(r'emailreportlog', EmailReportLogViewSet)
 
 
 urlpatterns = [
