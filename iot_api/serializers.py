@@ -6,7 +6,7 @@ from .models import (
     DeviceReadingLog, MasterDevice, CompassDates,
     MasterOrganization, MasterParameter, MasterSensor,
     SeUser, SensorParameterLink, DeviceSensorLink,
-    DeviceAlarmCallLog, DeviceAlarmLog, MasterUOM,MasterCentre, MasterRole , CentreOrganizationLink, MasterUser, UserOrganizationCentreLink,MasterNotificationTime,DeviceCategory, MasterSubscriptionInfo, Master_Plan_Type, SubscriptionHistory,DeviceStatusAlarmLog
+    DeviceAlarmCallLog, DeviceAlarmLog, MasterUOM,MasterCentre, MasterRole , CentreOrganizationLink, MasterUser, UserOrganizationCentreLink,MasterNotificationTime,DeviceCategory, MasterSubscriptionInfo, Master_Plan_Type, SubscriptionHistory,DeviceStatusAlarmLog , EmailReportLog
 )
 
 # -------------------------
@@ -249,3 +249,8 @@ class DeviceStatusAlarmLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceStatusAlarmLog
         fields = "__all__"
+
+class EmailReportLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailReportLog
+        fields = '__all__'
