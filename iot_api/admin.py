@@ -10,7 +10,7 @@ from .models import (
     MasterParameter,
     MasterSensor,
     SeUser,
-    SensorParameterLink, MasterRole , CentreOrganizationLink , MasterUser, UserOrganizationCentreLink,MasterNotificationTime,DeviceCategory , MasterSubscriptionInfo , Master_Plan_Type , SubscriptionHistory,DeviceStatusAlarmLog
+    SensorParameterLink, MasterRole , CentreOrganizationLink , MasterUser, UserOrganizationCentreLink,MasterNotificationTime,DeviceCategory , MasterSubscriptionInfo , Master_Plan_Type , SubscriptionHistory,DeviceStatusAlarmLog , EmailReportLog
 )
 from django import forms
 # from .models import MasterUser
@@ -190,6 +190,7 @@ class SubscriptionHistoryAdmin(admin.ModelAdmin):
     search_fields = ("id","Device_ID","Subscription_Start_date"	,"Subcription_End_date"	,"Subscription_ID","Plan_ID","Payment_Date")
     list_filter = ("id","Device_ID","Subscription_Start_date"	,"Subcription_End_date"	,"Subscription_ID","Plan_ID","Payment_Date")
 
+# devicestatusalarmlog
 @admin.register(DeviceStatusAlarmLog)
 class DeviceStatusAlarmLogAdmin(admin.ModelAdmin):
     list_display = (
@@ -204,3 +205,18 @@ class DeviceStatusAlarmLogAdmin(admin.ModelAdmin):
     )
     list_filter = ("IS_ACTIVE", "DEVICE_STATUS")
     search_fields = ("DEVICE_ID",)
+
+# email_report_log
+@admin.register(EmailReportLog)
+class EmailReportLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'USER_ID',
+        'RECORD_SELECTION_DATE',
+        'EMAIL_SENT_STATUS',
+        'EMAIL_SENT_DATE',
+        'EMAIL_SENT_TIME'
+    )
+    list_filter = ('EMAIL_SENT_STATUS', 'RECORD_SELECTION_DATE')
+    search_fields = ('USER_ID',)
+    ordering = ('-RECORD_SELECTION_DATE',)
