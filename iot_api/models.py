@@ -925,3 +925,15 @@ def send_device_online_alert(device_id):
 
     for em in unique_emails:
         send_email_brevo(em, subject, html_content)
+
+class EmailReportLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    USER_ID = models.IntegerField()
+    RECORD_SELECTION_DATE = models.DateField()
+    EMAIL_SENT_STATUS = models.BooleanField(default=False)
+    EMAIL_SENT_DATE = models.DateField(null=True, blank=True)
+    EMAIL_SENT_TIME = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "email_report_log"
+        unique_together = ("USER_ID", "RECORD_SELECTION_DATE")
