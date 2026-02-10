@@ -937,3 +937,4 @@ class EmailReportLog(models.Model):
     class Meta:
         db_table = "email_report_log"
         unique_together = ("USER_ID", "RECORD_SELECTION_DATE")
+        #
