@@ -220,3 +220,4 @@ class EmailReportLogAdmin(admin.ModelAdmin):
     list_filter = ('EMAIL_SENT_STATUS', 'RECORD_SELECTION_DATE')
     search_fields = ('USER_ID',)
     ordering = ('-RECORD_SELECTION_DATE',)
+#
