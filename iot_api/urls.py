@@ -1,432 +1,939 @@
-
-# iot_api/views.py
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
-# from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-
-
-from .models import (
-    MasterDevice, DeviceReadingLog, DeviceAlarmLog, 
-    MasterOrganization, MasterParameter, MasterSensor,
-    CompassDates, SeUser, SensorParameterLink, DeviceSensorLink, DeviceAlarmCallLog , MasterUOM , MasterCentre , MasterRole , CentreOrganizationLink , MasterUser, UserOrganizationCentreLink,MasterNotificationTime , DeviceCategory ,MasterSubscriptionInfo , Master_Plan_Type, SubscriptionHistory,DeviceStatusAlarmLog ,EmailReportLog
-)
-from .serializers import (
-    MasterDeviceSerializer, DeviceReadingLogSerializer, DeviceAlarmLogSerializer,
-    MasterOrganizationSerializer, MasterParameterSerializer, MasterSensorSerializer,
-    CompassDatesSerializer, SeUserSerializer, SensorParameterLinkSerializer,
-    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer ,EmailReportLogSerializer
-)
-
-from django.contrib import messages
-from django.db import connection
-
-
-# -------------------------
-# Login View
-# -------------------------
-def login_view(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT USER_ID, USERNAME, ROLE_ID 
-                FROM master_user 
-                WHERE USERNAME=%s AND PASSWORD=%s
-            """, [username, password])
-            row = cursor.fetchone()
-
-        if row:
-            user_id, username, role = row
-
-            # ✅ Store all details in session
-            request.session["user_id"] = user_id
-            request.session["username"] = username
-            request.session["role"] = role
-
-            # Role ke hisaab se redirect
-            if role == 1:
-                return redirect("dashboard")
-            else:
-                return redirect("user")
-        else:
-            messages.error(request, "Invalid username or password")
-    
-    return render(request, "login.html")
-
-# -------------------------
-# Logout View
-# -------------------------
-def logout_view(request):
-    logout(request)
-    return redirect('login')
-
-def user_dashboard(request):
-    return render(request, "user_dashboard.html")
-
-# -------------------------
-# Dashboard View
-# -------------------------
-# @login_required
-def dashboard_view(request):
-    role = request.session.get("role")
-    if not role:  # agar login nahi hai
-        return redirect("login")
-    if role != 1:  # agar admin nahi hai
-        return redirect("user")  # user dashboard
-
-    context = {
-        'devices_count': MasterDevice.objects.count(),
-        'readings_count': DeviceReadingLog.objects.count(),
-        'alarms_count': DeviceAlarmLog.objects.count(),
-        'organizations_count': MasterOrganization.objects.count(),
-        'parameters_count': MasterParameter.objects.count(),
-        'sensors_count': MasterSensor.objects.count(),
-        'compass_count': CompassDates.objects.count(),
-        'users_count': SeUser.objects.count(),
-        'sensor_links_count': SensorParameterLink.objects.count(),
-        'device_links_count': DeviceSensorLink.objects.count(),
-        'alarm_calls_count': DeviceAlarmCallLog.objects.count(),
-        'uom_count': MasterUOM.objects.count(),
-        'centre_count': MasterCentre.objects.count(),
-        'role_count' : MasterRole.objects.count(),
-        'centre_links_count': CentreOrganizationLink.objects.count(),
-        'master_user_count' : MasterUser.objects.count(),
-        'user_organization_centre_link_count': UserOrganizationCentreLink.objects.count(),
-        'device_category': DeviceCategory.objects.count(),
-        'master_subcriptioninfo': MasterSubscriptionInfo.objects.count(),
-        'plan_type': Master_Plan_Type.objects.count(),
-        'subscription_history': SubscriptionHistory.objects.count(),
-        'devicestatusalarmlog' : DeviceStatusAlarmLog.objects.count(),
-        'emailreportlog' : EmailReportLog.objects.count(),
-
-    }
-    return render(request, 'dashboard.html', context)
-
-# -------------------------
-# SMS Test View
-# -------------------------
-# def some_iot_alert_view(request):
-#     try:
-#         sms_sid = send_sms('+917355383021', 'Alert! IoT device reading high.')
-#         return HttpResponse(f"SMS sent successfully! SID: {sms_sid}")
-#     except Exception as e:
-#         return HttpResponse(f"Failed to send SMS: {e}")
-
-# -------------------------
-# DRF ViewSets for all models
-# -------------------------
-class MasterDeviceViewSet(viewsets.ModelViewSet):
-    queryset = MasterDevice.objects.all()
-    serializer_class = MasterDeviceSerializer
-
-class DeviceReadingLogViewSet(viewsets.ModelViewSet):
-    queryset = DeviceReadingLog.objects.all()
-    serializer_class = DeviceReadingLogSerializer
-
-class DeviceAlarmLogViewSet(viewsets.ModelViewSet):
-    queryset = DeviceAlarmLog.objects.all()
-    serializer_class = DeviceAlarmLogSerializer
-
-class MasterOrganizationViewSet(viewsets.ModelViewSet):
-    queryset = MasterOrganization.objects.all()
-    serializer_class = MasterOrganizationSerializer
-    permission_classes = [AllowAny]   # 👈 yeh add karo
-
-class MasterParameterViewSet(viewsets.ModelViewSet):
-    queryset = MasterParameter.objects.all()
-    serializer_class = MasterParameterSerializer
-
-class MasterSensorViewSet(viewsets.ModelViewSet):
-    queryset = MasterSensor.objects.all()
-    serializer_class = MasterSensorSerializer
-
-class CompassDatesViewSet(viewsets.ModelViewSet):
-    queryset = CompassDates.objects.all()
-    serializer_class = CompassDatesSerializer
-
-class SeUserViewSet(viewsets.ModelViewSet):
-    queryset = SeUser.objects.all()
-    serializer_class = SeUserSerializer
-
-class SensorParameterLinkViewSet(viewsets.ModelViewSet):
-    queryset = SensorParameterLink.objects.all()
-    serializer_class = SensorParameterLinkSerializer
-
-class DeviceSensorLinkViewSet(viewsets.ModelViewSet):
-    queryset = DeviceSensorLink.objects.all()
-    serializer_class = DeviceSensorLinkSerializer
-
-class DeviceAlarmCallLogViewSet(viewsets.ModelViewSet):
-    queryset = DeviceAlarmCallLog.objects.all()
-    serializer_class = DeviceAlarmCallLogSerializer
-
-class MasterUOMViewSet(viewsets.ModelViewSet):
-    queryset = MasterUOM.objects.all()
-    serializer_class = MasterUOMSerializer
-
-class MasterCentreViewSet(viewsets.ModelViewSet):
-    queryset = MasterCentre.objects.all()
-    serializer_class = MasterCentreSerializer
-
-class MasterRoleViewSet(viewsets.ModelViewSet):
-    queryset = MasterRole.objects.all()
-    serializer_class = MasterRoleSerializer
-
-class CentreOrganizationLinkViewSet(viewsets.ModelViewSet):
-    queryset = CentreOrganizationLink.objects.all()
-    serializer_class = CentreOrganizationLinkSerializer
-
-class MasterUserViewSet(viewsets.ModelViewSet):
-    queryset = MasterUser.objects.all()
-    serializer_class = MasterUserSerializer
-
-class UserOrganizationCentreLinkViewSet(viewsets.ModelViewSet):
-    queryset = UserOrganizationCentreLink.objects.all()
-    serializer_class = UserOrganizationCentreLinkSerializer
-
-class MasterNotificationTimeViewSet(viewsets.ModelViewSet):
-    queryset = MasterNotificationTime.objects.all()
-    serializer_class = MasterNotificationTimeSerializer
-
-class DeviceCategoryViewSet(viewsets.ModelViewSet):
-    queryset = DeviceCategory.objects.all()
-    serializer_class = DeviceCategorySerializer
-
-class MasterSubscriptionInfoViewSet(viewsets.ModelViewSet):
-    queryset = MasterSubscriptionInfo.objects.all()
-    serializer_class = MasterSubscriptionInfoSerializer
-
-class MasterPlanTypeViewSet(viewsets.ModelViewSet):
-    queryset = Master_Plan_Type.objects.all()
-    serializer_class = Master_PlanTypeSerializer
-
-class Subscription_HistoryViewSet(viewsets.ModelViewSet):
-    queryset = SubscriptionHistory.objects.all()
-    serializer_class = Subscription_HistorySerializer
-
-class DeviceStatusAlarmLogViewSet(viewsets.ModelViewSet):
-    queryset = DeviceStatusAlarmLog.objects.all()
-    serializer_class = DeviceStatusAlarmLogSerializer
-
-class EmailReportLogViewSet(viewsets.ModelViewSet):
-    queryset = EmailReportLog.objects.all()
-    serializer_class = EmailReportLogSerializer
-
-# -------------------------
-# Extra Simple APIs for JS
-# -------------------------
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def current_user_api(request):
-    """Return currently logged in user from session"""
-    user_id = request.session.get("user_id")
-    username = request.session.get("username")
-    role = request.session.get("role")
-
-    if not user_id:
-        return Response({"error": "Not logged in"}, status=401)
-
-    return Response({
-        "USER_ID": user_id,
-        "USERNAME": username,
-        "ROLE_ID": role,
-    })
-
-@api_view(["GET"])
-@permission_classes([AllowAny])
-def user_org_centre_api(request):
-    """
-    Return logged-in user's Organization & Centre mapping
-    SESSION BASED (FINAL)
-    """
-
-    user_id = request.session.get("user_id")
-
-    if not user_id:
-        return Response(
-            {"detail": "Not logged in"},
-            status=401
-        )
-
-    links = UserOrganizationCentreLink.objects.filter(
-        USER_ID_id=user_id
-    )
-
-    serializer = UserOrganizationCentreLinkSerializer(links, many=True)
-    return Response(serializer.data)
-
-
-# @api_view(["GET"])
-# @permission_classes([AllowAny])
-# def user_org_centre_api(request):
-#     """
-#     Return user's Organization and Centre mapping
-#     SAFE VERSION — undefined / empty handle karega
-#     """
-
-#     user_id = request.GET.get("USER_ID")
-
-#     # 🔒 SAFETY NET (MOST IMPORTANT)
-#     if not user_id or user_id == "undefined":
-#         return Response(
-#             {"error": "Invalid or missing USER_ID"},
-#             status=400
-#         )
-
-#     try:
-#         user_id = int(user_id)
-#     except ValueError:
-#         return Response(
-#             {"error": "USER_ID must be a number"},
-#             status=400
-#         )
-
-#     links = UserOrganizationCentreLink.objects.filter(USER_ID=user_id)
-#     serializer = UserOrganizationCentreLinkSerializer(links, many=True)
-#     return Response(serializer.data)
-
-
-# from datetime import date
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
-# from .models import SubscriptionHistory, MasterDevice  # import models as needed
-
-# from datetime import date
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
-# from .models import SubscriptionHistory, MasterSubscriptionInfo
-
-# @api_view(['GET'])
-# def devicecheck(request):
-#     today = date.today()
-#     results = []
-
-#     subscriptions = SubscriptionHistory.objects.all()
-
-#     for sub in subscriptions:
-#         # ✅ Fetch Plan Type Name
-#         plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
-#         plan_name = plan.Plan_Name if plan else "Unknown Plan"
-
-#         # ✅ Append only required fields
-#         results.append({
-#             "Device_ID": sub.Device_ID,
-#             "Plan_Type": plan_name,
-#             "Subcription_End_Date": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None
-#         })
-
-#     return Response({
-#         "date_checked": today.strftime("%Y-%m-%d"),
-#         "devices": results,
-#         "total_count": len(results)
-#     })
-
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import MasterDevice, MasterSubscriptionInfo, Master_Plan_Type, SubscriptionHistory
-from datetime import date
-
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def devicecheck(request, device_id):
-
-    device = get_object_or_404(MasterDevice, DEVICE_ID=device_id)
-    today = date.today()
-
-    # 1️⃣ Pehle ACTIVE subscription dhundo
-    sub = (
-        SubscriptionHistory.objects
-        .filter(
-            Device_ID=device_id,
-            Subscription_Start_date__lte=today,
-            Subcription_End_date__gte=today
-        )
-        .order_by('-Subscription_Start_date')
-        .first()
-    )
-
-    # 2️⃣ Agar active nahi mili → FUTURE subscription
-    if not sub:
-        sub = (
-            SubscriptionHistory.objects
-            .filter(
-                Device_ID=device_id,
-                Subscription_Start_date__gt=today
-            )
-            .order_by('Subscription_Start_date')
-            .first()
-        )
-
-    # 3️⃣ Agar kuch bhi nahi mila
-    if not sub:
-        return Response({
-            "device_id": device_id,
-            "plan_type": None,
-            "valid_till": None,
-            "status": "No Subscription"
-        })
-
-    plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
-
-    return Response({
-        "device_id": device_id,
-        "plan_type": plan.Plan_Name if plan else "Unknown",
-        "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
-        "status": (
-            "Future" if today < sub.Subscription_Start_date
-            else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
-            else "Active"
-        )
-    })
-
-
-# ================================
-# Twilio Call Status Webhook
-# ================================
-from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
+# iot_api/models.py
+from django.db import models
+from django.utils import timezone
+from datetime import datetime
+import requests
+from django.core.mail import send_mail
+import os
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+import pytz
 from django.utils import timezone
 
-@csrf_exempt
-def twilio_call_status(request):
-    if request.method != "POST":
-        return HttpResponse("Method Not Allowed", status=405)
+device_name =""
+dev_reading =""
+upth =""
+lowth=""
+currentreading = ""
 
-    call_sid = request.POST.get("CallSid")
-    status = request.POST.get("CallStatus")
+# ================== SMS Config ==================
+SMS_API_URL = "https://www.universalsmsadvertising.com/universalsmsapi.php"
+SMS_USER = "8960853914"
+SMS_PASS = "8960853914"
+SENDER_ID = "FRTLLP"
 
-    if not call_sid:
-        return HttpResponse("Missing CallSid", status=400)
+# # ================== EMAIL CONFIG ==================
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'testwebservice71@gmail.com'
+# EMAIL_HOST_PASSWORD = 'akuu vulg ejlg ysbt'  # Gmail app password
 
-    if status == "completed":
-        new_status = 1  # COMPLETED
-    elif status in ("no-answer", "busy", "canceled"):
-        new_status = 3  # NO ANSWER
-    elif status == "failed":
-        new_status = 2  # FAILED
-    else:
-        return HttpResponse(f"Ignored status: {status}")
+# for multiple email sending
+def extract_unique_emails(email_list):
+    result = set()
+    for e in email_list:
+        if e:
+            for part in e.split(","):
+                email = part.strip()
+                if email:
+                    result.add(email)
+    return list(result)
 
-    DeviceAlarmCallLog.objects.filter(
-        CALL_SID=call_sid,
-        CALL_STATUS=0
-    ).update(
-        CALL_STATUS=new_status,
-        LST_UPD_DT=timezone.now()
+
+# ================== SMS Function ==================
+def send_sms(phone, message):
+    params = {
+        "user_name": SMS_USER,
+        "user_password": SMS_PASS,
+        "mobile": phone,
+        "sender_id": SENDER_ID,
+        "type": "F",
+        "text": message
+    }
+    # try:
+    #     resp = requests.get(SMS_API_URL, params=params, timeout=10)
+    #     print("🔎 SMS API Response:", resp.text)
+    #     if resp.status_code == 200 and ("success" in resp.text.lower() or "sent" in resp.text.lower()):
+    #         print(f"✅ SMS sent to {phone}")
+    #         return True
+    #     else:
+    #         print(f"❌ SMS failed for {phone}")
+    # except Exception as e:
+    #     print("❌ SMS Error:", e)
+    # return False
+
+    try:
+        resp = requests.get(SMS_API_URL, params=params, timeout=10)
+        print("🔎 SMS API Response:", resp.text)
+
+        response_text = resp.text.lower()
+
+        # --- UniversalSMS success formats ---
+        if (
+            resp.status_code == 200 and (
+                "success" in response_text
+                or "sent" in response_text
+                or "universal" in response_text
+                or response_text.startswith("kp")  # token-based success
+            )
+        ):
+            print(f"✅ SMS sent to {phone}")
+            return True
+        else:
+            print(f"❌ SMS failed for {phone} - API did not return success keyword")
+            return False
+
+    except Exception as e:
+        print("❌ SMS Error:", e)
+        return False
+
+# ================== Email Function ==================
+def send_email_brevo(to_email, subject, html_content):
+    print("📧 Sending Email via Brevo...")
+
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY")   # <--- NO HARD CODE
+    if not BREVO_API_KEY:
+        print("❌ ERROR: BREVO_API_KEY not found in environment variables!")
+        return
+    try:
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = BREVO_API_KEY
+
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+            sib_api_v3_sdk.ApiClient(configuration)
+        )
+
+        email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": to_email}],
+            sender={"email": "fertisenseiot@gmail.com", "name": "Fertisense"},
+            subject=subject,
+            html_content=html_content
+        )
+
+        response = api_instance.send_transac_email(email)
+        print("✔ Email sent:", response)
+
+    except ApiException as e:
+        print("❌ Email failed:", e)    
+
+
+IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
+
+# ================== Alarm Normalized Alert ==================
+def send_normalized_alert(active_alarm):
+    from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
+
+    device = MasterDevice.objects.filter(DEVICE_ID=active_alarm.DEVICE_ID).first()
+    if not device:
+        print("❌ Device not found")
+        return
+
+    dev_name = device.DEVICE_NAME
+    org_id = device.ORGANIZATION_ID
+    centre_id = device.CENTRE_ID
+    param_id = active_alarm.PARAMETER_ID
+
+    from .models import MasterParameter
+
+    param = MasterParameter.objects.filter(PARAMETER_ID=param_id).first()
+    param_name = param.PARAMETER_NAME if param else f"{param_id}"
+
+
+
+
+    user_ids = list(
+        UserOrganizationCentreLink.objects
+        .filter(ORGANIZATION_ID_id=org_id, CENTRE_ID_id=centre_id)
+        .values_list('USER_ID_id', flat=True)
     )
 
-    return HttpResponse("OK")
+    if not user_ids:
+        print("❌ No users linked to this org/centre")
+        return
 
+    users = MasterUser.objects.filter(USER_ID__in=user_ids)
+
+    phones = [u.PHONE for u in users if u.SEND_SMS]
+    emails = [u.EMAIL for u in users if u.SEND_EMAIL]
+
+    PARAMETER_NORMAL_MSG = {
+    8:f"INFO!! The CO2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
+    9:f"INFO!! The O2 levels are back to normal in {dev_name}. No action is required - Regards Fertisense LLP",
+    4:f"INFO!! The Incubator temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
+    1:f"INFO!! The temperature levels are back to normal for {dev_name}. No action is required - Regards Fertisense LLP",
+    # 5: f"INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
+}
+
+    message = PARAMETER_NORMAL_MSG.get(
+    param_id,
+    f"INFO!! The device readings are back to normal for {dev_name}. No action is required - Regards Fertisense LLP"
+    )
+
+   
+
+    # ---- Normalize, split, strip, deduplicate ----
+    unique_phones = set()
+
+    for p in phones:
+        if p:  # ignore None or empty values
+            for num in p.split(","):
+                num = num.strip()
+                if num:
+                    unique_phones.add(num)
+
+    print("Unique phone numbers:", unique_phones)
+
+    # ---- Send SMS to each unique phone number ----
+    for phone in unique_phones:
+        send_sms(phone, message)
+
+    if emails:
+        subject = f"Device {dev_name} | {param_name} reading is now in acceptable range"
+
+    html_content = f"""
+        <h2>Device Reading Normalized</h2>
+        <p><strong>Device:</strong> {dev_name}</p>
+        <p><strong>{param_name}</strong></p>
+        <p>The device's {param_name} readings have now returned to a normal acceptable range.</p>
+        <p>Regards,<br>Fertisense IoT Monitoring System</p>
+    """
+
+    unique_emails = extract_unique_emails(emails)
+    print("📧 Unique emails (normalized alert):", unique_emails)
+
+    for em in unique_emails:
+        send_email_brevo(em, subject, html_content)
+
+
+
+
+# ================== Device Reading Log ==================
+class DeviceReadingLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    DEVICE_ID = models.IntegerField()
+    SENSOR_ID = models.IntegerField()
+    PARAMETER_ID = models.IntegerField()
+    READING_DATE = models.DateField(null=True, blank=True)
+    READING_TIME = models.TimeField(null=True, blank=True)
+    READING = models.FloatField(null=True)
+    ORGANIZATION_ID = models.IntegerField(null=True)
+    CENTRE_ID = models.IntegerField(null=True)
+
+    class Meta:
+        db_table = "device_reading_log"
+
+    def save(self, *args, **kwargs):
+        from .models import MasterParameter, DeviceAlarmLog
+
+        # 🔹 IST datetime
+        now_dt = timezone.now().astimezone(IST)
+        norm_date = now_dt.date()
+        norm_time = now_dt.time().replace(microsecond=0)
+
+        # 🔹 Step 1: Set reading date/time if not provided
+        if not self.READING_DATE:
+            self.READING_DATE = norm_date
+        if not self.READING_TIME:
+            self.READING_TIME = norm_time
+
+        # 🔹 Step 2: Save reading entry
+        super().save(*args, **kwargs)
+
+        
+        # 🔥🔥🔥 YAHI EXACT JAGAH HAI 🔥🔥🔥
+        # 🔥 READING AAYI = DEVICE ONLINE
+        # 🔔 SMS + EMAIL DONO YAHIN SE JAYENGE
+        send_online_only_sms(self.DEVICE_ID)
+
+        # 🔹 Step 3: Fetch parameter
+        try:
+            param = MasterParameter.objects.get(pk=self.PARAMETER_ID)
+        except MasterParameter.DoesNotExist:
+            print("❌ Parameter not found")
+            return
+
+        if self.READING is None:
+            print("❌ No reading provided")
+            return
+        
+
+        breached = (self.READING > param.UPPER_THRESHOLD or self.READING < param.LOWER_THRESHOLD)
+        
+        # 🔹 Step 4: Check for active alarm
+        active_alarm = (
+    DeviceAlarmLog.objects
+    .filter(
+        DEVICE_ID=self.DEVICE_ID,
+        SENSOR_ID=self.SENSOR_ID,
+        PARAMETER_ID=self.PARAMETER_ID,
+        IS_ACTIVE=1
+    )
+    .order_by('-id')   # 🔥 MOST IMPORTANT LINE
+    .first()
+)
+
+
+
+        print("breached value",breached)
+        # 🔹 Step 5: Handle breached alarm
+        if breached:
+            if not active_alarm:
+                DeviceAlarmLog.objects.create(
+                    DEVICE_ID=self.DEVICE_ID,
+                    SENSOR_ID=self.SENSOR_ID,
+                    PARAMETER_ID=self.PARAMETER_ID,
+                    READING=self.READING,
+                    ORGANIZATION_ID=self.ORGANIZATION_ID or 1,
+                    CENTRE_ID=self.CENTRE_ID,
+                    CRT_DT=norm_date,
+                    LST_UPD_DT=norm_date,
+                    SMS_DATE=None,
+                    SMS_TIME=None,
+                    EMAIL_DATE=None,
+                    EMAIL_TIME=None,
+                    IS_ACTIVE=1
+                    
+                )
+                print(f"🚨 New Alarm created for device {self.DEVICE_ID}")
+        else:
+           # 🔹 Step 6: Handle normalized alarm
+
+                    # Always fetch latest active alarm
+                    active_alarm = (
+                        DeviceAlarmLog.objects
+                        .filter(
+                            DEVICE_ID=self.DEVICE_ID,
+                            SENSOR_ID=self.SENSOR_ID,
+                            PARAMETER_ID=self.PARAMETER_ID,
+                            IS_ACTIVE=1
+                        )
+                        .order_by('-id')
+                        .first()
+                    )
+
+                    # ❌ No active alarm → nothing to do
+                    if not active_alarm:
+                        return
+
+                    # 🔔 CASE-1: Breach SMS was sent → send normalized SMS
+                    if active_alarm.SMS_DATE and active_alarm.SMS_TIME:
+                        print("✅ Alarm normalized after breach, sending normalized SMS")
+                        send_normalized_alert(active_alarm)
+
+                              # 🔥 Save normalized SMS date/time
+                        active_alarm.NORMALIZED_SMS_DATE = norm_date
+                        active_alarm.NORMALIZED_SMS_TIME = norm_time
+                        active_alarm.NORMALIZED_EMAIL_DATE = norm_date
+                        active_alarm.NORMALIZED_EMAIL_TIME = norm_time
+                    else:
+                        # 🟡 CASE-2: Fast normalize → no SMS
+                        print("ℹ Alarm normalized quickly, no breach SMS was sent")
+
+                    # 🔒 ALWAYS close the alarm
+                    active_alarm.IS_ACTIVE = 0
+                    active_alarm.LST_UPD_DT = norm_date
+                    active_alarm.NORMALIZED_DATE = norm_date
+                    active_alarm.NORMALIZED_TIME = norm_time
+
+                    active_alarm.save()
+
+                    print(f"✅ Alarm closed for device {self.DEVICE_ID}")
+
+
+
+
+class CompassDates(models.Model):
+    ORGANIZATION_ID = models.IntegerField()
+    BRANCH_ID = models.IntegerField() 
+    CMPS_DT = models.DateField(null=True, blank=True) 
+    class Meta: 
+        db_table = 'compass_dates' 
+        unique_together = (('ORGANIZATION_ID', 'BRANCH_ID'),) 
+        
+class MasterDevice(models.Model): 
+    DEVICE_MACID =models.CharField(max_length=100,null=True,blank=True) 
+    CENTRE_ID = models.IntegerField(default=1) 
+    DEVICE_ID = models.AutoField(primary_key=True) 
+    DEVICE_NAME = models.CharField(max_length=200) 
+    CATEGORY_ID = models.IntegerField(null=True,blank=True)
+    DEVICE_MNEMONIC = models.CharField(max_length=20, null=True, blank=True) 
+    DEVICE_IP = models.CharField(max_length=30, null=True, blank=True) 
+    DEVICE_STATUS = models.IntegerField(default=1) 
+    DEVICE_STATUS_CD = models.IntegerField(default=1) 
+    ORGANIZATION_ID = models.IntegerField() 
+    CENTRE_ID = models.IntegerField() 
+    CRT_DT = models.DateField(null=True, blank=True) 
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True) 
+    LST_UPD_BY = models.IntegerField(null=True, blank=True) 
+    class Meta:
+        db_table = "iot_api_masterdevice"   # ⭐⭐ EXACT TABLE NAME ⭐⭐
+
+from django.db import models
+
+# -------------------------
+# 1️⃣ Master Organization
+# -------------------------
+class MasterOrganization(models.Model):
+    ORGANIZATION_ID = models.AutoField(primary_key=True)
+    ORGANIZATION_NAME = models.CharField(max_length=200)
+    ORGANIZATION_STATUS = models.IntegerField(default=1)
+    ORGANIZATION_STATUS_CD = models.IntegerField(default=1)
+    CENTRE_ID = models.IntegerField(null=True, blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    MASTER_ORGANIZATION_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.ORGANIZATION_NAME
+
+# -------------------------
+# 2️⃣ Master Parameter
+# -------------------------
+class MasterParameter(models.Model):
+    PARAMETER_ID = models.AutoField(primary_key=True)
+    PARAMETER_NAME = models.CharField(max_length=200)
+    UPPER_THRESHOLD = models.FloatField(null=True, blank=True)
+    LOWER_THRESHOLD = models.FloatField(null=True, blank=True)
+    THRESHOLD = models.FloatField(null=True, blank=True)
+    UOM_ID = models.IntegerField(null=True, blank=True)
+    PARAMETER_STATUS = models.IntegerField(default=1)
+    PARAMETER_STATUS_CD = models.IntegerField(default=1)
+    ORGANIZATION_ID = models.IntegerField(null=True,blank=True)
+    CENTRE_ID = models.IntegerField(null=True,blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    MASTER_PARAMETER_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.PARAMETER_NAME
+
+# -------------------------
+# 3️⃣ Master Sensor
+# -------------------------
+class MasterSensor(models.Model):
+    SENSOR_ID = models.AutoField(primary_key=True)
+    SENSOR_NAME = models.CharField(max_length=200)
+    SENSOR_TYPE = models.CharField(null=True,max_length=100)
+    SENSOR_STATUS = models.IntegerField(default=1)
+    SENSOR_STATUS_CD = models.IntegerField(default=1)
+    ORGANIZATION_ID = models.IntegerField(null=True,blank=True)
+    CENTRE_ID = models.IntegerField(null=True,blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    MASTER_SENSOR_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.SENSOR_NAME
+
+# -------------------------
+# 4️⃣ SE User
+# -------------------------
+class SeUser(models.Model):
+    USER_ID = models.AutoField(primary_key=True)
+    USER_NAME = models.CharField(max_length=250)
+    ROLE_ID= models.IntegerField(null=True)
+    LOGIN_ID = models.CharField(max_length=20)
+    USER_PASSWORD = models.CharField(max_length=20)
+    DB_DRIVER = models.CharField(max_length=35)
+    DB_URL = models.CharField(max_length=50)
+    DB_UNAME = models.CharField(max_length=20)
+    DB_PASSWORD = models.CharField(max_length=20)
+
+    def __str__(self):
+        return self.USER_NAME
+
+# -------------------------
+# 5️⃣ Sensor Parameter Link
+# -------------------------
+class SensorParameterLink(models.Model):
+    SENSOR_ID = models.IntegerField()
+    PARAMETER_ID = models.IntegerField()
+    ORGANIZATION_ID = models.IntegerField(null=True,blank=True)
+    CENTRE_ID = models.IntegerField(null=True,blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    SENSOR_PARAMETER_LINK_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('SENSOR_ID', 'PARAMETER_ID')
+
+# -------------------------
+# 6️⃣ Device Sensor Link
+# -------------------------
+class DeviceSensorLink(models.Model):
+    DEVICE_ID = models.IntegerField()
+    SENSOR_ID = models.IntegerField()
+    ORGANIZATION_ID = models.IntegerField(null=True,blank=True)
+    CENTRE_ID = models.IntegerField(null=True,blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    DEVICE_SENSOR_LINK_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('DEVICE_ID', 'SENSOR_ID')
+
+# -------------------------
+# 7️⃣ Device Alarm Call Log
+# -------------------------
+class DeviceAlarmCallLog(models.Model):
+    DEVICE_ID = models.IntegerField()
+    SENSOR_ID = models.IntegerField(null=True, blank=True)
+    PARAMETER_ID = models.IntegerField(null=True, blank=True)
+    ALARM_ID = models.IntegerField(null=True, blank=True)
+    DEVICE_STATUS_ALARM_ID = models.IntegerField(null=True, blank=True)
+    ALARM_DATE = models.DateField(null=True,blank=True)
+    ALARM_TIME = models.TimeField(null=True,blank=True)
+    PHONE_NUM = models.CharField(max_length=20)
+    CALL_DATE = models.DateField()
+    CALL_TIME = models.TimeField()
+    SMS_CALL_FLAG = models.IntegerField(default=1)
+    REMARKS = models.CharField(max_length=200, null=True, blank=True)
+    ORGANIZATION_ID = models.IntegerField()
+    CENTRE_ID = models.IntegerField()
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    DEVICE_ALARM_CALL_LOG_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+    class CallStatus(models.IntegerChoices):
+     PENDING = 0, 'Pending'   #matlab call abhi ki nahi gai
+     COMPLETED = 1, 'Completed'
+     FAILED = 2, 'Failed'
+     NO_ANSWER = 3, 'No Answer'
+
+    CALL_STATUS = models.IntegerField(
+    choices=CallStatus.choices,
+    default=CallStatus.PENDING
+)
+    CALL_SID = models.CharField(
+    max_length=64,
+    null=True,
+    blank=True,
+    db_index=True
+)
+    class Meta:
+        unique_together = (
+    'DEVICE_ID',
+    'PHONE_NUM',
+    'CALL_DATE',
+    'CALL_TIME',
+    'SMS_CALL_FLAG',
+    'CALL_SID'
+)
+
+
+# -------------------------
+# 8️⃣ Device Alarm Log
+# -------------------------
+class DeviceAlarmLog(models.Model):
+    DEVICE_ID = models.IntegerField()
+    SENSOR_ID = models.IntegerField()
+    PARAMETER_ID = models.IntegerField()
+    ALARM_DATE = models.DateField(auto_now_add=True)   # record create hone par date
+    ALARM_TIME = models.TimeField(auto_now_add=True) 
+    READING = models.FloatField(null=True, blank=True)
+    NORMALIZED_DATE = models.DateField(null=True, blank=True)
+    NORMALIZED_TIME=models.TimeField(null=True,blank=True)
+    SMS_DATE = models.DateField(null=True, blank=True)
+    SMS_TIME = models.TimeField(null=True, blank=True)
+    EMAIL_DATE = models.DateField(null=True, blank=True)
+    EMAIL_TIME = models.TimeField(null=True, blank=True)
+    NORMALIZED_SMS_DATE = models.DateField(null=True, blank=True)
+    NORMALIZED_SMS_TIME = models.TimeField(null=True, blank=True)
+    NORMALIZED_EMAIL_DATE = models.DateField(null=True, blank=True)
+    NORMALIZED_EMAIL_TIME = models.TimeField(null=True, blank=True)
+    ORGANIZATION_ID = models.IntegerField(default=1)
+    CENTRE_ID = models.IntegerField(null=True , blank=True)
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    DEVICE_ALARM_LOG_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+        # 🔥 New field
+    IS_ACTIVE = models.IntegerField(default=1)
+     # 🔥 YE LINE ADD KARO
+    FIRST_SMS_SENT = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = "devicealarmlog"
+        unique_together = ('DEVICE_ID','SENSOR_ID','PARAMETER_ID','ALARM_DATE','ALARM_TIME')
+        
+
+from django.db import models
+
+class MasterUOM(models.Model):
+    UOM_ID = models.AutoField(primary_key=True)   # Auto increment ID
+    UOM_NAME = models.CharField(max_length=200, unique=True)  # Unit name (unique to avoid duplicates)
+    UOM_STATUS = models.BooleanField(default=True)  # Active / Inactive
+    CRT_DT = models.DateTimeField(auto_now_add=True)  # Automatically created date
+    CRT_BY = models.IntegerField(null=True, blank=True)  # Created by (user ID)
+
+    class Meta:
+        db_table = 'master_uom'   # Explicit table name
+        verbose_name = "Unit of Measurement"
+        verbose_name_plural = "Units of Measurement"
+
+    def __str__(self):
+        return self.UOM_NAME
+
+from django.db import models
+
+class MasterCentre(models.Model):
+    CENTRE_ID = models.AutoField(primary_key=True)
+    CENTRE_NAME = models.CharField(max_length=200)
+    CENTRE_STATUS = models.IntegerField(default=1)
+    CENTRE_STATUS_CD = models.IntegerField(default=1)
+    ORGANIZATION_ID = models.IntegerField()   # Kis organization ke andar centre hai
+    CRT_DT = models.DateField(null=True, blank=True)
+    CRT_BY = models.IntegerField(null=True, blank=True)
+    LST_UPD_DT = models.DateField(null=True, blank=True)
+    LST_UPD_BY = models.IntegerField(null=True, blank=True)
+    MASTER_CENTRE_VER = models.TextField(null=True, blank=True)
+    CHANNEL = models.IntegerField(null=True, blank=True)
+    CHANNEL_CD = models.IntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return self.CENTRE_NAME
+    
+    
+    
+from django.db import models
+
+class MasterRole(models.Model):
+     ROLE_ID = models.AutoField(primary_key=True)
+     ROLE_NAME = models.CharField(max_length=100)
+
+class Meta:
+        db_table = "master_role"
+
+def __str__(self):
+        return self.ROLE_NAME
+
+from django.db import models
+
+class CentreOrganizationLink(models.Model):
+
+    ORGANIZATION_ID = models.IntegerField()
+    CENTRE_ID = models.IntegerField()
+
+    class Meta:
+        unique_together = ('ORGANIZATION_ID', 'CENTRE_ID')
+
+class MasterUser(models.Model):
+
+    USER_ID = models.AutoField(primary_key=True)  # Auto increment PK
+    USERNAME = models.CharField(max_length=50, unique=True)
+    PASSWORD = models.CharField(max_length=255)   # Password hash store karo
+    ACTUAL_NAME = models.CharField(max_length=100)
+    ROLE_ID = models.IntegerField(null=True)
+    PHONE= models.CharField(null=True,max_length=100)
+    SEND_SMS = models.IntegerField(null=True)
+    EMAIL = models.CharField(null=True,max_length=500)
+    SEND_EMAIL =models.IntegerField(null=True)
+    CREATED_BY = models.IntegerField(null=True, blank=True)  # Reference to another USER_ID if needed
+    CREATED_ON = models.DateTimeField(auto_now_add=True)     # Auto timestamp
+    VALIDITY_START = models.DateField(null=True, blank=True)
+    VALIDITY_END = models.DateField(null=True, blank=True)
+    PASSWORD_RESET = models.BooleanField(default=False)
+    class Meta:
+        db_table = "master_user"
+    
+    def __str__(self):
+        return self.USERNAME
+    
+
+
+class UserOrganizationCentreLink(models.Model):
+    USER_ID = models.ForeignKey("MasterUser", on_delete=models.CASCADE)
+    ORGANIZATION_ID = models.ForeignKey("MasterOrganization", on_delete=models.CASCADE)
+    CENTRE_ID = models.ForeignKey("MasterCentre", on_delete=models.CASCADE)
+    created_by = models.IntegerField(null=True, blank=True)    
+
+    def __str__(self):
+        return f"{self.USER.USERNAME} → {self.ORGANIZATION.ORGANIZATION_NAME} → {self.CENTRE.CENTRE_NAME}"
+    
+    class Meta:
+        db_table = "userorganizationcentrelink"
+
+
+class MasterNotificationTime(models.Model):
+    ORGANIZATION_ID =models.IntegerField()
+    NOTIFICATION_TIME = models.IntegerField(help_text="Notification time in seconds")
+
+    class Meta:
+        db_table = 'master_notification_time'
+
+
+class DeviceCategory(models.Model):
+    CATEGORY_ID =models.AutoField(primary_key=True)
+    CATEGORY_NAME =models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'device_category'
+
+class MasterSubscriptionInfo(models.Model):
+    Subscription_ID = models.AutoField(primary_key=True)
+    Package_Name = models.CharField(max_length=500)
+    CRT_date = models.DateTimeField(null=True, blank=True)
+    CRT_BY = models.CharField(max_length=45, null=True, blank=True)
+
+    class Meta:
+        db_table = 'Master_Subscription_Info'
+        verbose_name = 'Master Subscription Info'
+        verbose_name_plural = 'Master Subscription Infos'
+
+    def __str__(self):
+        return self.Package_Name    
+    
+class Master_Plan_Type(models.Model):
+    Plan_ID = models.AutoField(primary_key=True)
+    Plan_Name = models.CharField(max_length=500)
+
+    class Meta:
+        db_table = 'Master_Plan_Type'
+
+
+# from datetime import date, timedelta
+# from django.db import models, transaction
+# from datetime import date
+# from django.db import models, transaction
+
+# class SubscriptionHistory(models.Model):
+#     STATUS_CHOICES = (
+#         ('Future', 'Future'),   # Scheduled subscription
+#         ('Active', 'Active'),   # Currently active
+#         ('Expired', 'Expired'), # Already ended
+#     )
+
+#     id = models.AutoField(primary_key=True)
+#     Device_ID = models.IntegerField()
+#     Subscription_Start_date = models.DateField()
+#     Subcription_End_date = models.DateField(null=True, blank=True)
+#     Subscription_ID = models.IntegerField(null=True, blank=True)
+#     Plan_ID = models.IntegerField(null=True, blank=True)
+#     Payment_Date = models.DateField(null=True, blank=True)
+#     Status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Future')
+
+#     class Meta:
+#         db_table = 'Subcription_History'
+#         unique_together = ('Device_ID', 'Subscription_Start_date')
+#         verbose_name = 'Subscription History'
+#         verbose_name_plural = 'Subscription Histories'
+
+#     def __str__(self):
+#         return f"Device {self.Device_ID} | {self.Status} | Start {self.Subscription_Start_date}"
+#     def save(self, *args, **kwargs): today = date.today() # 1️⃣ Decide status based on dates if self.Subcription_End_date and self.Subcription_End_date < today: self.Status = 'Expired' elif self.Subscription_Start_date > today: self.Status = 'Future' else: self.Status = 'Active' with transaction.atomic(): # 2️⃣ Adjust other subscriptions for same device overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk) for o in overlaps: o_today_status = None # Expire if end date passed if o.Subcription_End_date and o.Subcription_End_date < today: o.Status = 'Expired' # Future → Active if start date reached elif o.Subscription_Start_date <= today and (not o.Subcription_End_date or o.Subcription_End_date >= today): o.Status = 'Active' # Otherwise future elif o.Subscription_Start_date > today: o.Status = 'Future' o.save() super().save(*args, **kwargs)
+
+# def save(self, *args, **kwargs):
+#     today = date.today()
+
+#     # 1️⃣ Decide status of current subscription
+#     if self.Subcription_End_date and self.Subcription_End_date < today:
+#         self.Status = 'Expired'
+#     elif self.Subscription_Start_date > today:
+#         self.Status = 'Future'
+#     else:
+#         self.Status = 'Active'
+
+#     super().save(*args, **kwargs)  # Save current first
+
+#     # 2️⃣ Update other subscriptions WITHOUT calling their save()
+#     overlaps = SubscriptionHistory.objects.filter(Device_ID=self.Device_ID).exclude(pk=self.pk)
+
+#     for o in overlaps:
+#         if o.Subcription_End_date and o.Subcription_End_date < today:
+#             new_status = 'Expired'
+#         elif o.Subscription_Start_date > today:
+#             new_status = 'Future'
+#         else:
+#             new_status = 'Expired'   # OLD subscriptions should NEVER be active
+
+#         SubscriptionHistory.objects.filter(pk=o.pk).update(Status=new_status)
+
+from datetime import date
+from django.db import models
+
+class SubscriptionHistory(models.Model):
+
+    STATUS_CHOICES = (
+        ('Future', 'Future'),
+        ('Active', 'Active'),
+        ('Expired', 'Expired'),
+    )
+
+    id = models.AutoField(primary_key=True)
+    Device_ID = models.IntegerField()
+    Subscription_Start_date = models.DateField()
+    Subcription_End_date = models.DateField(null=True, blank=True)
+    Subscription_ID = models.IntegerField(null=True, blank=True)
+    Plan_ID = models.IntegerField(null=True, blank=True)
+    Payment_Date = models.DateField(null=True, blank=True)
+    Status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Future')
+
+    class Meta:
+        db_table = 'Subcription_History'
+        unique_together = ('Device_ID', 'Subscription_Start_date')
+
+@property
+def computed_status(self):
+        today = date.today()
+
+        if today < self.Subscription_Start_date:
+            return "Future"
+
+        if self.Subcription_End_date and today > self.Subcription_End_date:
+            return "Expired"
+
+        return "Active"
+
+
+
+class DeviceStatusAlarmLog(models.Model):
+    DEVICE_STATUS_ALARM_ID = models.AutoField(primary_key=True)
+    DEVICE_ID = models.IntegerField()
+
+    # Scrap / active device flag
+    # 1 = device exists / active, 0 = device scrap
+    DEVICE_STATUS = models.IntegerField(default=1)
+
+    # Alarm for online/offline
+    # 1 = offline alarm active, 0 = normalized (device online now)
+    IS_ACTIVE = models.IntegerField(default=1)
+
+    CREATED_ON_DATE = models.DateField(auto_now_add=True)
+    CREATED_ON_TIME = models.TimeField(auto_now_add=True)
+
+    UPDATED_ON_DATE = models.DateField(null=True, blank=True)
+    UPDATED_ON_TIME = models.TimeField(null=True, blank=True)
+
+    SMS_DATE = models.DateField(null=True, blank=True)
+    SMS_TIME = models.TimeField(null=True, blank=True)
+
+    EMAIL_DATE = models.DateField(null=True, blank=True)
+    EMAIL_TIME = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "device_status_alarm_log"
+
+
+def send_online_only_sms(device_id):
+    from .models import DeviceStatusAlarmLog
+
+    now_dt = timezone.now().astimezone(IST)
+    d = now_dt.date()
+    t = now_dt.time().replace(microsecond=0)
+
+    # last record nikaalo
+    alarm = DeviceStatusAlarmLog.objects.filter(
+        DEVICE_ID=device_id
+    ).order_by('-DEVICE_STATUS_ALARM_ID').first()
+
+    # ❌ agar record hi nahi → pehli baar online, SMS mat bhejo
+    if not alarm:
+        return
+
+    # ❌ agar pehle hi online SMS ja chuka
+    if alarm.IS_ACTIVE == 0:
+        return
+
+    # ✅ bas yahi ek baar SMS
+    send_device_online_alert(device_id)
+
+    alarm.IS_ACTIVE = 0
+    alarm.UPDATED_ON_DATE = d
+    alarm.UPDATED_ON_TIME = t
+    alarm.SMS_DATE = d
+    alarm.SMS_TIME = t
+    alarm.save()
+
+    print("✅ Online SMS sent once")
+
+
+
+def send_device_online_alert(device_id):
+    from .models import MasterDevice, UserOrganizationCentreLink, MasterUser
+
+    device = MasterDevice.objects.filter(DEVICE_ID=device_id).first()
+    if not device:
+        return
+
+    dev_name = device.DEVICE_NAME
+    org_id = device.ORGANIZATION_ID
+    centre_id = device.CENTRE_ID
+
+    # Users linked to org + centre
+    user_ids = UserOrganizationCentreLink.objects.filter(
+        ORGANIZATION_ID_id=org_id,
+        CENTRE_ID_id=centre_id
+    ).values_list('USER_ID_id', flat=True)
+
+    users = MasterUser.objects.filter(USER_ID__in=user_ids)
+
+    # ✅ FINAL ONLINE MESSAGE (tumhara approved msg)
+    message = f"INFO!! The device {dev_name} is back online. No action is required - Regards Fertisense LLP"
+
+    # 📲 SMS
+    phones = set()
+    for u in users:
+        if u.SEND_SMS and u.PHONE:
+            for p in u.PHONE.split(","):
+                phones.add(p.strip())
+
+    for phone in phones:
+        send_sms(phone, message)
+
+    # 📧 Email
+    subject = f"Device Back Online | {dev_name}"
+    html_content = f"""
+        <h2>Device Back Online</h2>
+        <p>The device <strong>{dev_name}</strong> is now online and functioning normally.</p>
+        <p>No action is required.</p>
+        <p>Regards,<br>Fertisense IoT Monitoring System</p>
+    """
+
+    emails = [u.EMAIL for u in users if u.SEND_EMAIL and u.EMAIL]
+
+    unique_emails = extract_unique_emails(emails)
+    print("📧 Unique emails (device online):", unique_emails)
+
+    for em in unique_emails:
+        send_email_brevo(em, subject, html_content)
+
+class EmailReportLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    USER_ID = models.IntegerField()
+    RECORD_SELECTION_DATE = models.DateField()
+    EMAIL_SENT_STATUS = models.BooleanField(default=False)
+    EMAIL_SENT_DATE = models.DateField(null=True, blank=True)
+    EMAIL_SENT_TIME = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "email_report_log"
+        unique_together = ("USER_ID", "RECORD_SELECTION_DATE")
