@@ -202,6 +202,10 @@
 }
 }
 
+#offlineBadge {
+    min-width: 180px;
+    text-align: center;
+}
 
 
 #deviceTypeCards { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-top:50px; }
@@ -328,6 +332,14 @@
    text-align:center;
 }
 
+#offlineBadge {
+    margin-left: 8px;
+    background: linear-gradient(90deg,#dc3545,#b02a37);
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+
+}
+
+
 @media (min-width:769px){
    .alarm-24h-wrapper{
       margin-left:-200px;
@@ -382,6 +394,13 @@
     hr{
     margin:12px 0;
   }
+
+#offlineBadge {
+    width: 100%;
+    max-width: 220px;
+    text-align: center;
+    margin: 6px auto 0 auto;
+}
 
 
   .alarm-table thead {
@@ -719,6 +738,17 @@
     Avg: --
   </div>
 
+  <div id="offlineBadge"
+     style="display:none;
+            background:#dc3545;
+            color:#fff;
+            padding:4px 10px;
+            border-radius:6px;
+            font-size:12px;
+            font-weight:600;">
+</div>
+
+
 </div>
 
 <div id="graphParamLabel"
@@ -920,7 +950,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
- // const BASE_URL ="http://127.0.0.1:8000";
+// const BASE_URL ="http://127.0.0.1:8000";
 //const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -2195,7 +2225,6 @@ console.log(
 
     const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
 
-
     // 🔐 HARD PARAMETER LOCK (FIRST LOAD ONLY)
 // 👉 reading se hi parameter lock karo (safe for multi-parameter devices)
 if (!window.currentGraphParameterId && readingsDataRaw.length) {
@@ -2340,6 +2369,7 @@ const dataToPlot = downsample(
 ); // new fast opening 1
 
 
+
 // ⭐ STEP 1 — Alarm API YAHAN FETCH KARO
 const alarmsRaw = await (await fetch(
     API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`
@@ -2349,6 +2379,86 @@ const alarmsRaw = await (await fetch(
 const statusAlarmsRaw = await (await fetch(
     API.devicestatusalarmlog + `?device=${device.DEVICE_ID}`
 )).json();
+
+// ===== OFFLINE PERIOD FILTER BASED ON CURRENT GRAPH RANGE =====
+let offlinePeriods = [];
+
+statusAlarmsRaw.forEach(s => {
+
+    if (s.DEVICE_ID !== device.DEVICE_ID) return;
+
+    let startTime = new Date(s.CREATED_ON_DATE + "T" + s.CREATED_ON_TIME);
+
+    let endTime = s.IS_ACTIVE === 0
+        ? new Date(s.UPDATED_ON_DATE + "T" + s.UPDATED_ON_TIME)
+        : new Date();
+
+    // completely outside graph window
+    if (endTime < start || startTime > end) return;
+
+    if (startTime < start) startTime = start;
+    if (endTime > end) endTime = end;
+
+    offlinePeriods.push({ start: startTime, end: endTime });
+});
+
+// ==============================
+// 🔥 FORCE ZERO DURING OFFLINE
+// ==============================
+
+offlinePeriods.forEach(p => {
+
+    dataToPlot.forEach(point => {
+
+        if (point.x >= p.start && point.x <= p.end) {
+            point.y = 0;
+        }
+
+    });
+
+});
+
+
+// ============================
+// 🔘 OFFLINE GREY LINE DATA
+// ============================
+
+const offlineLineData = [];
+
+if (dataToPlot.length) {
+
+    const minY = 0;
+
+
+
+    offlinePeriods.forEach(p => {
+
+        // offlineLineData.push(
+        //     { x: p.start, y: minY },
+        //     { x: p.end,   y: minY },
+        //     { x: null,    y: null }   // break line
+        // );
+
+        offlineLineData.push(
+    { 
+        x: p.start, 
+        y: 0,
+        offlineStart: p.start,
+        offlineEnd: p.end
+    },
+    { 
+        x: p.end, 
+      //  y: dataToPlot.find(d => d.x >= p.end)?.y || minY 
+      y: 0,
+      offlineStart: p.start,
+      offlineEnd: p.end
+    },
+    { x: null, y: null }
+);
+
+
+    });
+}
 
 
 /* 🔴 Alarm marker points */
@@ -2383,8 +2493,43 @@ alarmsRaw.forEach(a => {
 
 });
 
+// 🔴 Offline marker points
+const offlineMarkers = offlinePeriods.map(p => {
+    return {
+        x: p.start,
+        y: dataToPlot.length ? dataToPlot[0].y : 0,
+        offlineStart: p.start,
+        offlineEnd: p.end
+    };
+});
+
+
 // 🔥 Update AVG box for selected time range
 updateAverageBox(dataToPlot, param, masteruom);
+
+ 
+// ===== OFFLINE BADGE UPDATE =====
+let totalOffline = 0;
+
+offlinePeriods.forEach(p => {
+    totalOffline += (p.end - p.start);
+});
+
+const totalMinutes = Math.round(totalOffline / 60000);
+
+const badge = document.getElementById("offlineBadge");
+
+if(totalMinutes > 0){
+    const hours = Math.floor(totalMinutes/60);
+    const rem = totalMinutes % 60;
+
+    badge.style.display = "inline-block";
+    badge.innerText = `Offline: ${hours}h ${rem}m`;
+} else {
+    badge.style.display = "none";
+}
+
+
 
 
     const paramName = param?.PARAMETER_NAME?.toLowerCase() || "";
@@ -2481,6 +2626,18 @@ window.deviceChart = new Chart(ctx,{
   data: {
 datasets: [
 
+    // 🔘 OFFLINE GREY LINE (bottom flat)
+  {
+    label: "Offline",
+    data: offlineLineData,
+    borderColor: "#555",
+    borderWidth: 2,
+    tension: 0,
+    fill: false,
+    pointRadius: 0
+  },
+
+
   // 🔵 Normal graph line
   {
     label: device.DEVICE_NAME,
@@ -2489,6 +2646,7 @@ datasets: [
     backgroundColor: gradient,
     fill: false,
     tension: 0.25,
+    spanGaps: true,
     cubicInterpolationMode: 'monotone',
     borderWidth: 2.5,
     pointRadius: 0,
@@ -2507,6 +2665,15 @@ datasets: [
     pointHoverRadius: 7
   }
 
+//   {
+//     label: "Offline",
+//     data: offlineMarkers,
+//     showLine: false,
+//     pointBackgroundColor: "#dc3545",
+//     pointBorderColor: "#fff",
+//     pointRadius: 6,
+//     pointHoverRadius: 8
+// }
 ]
   },
 
@@ -2518,12 +2685,35 @@ datasets: [
       legend: { display: false },
 
       
-      tooltip: {
-        callbacks: {
-          label: ctx => "Reading : " + Math.round(ctx.raw.y)
+tooltip: {
+  callbacks: {
+   
+    
+
+    label: function(ctx){
+
+        if(ctx.dataset.label === "Offline"){
+            const start = new Date(ctx.raw.offlineStart);
+            const end   = new Date(ctx.raw.offlineEnd);
+
+            const durationMs = end - start;
+            const hours = Math.floor(durationMs / (1000*60*60));
+            const minutes = Math.floor((durationMs % (1000*60*60)) / (1000*60));
+
+            return [
+                "DEVICE OFFLINE",
+                "From: " + start.toLocaleString("en-GB"),
+                "To: " + end.toLocaleString("en-GB"),
+                "Duration: " + hours + "h " + minutes + "m"
+            ];
         }
 
-      }
+        return "Reading: " + Math.round(ctx.raw.y);
+    }
+  }
+}
+
+
     },
 
     scales: {
@@ -2532,8 +2722,9 @@ datasets: [
         grid: { display: false }
       },
       y: {
-        beginAtZero: false,
-        grace: '15%',
+        beginAtZero: true,
+        // grace: '10%',
+        min:0,
         grid: { color: "rgba(0,0,0,0.06)" },
 
         ticks: {
