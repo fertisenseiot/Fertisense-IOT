@@ -191,7 +191,7 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
 // const BASE_URL = "http://127.0.0.1:8000"; // direct IP
- const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
 
@@ -813,7 +813,7 @@ function openModal(row){
 }
 
 async function openModal(row ={}){
-  await loadDropdowns(); 
+
   const modalEl = document.getElementById('crudModal');
   const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   modal.show();
@@ -1295,12 +1295,6 @@ function closeModal(){
 // ===== submit (add / edit) =====
 document.getElementById('crudForm').addEventListener('submit', async function(e){
 
-  // ❌ undefined / empty values backend ko mat bhejo
-Object.keys(payload).forEach(k => {
-  if (payload[k] === "" || payload[k] === undefined) {
-    delete payload[k];
-  }
-});
 
  // 🔥 Mandatory fields check
 if (currentTable === "userorganizationcentrelink") {
@@ -1314,6 +1308,14 @@ if (currentTable === "userorganizationcentrelink") {
   const form = new FormData(this); 
   let payload = {};
   form.forEach((v,k)=>payload[k]=v);
+
+    // ❌ undefined / empty values backend ko mat bhejo
+Object.keys(payload).forEach(k => {
+  if (payload[k] === "" || payload[k] === undefined) {
+    delete payload[k];
+  }
+});
+
 
   // Convert checkboxes to boolean
   ["SEND_SMS","SEND_EMAIL"].forEach(f => {
@@ -1335,12 +1337,21 @@ if (currentTable === "userorganizationcentrelink") {
   const id = payload[pk];
   const isEdit = id && id.trim() !== "" ? true : false;
 
+  if (currentTable === "createuser" && isEdit) {
+    delete payload.confirm_password;
+
+    if (!payload.PASSWORD) {
+        delete payload.PASSWORD;
+    }
+}
+
+
   if(!isEdit){
     delete payload[pk];  // add me PK hata do
   }
 
   const url = isEdit ? API[currentTable] + id + "/" : API[currentTable];
-  const method = isEdit ? 'PUT' : 'POST';
+  const method = isEdit ? 'PATCH' : 'POST';
 
   let res = await fetch(url,{
     method: method,
@@ -1370,6 +1381,7 @@ if(isEdit){
 }
   loadTable(currentTable); 
   updateSummary();
+  await loadDropdowns();
 });
 
 function toggleActiveStatus(deviceId, checkbox) {
