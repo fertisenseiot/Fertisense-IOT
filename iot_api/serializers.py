@@ -160,6 +160,8 @@ import re
 class MasterUserSerializer(serializers.ModelSerializer):
     SEND_SMS = serializers.BooleanField(required=False)
     SEND_EMAIL = serializers.BooleanField(required=False)
+    EMAIL = serializers.CharField()
+    PASSWORD = serializers.CharField(required=False, allow_blank=True)
 
     # ✅ MULTIPLE EMAILS ALLOWED
     EMAIL = serializers.CharField()
@@ -188,6 +190,10 @@ class MasterUserSerializer(serializers.ModelSerializer):
         """Strong password validation
            BUT NO HASHING
         """
+
+            # 🔥 If password not provided during update → skip validation
+        if not value:
+            return value
         # Minimum 8 chars, 1 upper, 1 lower, 1 digit, 1 special char
         regex = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$'
         if not re.match(regex, value):
@@ -196,6 +202,16 @@ class MasterUserSerializer(serializers.ModelSerializer):
             )
         # return make_password(value)  # Hash the password before saving
         return value
+    
+    def update(self, instance, validated_data):
+        password = validated_data.get("PASSWORD", None)
+
+        # If password blank, remove it
+        if password == "" or password is None:
+            validated_data.pop("PASSWORD", None)
+
+        return super().update(instance, validated_data)
+
         
 # -------------------------
 # User Organization Centre Link
