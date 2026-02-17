@@ -125,6 +125,19 @@
   text-align: center;
 }
 
+/* 🔥 Custom Summary Colors */
+
+#activeSummaryCard{
+  background-color: #2bc445;
+  color: #0f3d1f;
+}
+
+#offlineSummaryCard{
+  background-color: #F14E45;
+  color: #ffffff;
+}
+
+
 .sidebar .summary-card i {
   font-size: 1.4rem;
   margin-bottom: 4px;
@@ -669,10 +682,10 @@
       <div class="summary-card bg-primary text-center mb-3">
         <i class="bi bi-hdd-network"></i><h6>Total Devices</h6><p id="totalDevices" class="fs-5 fw-bold">0</p>
       </div>
-      <div class="summary-card bg-success text-center mb-3">
+      <div id="activeSummaryCard" class="summary-card text-center mb-3">
         <i class="bi bi-check-circle"></i><h6>Active Devices</h6><p id="activeDevices" class="fs-5 fw-bold">0</p>
       </div>
-      <div class="summary-card bg-danger text-center mb-3">
+      <div id="offlineSummaryCard" class="summary-card text-center mb-3">
         <i class="bi bi-x-circle"></i><h6>Offline Devices</h6><p id="offlineDevices" class="fs-5 fw-bold">0</p>
       </div>
     </div>
@@ -949,8 +962,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
- const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL ="http://127.0.0.1:8000";
 //const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
