@@ -1750,7 +1750,7 @@ const latestReading = filteredReadings[filteredReadings.length - 1]
 
 
     const readingTime = new Date(latestReading.READING_DATE + 'T' + latestReading.READING_TIME);
-    if (now - readingTime <= 15 * 60 * 1000) {
+    if (now - readingTime <= 10 * 60 * 1000) {
         status = "active";
 
         const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(latestReading.PARAMETER_ID));
@@ -1987,20 +1987,45 @@ keys.forEach((k, idx) => {
     const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
     const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
 
+const readingVal = parseFloat(last.READING);
+const lower = parseFloat(param.LOWER_THRESHOLD || 0);
+const upper = parseFloat(param.UPPER_THRESHOLD || 0);
+
+let btnColor = "btn-light";
+let indicator = "";
+
+// 🔥 Only incubator & VOC get threshold button highlight
+if (isMultiParam) {
+
+    if (upper && readingVal > upper) {
+        btnColor = "btn-danger";
+        indicator = " ↑";   // High
+    }
+    else if (lower && readingVal < lower) {
+        btnColor = "btn-danger";
+        indicator = " ↓";   // Low
+    }
+}
+
 displayTargets[idx].innerHTML = `
   <div style="display:flex;
             justify-content:space-between;
             align-items:center;
             width:100%;
             margin-bottom:6px;">
-      <span>${param.PARAMETER_NAME}: ${Math.round(last.READING)} ${uomObj?.UOM_NAME || ''}</span>
-      <button class="btn btn-sm btn-light"
+      <span>
+        ${param.PARAMETER_NAME}: 
+        ${Math.round(readingVal)} ${uomObj?.UOM_NAME || ''}
+      </span>
+
+      <button class="btn btn-sm ${btnColor}"
         style="font-size:10px;padding:2px 8px;"
         data-param="${param.PARAMETER_ID}">
-        View
+        View${indicator}
       </button>
   </div>
 `;
+
 
 
 displayTargets[idx].querySelector("button").onclick = (e) => {
@@ -2099,7 +2124,7 @@ try {
     const last = ownReadings[ownReadings.length - 1];
     const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
 
-    if (Date.now() - dt.getTime() > 15 * 60 * 1000) {
+    if (Date.now() - dt.getTime() > 10 * 60 * 1000) {
         valueEl.innerText = "Offline";
         cardEl.className = "device-card bg-secondary";
         return;
@@ -2925,13 +2950,41 @@ if (window.currentGraphParameterId) {
 const hasActiveAlarm = filteredAlarms.some(a => a.IS_ACTIVE === 1);
 
 const card = document.getElementById(`card_${device.DEVICE_ID}`);
+
+
+const categoryName = category?.CATEGORY_NAME?.toLowerCase() || "";
+
+// ✅ Only incubator & voc ko red hone se bachana hai
+const isSpecial =
+    categoryName.includes("incubator") ||
+    categoryName.includes("voc");
+
+
 if (card) {
-    if (hasActiveAlarm) {
-        card.classList.remove("bg-success");
-        card.classList.add("bg-danger");
-    } else {
-        card.classList.remove("bg-danger");
-        card.classList.add("bg-success");
+
+    // 🟢 Special devices → card always green if online
+    if (isSpecial) {
+
+        if (device.status === "active") {
+            card.classList.remove("bg-secondary");
+            card.classList.add("bg-success");
+        } else {
+            card.classList.remove("bg-success");
+            card.classList.add("bg-secondary");
+        }
+
+    }
+    // 🔴 Normal devices (Refri / Cryo) → old logic same
+    else {
+
+        if (hasActiveAlarm) {
+            card.classList.remove("bg-success");
+            card.classList.add("bg-danger");
+        } else {
+            card.classList.remove("bg-danger");
+            card.classList.add("bg-success");
+        }
+
     }
 }
 
@@ -3384,7 +3437,7 @@ const readingsDataRaw =
             const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
 
             device.status =
-                (now - readingTime <= 15*60*1000)
+                (now - readingTime <= 10*60*1000)
                 ? "active"
                 : "offline";
 
