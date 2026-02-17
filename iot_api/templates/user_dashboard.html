@@ -950,7 +950,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
 <script>
  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+//const BASE_URL ="http://127.0.0.1:8000";
 //const BASE_URL = "http://192.168.0.155:8000"; // direct IP
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -2361,6 +2361,20 @@ if (window.currentGraphParameterId) {
     param = masterparameter.find(
         p => String(p.PARAMETER_ID) === String(dataPoints[0].paramId)
     );
+}
+
+// 🔥 Graph label only for Incubator & VOC
+// const categoryName = category?.CATEGORY_NAME?.toLowerCase() || "";
+
+// const isSpecial =
+    categoryName.includes("incubator") ||
+    categoryName.includes("voc");
+
+if (isSpecial && param) {
+    document.getElementById("graphParamLabel").innerText =
+        "Graph: " + param.PARAMETER_NAME.toUpperCase();
+} else {
+    document.getElementById("graphParamLabel").innerText = "";
 }
 
 
