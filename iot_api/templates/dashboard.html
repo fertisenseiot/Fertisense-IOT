@@ -172,7 +172,12 @@ input:checked + .slider:before { transform: translateX(85px); }
        onclick="showDeviceStatusPopup()">
 <div><h5>Total Devices</h5><h3 id="totalDevices">0</h3></div><i class="bi bi-hdd-network"></i></div></div>
 
-<div class="col-md-3"><div class="summary-card bg-success d-flex justify-content-between align-items-center"><div><h5>Total Parameters</h5><h3 id="totalParameters">0</h3></div><i class="bi bi-sliders"></i></div></div>
+<div class="col-md-3">
+  <div class="summary-card bg-success d-flex justify-content-between align-items-center"
+       style="cursor:pointer"
+       onclick="showParameterPopup()"><div><h5>Total Parameters</h5><h3 id="totalParameters">0</h3></div><i class="bi bi-sliders"></i></div></div>
+
+
 <div class="col-md-3">
   <div class="summary-card bg-warning d-flex justify-content-between align-items-center"
        style="cursor:pointer"
@@ -228,7 +233,7 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
-//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
   const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
@@ -2097,7 +2102,7 @@ if (deviceSubs.length > 0) {
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Live Device Status</h5>
+              <h5 class="modal-title">Live Device Status (10 Min Rule)</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -2343,6 +2348,86 @@ rows = rows.join("");
     console.error("Sensor link popup error:", error);
   }
 }
+
+async function showParameterPopup(){
+
+  try{
+
+    const parameters = [...(dropdownData.parameters || [])]
+      .sort((a,b)=>b.PARAMETER_ID - a.PARAMETER_ID);
+
+    const uoms = dropdownData.uoms || [];
+
+    let rows = parameters.map(p=>{
+
+      const uom = uoms.find(u=>u.UOM_ID == p.UOM_ID);
+
+      return `
+        <tr>
+          <td>${p.PARAMETER_NAME} (${p.PARAMETER_ID})</td>
+          <td>${uom ? uom.UOM_NAME : "-"}</td>
+          <td>${p.LOWER_THRESHOLD ?? "-"}</td>
+          <td>${p.UPPER_THRESHOLD ?? "-"}</td>
+          <td>${p.THRESHOLD ?? "-"}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const modalHtml = `
+      <div class="modal fade" id="parameterPopupModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Parameter Details</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+              <div class="input-group mb-3">
+                <span class="input-group-text">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text"
+                       class="form-control"
+                       placeholder="Search Parameter..."
+                       onkeyup="filterPopupTable(this)">
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Parameter</th>
+                      <th>UOM</th>
+                      <th>Lower Threshold</th>
+                      <th>Upper Threshold</th>
+                      <th>Threshold</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows || "<tr><td colspan='6' class='text-center'>No Parameters Found</td></tr>"}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const old = document.getElementById("parameterPopupModal");
+    if(old) old.remove();
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById("parameterPopupModal"));
+    modal.show();
+
+  }catch(error){
+    console.error("Parameter popup error:", error);
+  }
+}
+
 
 function filterPopupTable(input) {
 
