@@ -81,6 +81,12 @@ input:checked + .slider:before { transform: translateX(85px); }
   color: #999;
 }
 
+.bg-orange {
+  background-color: #fd7e14 !important;
+  color: white;
+}
+
+
 </style>
 </head>
 <body>
@@ -109,8 +115,18 @@ input:checked + .slider:before { transform: translateX(85px); }
 <li><a class="dropdown-item" href="#" onclick="loadTable('master uom')">Uom</a></li>
 <!-- <li><a class="dropdown-item" href="#" onclick="loadTable('se user')">Users</a></li> -->
 <li><a class="dropdown-item" href="#" onclick="loadTable('master role')">Roles</a></li>
-<li><a class="dropdown-item" href="#" onclick="loadTable('sensor parameter link')">Sensor-Parameter Links</a></li>
-<li><a class="dropdown-item" href="#" onclick="loadTable('device sensor link')">Device-Sensor Links</a></li>
+<!-- <li><a class="dropdown-item" href="#" onclick="loadTable('sensor parameter link')">Sensor-Parameter Links</a></li>
+<li><a class="dropdown-item" href="#" onclick="loadTable('device sensor link')">Device-Sensor Links</a></li> -->
+
+<li>
+  <a class="dropdown-item"
+     href="#"
+     onclick="loadTable('device sensor parameter link')">
+     Device-Sensor-Parameter Link
+  </a>
+</li>
+
+
 <li><a class="dropdown-item" href="#" onclick="loadTable('master notification time')">Master Notification Time</a></li>
 
 <!-- <li><a class="dropdown-item" href="#" onclick="loadTable('centre organization link')">Centre-Organization Links</a></li> -->
@@ -150,10 +166,31 @@ input:checked + .slider:before { transform: translateX(85px); }
 <!-- Summary Cards -->
 <div class="container fade-in">
 <div class="row text-white g-4">
-<div class="col-md-3"><div class="summary-card bg-primary d-flex justify-content-between align-items-center"><div><h5>Total Devices</h5><h3 id="totalDevices">0</h3></div><i class="bi bi-hdd-network"></i></div></div>
+<div class="col-md-3">
+  <div class="summary-card bg-primary d-flex justify-content-between align-items-center"
+       style="cursor:pointer"
+       onclick="showDeviceStatusPopup()">
+<div><h5>Total Devices</h5><h3 id="totalDevices">0</h3></div><i class="bi bi-hdd-network"></i></div></div>
+
 <div class="col-md-3"><div class="summary-card bg-success d-flex justify-content-between align-items-center"><div><h5>Total Parameters</h5><h3 id="totalParameters">0</h3></div><i class="bi bi-sliders"></i></div></div>
-<div class="col-md-3"><div class="summary-card bg-warning d-flex justify-content-between align-items-center"><div><h5>Total Sensors</h5><h3 id="totalSensors">0</h3></div><i class="bi bi-thermometer-half"></i></div></div>
-<div class="col-md-3"><div class="summary-card bg-danger d-flex justify-content-between align-items-center"><div><h5>Total Organizations</h5><h3 id="totalOrganizations">0</h3></div><i class="bi bi-building"></i></div></div>
+<div class="col-md-3">
+  <div class="summary-card bg-warning d-flex justify-content-between align-items-center"
+       style="cursor:pointer"
+       onclick="showSensorFullLinkPopup()">
+<div><h5>Total Sensors</h5><h3 id="totalSensors">0</h3></div><i class="bi bi-thermometer-half"></i></div></div>
+
+<div class="col-md-3">
+  <div class="summary-card bg-danger d-flex justify-content-between align-items-center"
+       style="cursor:pointer"
+       onclick="showOrganizationPopup()">
+    <div>
+      <h5>Total Organizations</h5>
+      <h3 id="totalOrganizations">0</h3>
+    </div>
+    <i class="bi bi-building"></i>
+  </div>
+</div>
+
 </div>
 
 
@@ -174,7 +211,8 @@ input:checked + .slider:before { transform: translateX(85px); }
 <div class="modal-dialog">
 <div class="modal-content p-4">
 <h5 id="modalTitle"></h5>
-<form id="crudForm"><div id="modalFields"></div>
+<form id="crudForm" onsubmit="return false;">
+<div id="modalFields"></div>
     <div id="crudMessage" class="alert alert-success d-none"></div> <!-- message div -->
 <div class="mt-3 d-flex justify-content-end">
 <button type="submit" class="btn btn-success me-2"><i class="bi bi-check2"></i> Save</button>
@@ -190,8 +228,8 @@ input:checked + .slider:before { transform: translateX(85px); }
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
-// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
 
@@ -217,8 +255,11 @@ const API = {
   masternotificationtime: BASE_URL + "/api/masternotificationtime/",
   mastersubscriptioninfo: BASE_URL +"/api/mastersubscriptioninfo/",
   masterplantype: BASE_URL +"/api/masterplantype/",
-  mastersubscriptionhistory: BASE_URL +"/api/subscriptionhistory/"
+  mastersubscriptionhistory: BASE_URL +"/api/subscriptionhistory/",
+  
 };
+
+API.devicesensorparameterlink = "virtual";
 
 // ===== Custom header labels =====
 const HEADER_LABELS = {
@@ -365,29 +406,100 @@ function formatTitle(table) {
 
 
 let currentTable="", currentData=[], dropdownData={};const rowStatus = {};// Current active status map for rows
+
 const activeStatusMap = {}; // key = row id, value = true/false
+let dropdownLoaded = false;   // 🔥 ADD THIS LINE
  // tableName_rowId = true/false
 
 
 // ===== preload dropdown datasets =====
+// async function loadDropdowns(){
+//   try{
+//     dropdownData.orgs    = await fetchJSON(API.masterorganizations);
+//     dropdownData.centres = await fetchJSON(API.mastercentre);
+//     dropdownData.uoms    = await fetchJSON(API.masteruom);
+//     dropdownData.devices = await fetchJSON(API.masterdevices);
+//     dropdownData.sensors = await fetchJSON(API.mastersensor);
+//     dropdownData.parameters = await fetchJSON(API.masterparameter);
+//     dropdownData.roles   = await fetchJSON(API.masterrole);
+//     dropdownData.user   = await fetchJSON(API.createuser);
+//     dropdownData.devicescategory = await fetchJSON(API.devicescategory);
+//     dropdownData.mastersubscriptioninfo = await fetchJSON(API.mastersubscriptioninfo)
+//     dropdownData.masterplantype = await fetchJSON(API.masterplantype)
+//     dropdownData.mastersubscriptionhistory = await fetchJSON(API.mastersubscriptionhistory)
+//     dropdownData.devicereadinglog = await fetchJSON(API.devicereadinglog);
+//     dropdownData.devicesensorlink = await fetchJSON(API.devicesensorlink);
+//     dropdownData.sensorparameterlink = await fetchJSON(API.sensorparameterlink);
+
+
+//   }catch(err){
+//     console.error("Dropdown preload failed:", err);
+//   }
+// }
+
 async function loadDropdowns(){
+
+  if (dropdownLoaded) return;   // ✅ Prevent reload
+
   try{
-    dropdownData.orgs    = await fetchJSON(API.masterorganizations);
-    dropdownData.centres = await fetchJSON(API.mastercentre);
-    dropdownData.uoms    = await fetchJSON(API.masteruom);
-    dropdownData.devices = await fetchJSON(API.masterdevices);
-    dropdownData.sensors = await fetchJSON(API.mastersensor);
-    dropdownData.parameters = await fetchJSON(API.masterparameter);
-    dropdownData.roles   = await fetchJSON(API.masterrole);
-    dropdownData.user   = await fetchJSON(API.createuser);
-    dropdownData.devicescategory = await fetchJSON(API.devicescategory);
-    dropdownData.mastersubscriptioninfo = await fetchJSON(API.mastersubscriptioninfo)
-    dropdownData.masterplantype = await fetchJSON(API.masterplantype)
-    dropdownData.mastersubscriptionhistory = await fetchJSON(API.mastersubscriptionhistory)
+
+    const [
+      orgs,
+      centres,
+      uoms,
+      devices,
+      sensors,
+      parameters,
+      roles,
+      users,
+      categories,
+      subsInfo,
+      planType,
+      subsHistory,
+      readings,
+      deviceSensor,
+      sensorParam
+    ] = await Promise.all([
+      fetchJSON(API.masterorganizations),
+      fetchJSON(API.mastercentre),
+      fetchJSON(API.masteruom),
+      fetchJSON(API.masterdevices),
+      fetchJSON(API.mastersensor),
+      fetchJSON(API.masterparameter),
+      fetchJSON(API.masterrole),
+      fetchJSON(API.createuser),
+      fetchJSON(API.devicescategory),
+      fetchJSON(API.mastersubscriptioninfo),
+      fetchJSON(API.masterplantype),
+      fetchJSON(API.mastersubscriptionhistory),
+      fetchJSON(API.devicereadinglog),
+      fetchJSON(API.devicesensorlink),
+      fetchJSON(API.sensorparameterlink)
+    ]);
+
+    dropdownData.orgs = orgs;
+    dropdownData.centres = centres;
+    dropdownData.uoms = uoms;
+    dropdownData.devices = devices;
+    dropdownData.sensors = sensors;
+    dropdownData.parameters = parameters;
+    dropdownData.roles = roles;
+    dropdownData.user = users;
+    dropdownData.devicescategory = categories;
+    dropdownData.mastersubscriptioninfo = subsInfo;
+    dropdownData.masterplantype = planType;
+    dropdownData.mastersubscriptionhistory = subsHistory;
+    dropdownData.devicereadinglog = readings;
+    dropdownData.devicesensorlink = deviceSensor;
+    dropdownData.sensorparameterlink = sensorParam;
+
+    dropdownLoaded = true;  // ✅ Mark loaded
+
   }catch(err){
     console.error("Dropdown preload failed:", err);
   }
 }
+
 
 function sortDescending(table, data) {
   if (!data || data.length === 0) return data;
@@ -459,6 +571,15 @@ function calculateSubscriptionStatus(row) {
 
 // ===== load & draw table =====
 async function loadTable(table) {
+
+  if (normalizeKey(table) === "devicesensorparameterlink") {
+  loadDeviceSensorParameterMaster();
+  return;
+}
+
+
+  localStorage.setItem("lastOpenedTable", table);
+
   currentTable = normalizeKey(table);
   if (!API[currentTable]) {
     console.error("No API for:", table, currentTable);
@@ -617,6 +738,12 @@ if (currentTable === "mastersubscriptionhistory") {
     }
 
       let cellVal = row[h] ?? "";
+
+      // ✅ Convert boolean true/false to Yes/No for SEND_SMS & SEND_EMAIL
+if (h === "SEND_SMS" || h === "SEND_EMAIL") {
+  cellVal = (row[h] === true || row[h] === 1 || row[h] === "true") ? "Yes" : "No";
+}
+
 
       // PK → S_NO numbering
       if (h === pk && ["masterorganizations","mastercentre","masterdevices","mastersensor","masterparameter","masteruom","createuser","masterrole","sensorparameterlink","devicesensorlink","userorganizationcentrelink","masternotificationtime","devicescategory","devicereadinglog","devicealarmlog","mastersubscriptioninfo","masterplantype","mastersubscriptionhistory",].includes(currentTable)) {
@@ -798,7 +925,11 @@ if (currentTable === "mastersensor") {
   }
 }
 // ===== Modal =====
-function addRow(){ openModal({}); }
+function addRow(){
+
+  openModal({});
+}
+
 function editRow(row){ openModal(row); }
 
 function formatFirstWord(str){
@@ -827,34 +958,87 @@ async function openModal(row ={}){
   const fieldsDiv = document.getElementById('modalFields');
   fieldsDiv.innerHTML = "";
 
- if (currentTable === "devicesensorlink") {
-  const getDropdown = (name, data, valueKey, labelKey) => {
-    // Sort by valueKey descending (latest first)
-    const sortedData = [...data].sort((a, b) => b[valueKey] - a[valueKey]);
-
-    return `
-      <div class="mb-3">
-        <label class="form-label">${name.toUpperCase()}</label>
-        <select class="form-select" name="${name}_ID">
-          <option value="">-- Choose ${name.toLowerCase()} --</option>
-          ${sortedData.map(item => `
-            <option value="${item[valueKey]}" ${row?.[`${name}_ID`] == item[valueKey] ? 'selected' : ''}>
-              ${item[labelKey]}
-            </option>
-          `).join('')}
-        </select>
-      </div>
-    `;
-  };
+if (currentTable === "devicesensorparameterlink") {
 
   fieldsDiv.innerHTML = `
-    <input type="hidden" name="${PRIMARY_KEYS[currentTable]}" value="${row?.[PRIMARY_KEYS[currentTable]] ?? ''}">
-    ${getDropdown('DEVICE', dropdownData.devices, 'DEVICE_ID', 'DEVICE_NAME')}
-    ${getDropdown('SENSOR', dropdownData.sensors, 'SENSOR_ID', 'SENSOR_NAME')}
+    <input type="hidden" name="id" value="${row?.id ?? ''}">
+
+    <div class="mb-3">
+      <label class="form-label">DEVICE</label>
+      <select class="form-select" name="DEVICE_ID" id="deviceSelect">
+        <option value="">-- Choose Device --</option>
+        ${(dropdownData.devices || [])
+          .sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID)
+          .map(d=>`
+            <option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>
+              ${d.DEVICE_NAME}
+            </option>`).join("")}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">SENSOR</label>
+      <select class="form-select" name="SENSOR_ID" id="sensorSelect">
+        <option value="">-- Choose Sensor --</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">PARAMETER</label>
+      <select class="form-select" name="PARAMETER_ID" id="parameterSelect">
+        <option value="">-- Choose Parameter --</option>
+      </select>
+    </div>
   `;
 
-  return; // stop execution here, generic code won't run
+  const deviceSelect = document.getElementById("deviceSelect");
+  const sensorSelect = document.getElementById("sensorSelect");
+  const parameterSelect = document.getElementById("parameterSelect");
+
+  function loadSensors(deviceId){
+    sensorSelect.innerHTML =
+      `<option value="">-- Choose Sensor --</option>` +
+      (dropdownData.devicesensorlink || [])
+        .filter(l => l.DEVICE_ID == deviceId)
+        .map(l=>{
+          const s = dropdownData.sensors.find(ss=>ss.SENSOR_ID==l.SENSOR_ID);
+          return s ? `<option value="${s.SENSOR_ID}">${s.SENSOR_NAME}</option>` : "";
+        }).join("");
+  }
+
+  function loadParameters(sensorId){
+    const relatedParams = (dropdownData.sensorparameterlink || [])
+      .filter(sp => sp.SENSOR_ID == sensorId);
+
+    parameterSelect.innerHTML =
+      `<option value="">-- Choose Parameter --</option>` +
+      relatedParams.map(sp=>{
+        const p = dropdownData.parameters.find(pp=>pp.PARAMETER_ID==sp.PARAMETER_ID);
+        return p ? `<option value="${p.PARAMETER_ID}">${p.PARAMETER_NAME}</option>` : "";
+      }).join("");
+  }
+
+  deviceSelect.addEventListener("change", function(){
+    loadSensors(this.value);
+    parameterSelect.innerHTML = `<option value="">-- Choose Parameter --</option>`;
+  });
+
+  sensorSelect.addEventListener("change", function(){
+    loadParameters(this.value);
+  });
+
+  // EDIT MODE PREFILL
+  if(row.DEVICE_ID){
+    loadSensors(row.DEVICE_ID);
+    sensorSelect.value = row.SENSOR_ID;
+
+    loadParameters(row.SENSOR_ID);
+    parameterSelect.value = row.PARAMETER_ID || "";
+  }
+
+  return;
 }
+
 
 
 if (currentTable === "createuser") {
@@ -950,6 +1134,39 @@ if (currentTable === "createuser") {
     </div>
   `;
 
+  // 🔥 Fresh users load (important)
+dropdownData.user = await fetchJSON(API.createuser);
+
+// 🔥 USERNAME duplicate check (NO setTimeout)
+const usernameInput = fieldsDiv.querySelector('input[name="USERNAME"]');
+
+if (usernameInput) {
+
+  let warning = document.createElement("small");
+  warning.style.color = "red";
+  warning.classList.add("d-block", "mt-1");
+  usernameInput.parentNode.appendChild(warning);
+
+  usernameInput.addEventListener("input", function () {
+
+    const value = this.value.trim().toLowerCase();
+
+    const exists = (dropdownData.user || []).some(u =>
+      u.USERNAME.toLowerCase() === value &&
+      u.USER_ID != (row.USER_ID ?? "")
+    );
+
+    if (exists) {
+      warning.innerText = "Username already taken";
+    } else {
+      warning.innerText = "";
+    }
+
+  });
+}
+
+
+
   // Show/Hide password logic
   setTimeout(() => {
     document.getElementById("showPassword")?.addEventListener("change", function() {
@@ -992,10 +1209,13 @@ if (currentTable === "createuser") {
 
 
 
+
   const schema = currentData.length ? Object.keys(currentData[0]) : (FIELD_SCHEMAS[currentTable] || []);
   const pk = PRIMARY_KEYS[currentTable];
 
   schema.forEach(key => {
+      // ❌ created_by skip
+  if (key === "CREATED_BY" || key === "created_by") return;
       // mastersensor ka SENSOR_STATUS add/edit form me skip
   if (currentTable === "mastersensor" && key === "SENSOR_STATUS") return;
   if (currentTable === "masterdevices" && key === "DEVICE_STATUS") return;
@@ -1283,9 +1503,6 @@ if (currentTable === "userorganizationcentrelink" || currentTable === "masterdev
 
 }
 
-
-
-
 function closeModal(){
   const modalEl = document.getElementById('crudModal');
   const instance = bootstrap.Modal.getInstance(modalEl);
@@ -1294,6 +1511,12 @@ function closeModal(){
 
 // ===== submit (add / edit) =====
 document.getElementById('crudForm').addEventListener('submit', async function(e){
+
+  e.preventDefault();
+
+  const form = new FormData(this); 
+  let payload = {};
+  form.forEach((v,k)=>payload[k]=v);
 
 
  // 🔥 Mandatory fields check
@@ -1304,10 +1527,7 @@ if (currentTable === "userorganizationcentrelink") {
   }
 }
 
-  e.preventDefault();
-  const form = new FormData(this); 
-  let payload = {};
-  form.forEach((v,k)=>payload[k]=v);
+
 
     // ❌ undefined / empty values backend ko mat bhejo
 Object.keys(payload).forEach(k => {
@@ -1324,13 +1544,47 @@ Object.keys(payload).forEach(k => {
   });
   
   // 👉 Special case: Device-Sensor Link me Org & Centre auto-attach
-  if(currentTable === "devicesensorlink"){
-    const device = dropdownData.devices.find(d => d.DEVICE_ID == payload.DEVICE_ID);
-    if(device){
-      payload.ORGANIZATION_ID = device.ORGANIZATION_ID;
-      payload.CENTRE_ID = device.CENTRE_ID;
-    }
+if(currentTable === "devicesensorparameterlink"){
+
+  const selectedDevice = payload.DEVICE_ID;
+  const selectedSensor = payload.SENSOR_ID;
+  const selectedParameter = payload.PARAMETER_ID;
+
+  if(!selectedDevice || !selectedSensor || !selectedParameter){
+    alert("All fields required");
+    return;
   }
+
+  const device = dropdownData.devices.find(d=>d.DEVICE_ID==selectedDevice);
+
+  // 1️⃣ Save Device-Sensor
+  await fetch(API.devicesensorlink,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      DEVICE_ID: selectedDevice,
+      SENSOR_ID: selectedSensor,
+      ORGANIZATION_ID: device?.ORGANIZATION_ID,
+      CENTRE_ID: device?.CENTRE_ID
+    })
+  });
+
+  // 2️⃣ Save Sensor-Parameter
+  await fetch(API.sensorparameterlink,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({
+      SENSOR_ID: selectedSensor,
+      PARAMETER_ID: selectedParameter
+    })
+  });
+
+  closeModal();
+  loadDeviceSensorParameterMaster();
+  await loadDropdowns();
+  updateSummary();
+  return;
+}
 
   // primary key detect
   const pk = PRIMARY_KEYS[currentTable];
@@ -1715,9 +1969,495 @@ async function updateSummary(){
   }catch(e){ console.warn("Summary update skipped:", e); }
 }
 
+async function showDeviceStatusPopup() {
+
+  try {
+
+      const devices = [...(dropdownData.devices || [])]
+          .sort((a, b) => b.DEVICE_ID - a.DEVICE_ID);
+
+      const readings = dropdownData.devicereadinglog || [];
+      const subscriptions = dropdownData.mastersubscriptionhistory || [];
+      const packages = dropdownData.mastersubscriptioninfo || [];
+      const plans = dropdownData.masterplantype || [];
+
+
+
+    const now = new Date();
+
+    let deviceRows = devices.map(device => {
+
+      // Filter readings of this device
+      const deviceReadings = readings.filter(r =>
+        r.DEVICE_ID == device.DEVICE_ID
+      );
+
+      let status = "Offline";
+      let badgeClass = "bg-danger";
+      let lastReadingDisplay = "No Data";
+
+      if (deviceReadings.length > 0) {
+
+        // Sort by latest READING_DATE + READING_TIME
+deviceReadings.sort((a, b) => {
+  const aDate = new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]);
+  const bDate = new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]);
+  return bDate - aDate;
+});
+
+// Latest reading
+const cleanTime = deviceReadings[0].READING_TIME.split(".")[0];
+
+const lastReadingTime = new Date(
+  deviceReadings[0].READING_DATE + "T" + cleanTime
+);
+
+lastReadingDisplay = lastReadingTime.toLocaleString();
+
+
+        const diffMinutes = (now - lastReadingTime) / (1000 * 60);
+
+        // 🔥 10 MINUTE RULE
+        if (diffMinutes <= 10) {
+          status = "Online";
+          badgeClass = "bg-success";
+        }
+      }
+
+// ===== Subscription Logic =====
+let subscriptionName = "No Subscription";
+let validTillDisplay = "-";
+let validClass = "bg-secondary";
+
+const deviceSubs = subscriptions
+  .filter(s => s.Device_ID == device.DEVICE_ID)
+  .sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
+
+if (deviceSubs.length > 0) {
+
+  const latestSub = deviceSubs[0];
+
+  const pkg = packages.find(p => p.Subscription_ID == latestSub.Subscription_ID);
+  const plan = plans.find(pl => pl.Plan_ID == latestSub.Plan_ID);
+
+  subscriptionName =
+    (pkg ? pkg.Package_Name : "") +
+    (plan ? ` (${plan.Plan_Name})` : "");
+
+  if (latestSub.Subcription_End_date) {
+
+    const endDate = new Date(latestSub.Subcription_End_date);
+    validTillDisplay = endDate.toLocaleDateString("en-GB");
+
+    const diffDays = (endDate - now) / (1000 * 60 * 60 * 24);
+
+    if (diffDays < 0) {
+      validClass = "bg-danger"; // Expired
+    }
+    else if (diffDays <= 3) {
+      validClass = "bg-warning text-dark"; // 3 days
+    }
+    else if (diffDays <= 15) {
+      validClass = "bg-primary"; // 15 days
+    }
+    else if (diffDays <= 30) {
+      validClass = "bg-orange"; // 1 month
+    }
+    else {
+      validClass = "bg-success"; // Safe
+    }
+  }
+}
+
+
+      return `
+        <tr>
+          <td>${device.DEVICE_NAME}</td>
+          <td>
+            <span class="badge ${badgeClass}">
+              ${status}
+            </span>
+          </td>
+          <td>${lastReadingDisplay}</td>
+           <td>${subscriptionName}</td>
+
+          <td>
+          <span class="badge ${validClass}">
+            ${validTillDisplay}
+          </span>
+        </td>
+
+
+        </tr>
+      `;
+    }).join("");
+
+    const modalHtml = `
+      <div class="modal fade" id="deviceStatusModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Live Device Status (10 Min Rule)</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <!-- 🔍 SEARCH BAR ADD HERE -->
+  <div class="input-group mb-3">
+    <span class="input-group-text">
+      <i class="bi bi-search"></i>
+    </span>
+    <input type="text"
+           class="form-control"
+           placeholder="Search..."
+           onkeyup="filterPopupTable(this)">
+  </div> 
+            <div class="table-responsive">
+            <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                  <tr>
+                    <th>Device Name</th>
+                    <th>Status</th>
+                    <th>TimeStamp For Last Reading</th>
+                     <th>Subscription</th>
+                     <th>Valid Till</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${deviceRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const old = document.getElementById("deviceStatusModal");
+    if (old) old.remove();
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById("deviceStatusModal"));
+    modal.show();
+
+  } catch (error) {
+    console.error("Device popup error:", error);
+  }
+}
+
+
+async function showOrganizationPopup() {
+
+  try {
+
+    const organizations = [...(dropdownData.orgs || [])]
+            .sort((a, b) => b.ORGANIZATION_ID - a.ORGANIZATION_ID);
+
+    const centres = dropdownData.centres || [];
+
+
+    let rows = organizations.map(org => {
+
+      const linkedCentres = centres
+        .filter(c => c.ORGANIZATION_ID == org.ORGANIZATION_ID);
+
+      const centreNames = linkedCentres.map(c => c.CENTRE_NAME);
+
+      const centreList = centreNames.length > 0
+        ? centreNames.join(", ")
+        : "No Centres";
+
+          return `
+            <tr>
+              <td>${org.ORGANIZATION_NAME}</td>
+              <td>${centreList}</td>
+              <td>${linkedCentres.length}</td>
+            </tr>
+          `;
+
+    }).join("");
+
+    const modalHtml = `
+      <div class="modal fade" id="orgStatusModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Organization & Centres</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+             <!-- 🔍 SEARCH BAR ADD HERE -->
+  <div class="input-group mb-3">
+    <span class="input-group-text">
+      <i class="bi bi-search"></i>
+    </span>
+    <input type="text"
+           class="form-control"
+           placeholder="Search..."
+           onkeyup="filterPopupTable(this)">
+  </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                  <thead class="table-light">
+                 <tr>
+                    <th>Organization</th>
+                    <th>Centre Names</th>
+                    <th>Total Centres</th>
+                  </tr>
+
+                  </thead>
+                  <tbody>
+                    ${rows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const old = document.getElementById("orgStatusModal");
+    if (old) old.remove();
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById("orgStatusModal"));
+    modal.show();
+
+  } catch (error) {
+    console.error("Organization popup error:", error);
+  }
+}
+
+async function showSensorFullLinkPopup() {
+
+  try {
+
+    const devices = dropdownData.devices || [];
+    const sensors = dropdownData.sensors || [];
+    const parameters = dropdownData.parameters || [];
+    const orgs = dropdownData.orgs || [];
+    const centres = dropdownData.centres || [];
+    const deviceSensorLinks = [...(dropdownData.devicesensorlink || [])]
+         .sort((a, b) => b.id - a.id);
+
+    const sensorParamLinks = dropdownData.sensorparameterlink || [];
+
+let rows = [];
+
+deviceSensorLinks.forEach(link => {
+
+  const device = devices.find(d => d.DEVICE_ID == link.DEVICE_ID);
+  if (!device) return;
+
+  const sensor = sensors.find(s => s.SENSOR_ID == link.SENSOR_ID);
+  if (!sensor) return;
+
+  // Multiple parameters support
+  const relatedParams = sensorParamLinks
+      .filter(sp => sp.SENSOR_ID == sensor.SENSOR_ID);
+
+  if (relatedParams.length === 0) {
+    rows.push(generateRow(device, sensor, null));
+  } else {
+    relatedParams.forEach(sp => {
+      const parameter = parameters.find(p => p.PARAMETER_ID == sp.PARAMETER_ID);
+      rows.push(generateRow(device, sensor, parameter));
+    });
+  }
+
+});
+
+function generateRow(device, sensor, parameter) {
+
+  const org = orgs.find(o => o.ORGANIZATION_ID == device.ORGANIZATION_ID);
+  const centre = centres.find(c => c.CENTRE_ID == device.CENTRE_ID);
+
+  return `
+    <tr>
+      <td>${device.DEVICE_NAME} (${device.DEVICE_ID})</td>
+      <td>${sensor.SENSOR_NAME} (${sensor.SENSOR_ID})</td>
+      <td>${parameter ? parameter.PARAMETER_NAME + " (" + parameter.PARAMETER_ID + ")" : "-"}</td>
+      <td>${org ? org.ORGANIZATION_NAME + " (" + org.ORGANIZATION_ID + ")" : "-"}</td>
+      <td>${centre ? centre.CENTRE_NAME + " (" + centre.CENTRE_ID + ")" : "-"}</td>
+    </tr>
+  `;
+}
+
+rows = rows.join("");
+
+
+    const modalHtml = `
+      <div class="modal fade" id="sensorLinkModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Device-Sensor-Parameter Link View</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+               <!-- 🔍 SEARCH BAR ADD HERE -->
+  <div class="input-group mb-3">
+    <span class="input-group-text">
+      <i class="bi bi-search"></i>
+    </span>
+    <input type="text"
+           class="form-control"
+           placeholder="Search..."
+           onkeyup="filterPopupTable(this)">
+  </div>
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Device</th>
+                      <th>Sensor</th>
+                      <th>Parameter</th>
+                      <th>Organization</th>
+                      <th>Centre</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows || "<tr><td colspan='5' class='text-center'>No Links Found</td></tr>"}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const old = document.getElementById("sensorLinkModal");
+    if (old) old.remove();
+
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    const modal = new bootstrap.Modal(document.getElementById("sensorLinkModal"));
+    modal.show();
+
+  } catch (error) {
+    console.error("Sensor link popup error:", error);
+  }
+}
+
+function filterPopupTable(input) {
+
+  const filter = input.value.toLowerCase();
+  const table = input.closest(".modal-body").querySelector("table");
+  const rows = table.querySelectorAll("tbody tr");
+
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(filter) ? "" : "none";
+  });
+
+}
+
+function loadDeviceSensorParameterMaster() {
+
+  currentTable = "devicesensorparameterlink";
+
+  const devices = dropdownData.devices || [];
+  const sensors = dropdownData.sensors || [];
+  const parameters = dropdownData.parameters || [];
+  const orgs = dropdownData.orgs || [];
+  const centres = dropdownData.centres || [];
+  const deviceSensorLinks = [...(dropdownData.devicesensorlink || [])]
+    .sort((a, b) => b.id - a.id);
+
+  const sensorParamLinks = dropdownData.sensorparameterlink || [];
+
+  const tableEl = document.getElementById("mainTable");
+  const thead = tableEl.querySelector("thead");
+  const tbody = tableEl.querySelector("tbody");
+
+  document.getElementById("tableTitle").innerText =
+    "Device Sensor Parameter Link";
+
+  thead.innerHTML = `
+    <tr>
+      <th>S_NO</th>
+      <th>Device</th>
+      <th>Sensor</th>
+      <th>Parameter</th>
+      <th>Organization</th>
+      <th>Centre</th>
+      <th>Actions</th>
+    </tr>
+  `;
+
+  const rows = deviceSensorLinks.map((link, index) => {
+
+  const device = devices.find(d => d.DEVICE_ID == link.DEVICE_ID);
+  const sensor = sensors.find(s => s.SENSOR_ID == link.SENSOR_ID);
+
+  const relatedParams = sensorParamLinks
+    .filter(sp => sp.SENSOR_ID == link.SENSOR_ID);
+
+  let paramDisplay = "-";
+  let firstParamId = "";
+
+  if (relatedParams.length > 0) {
+    paramDisplay = relatedParams.map(sp => {
+      const p = parameters.find(pp => pp.PARAMETER_ID == sp.PARAMETER_ID);
+      return p ? `${p.PARAMETER_NAME} (${p.PARAMETER_ID})` : "";
+    }).join(", ");
+
+    // 🔥 IMPORTANT: edit ke liye first parameter store karo
+    firstParamId = relatedParams[0].PARAMETER_ID;
+  }
+
+  const org = orgs.find(o =>
+    o.ORGANIZATION_ID == device?.ORGANIZATION_ID
+  );
+
+  const centre = centres.find(c =>
+    c.CENTRE_ID == device?.CENTRE_ID
+  );
+
+  return `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${device ? device.DEVICE_NAME + " (" + device.DEVICE_ID + ")" : "-"}</td>
+      <td>${sensor ? sensor.SENSOR_NAME + " (" + sensor.SENSOR_ID + ")" : "-"}</td>
+      <td>${paramDisplay}</td>
+      <td>${org ? org.ORGANIZATION_NAME + " (" + org.ORGANIZATION_ID + ")" : "-"}</td>
+      <td>${centre ? centre.CENTRE_NAME + " (" + centre.CENTRE_ID + ")" : "-"}</td>
+
+      <td>
+        <button class="btn btn-sm btn-warning"
+          onclick='editRow(${JSON.stringify({
+            id: link.id,
+            DEVICE_ID: link.DEVICE_ID,
+            SENSOR_ID: link.SENSOR_ID,
+            PARAMETER_ID: firstParamId
+          })})'>
+          <i class="bi bi-pencil"></i>
+        </button>
+
+        <button class="btn btn-sm btn-danger"
+          onclick="deleteRow(${link.id})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>
+  `;
+}).join("");
+
+
+  tbody.innerHTML = rows;
+
+  document.getElementById("addBtn").style.display = "inline-block";
+}
+
+
 // ===== init =====
-document.addEventListener("DOMContentLoaded", () => {
-  loadDropdowns();
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadDropdowns();
   updateSummary();
 });
 </script>
