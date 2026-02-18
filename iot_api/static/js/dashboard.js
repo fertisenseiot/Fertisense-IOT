@@ -1407,9 +1407,16 @@ if(isEdit){
     messageDiv.classList.add("d-none");
   }, 3000);
 }
-  loadTable(currentTable); 
-  updateSummary();
-  await loadDropdowns();
+// 🔥 Step 1: Force reload dropdown data first
+dropdownLoaded = false;
+await loadDropdowns();
+
+// 🔥 Step 2: Reload table with fresh data
+await loadTable(currentTable);
+
+// 🔥 Step 3: Update summary cards
+await updateSummary();
+
 });
 
 function toggleActiveStatus(deviceId, checkbox) {
@@ -2314,4 +2321,3 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadDropdowns();
   updateSummary();
 });
-
