@@ -1,0 +1,75 @@
+
+body { background: #f1f3f8; font-family: 'Segoe UI', sans-serif; padding-top: 70px; }
+
+/* Navbar */
+.navbar { background: linear-gradient(90deg, #007bff, #0056b3); }
+.navbar-brand { font-weight: bold; font-size: 1.3rem; }
+
+/* Cards */
+.summary-card { 
+  border-radius: 16px; 
+  padding: 20px; 
+  color: #fff; 
+  box-shadow: 0 6px 18px rgba(0,0,0,0.1); 
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.summary-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.2); }
+.summary-card h5 { margin-bottom: 10px; font-weight: 600; }
+.summary-card i { font-size: 2.5rem; opacity: 0.8; }
+
+/* Table */
+.table-container { 
+  margin-top: 25px; 
+  background: #fff; 
+  padding: 20px; 
+  border-radius: 16px; 
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08); 
+  overflow-x:auto; 
+}
+.table thead { position: sticky; top: 0; background: #007bff; color: white; }
+.table th, .table td { vertical-align: middle; white-space: nowrap; }
+.table-hover tbody tr:hover { background-color: rgba(0,123,255,0.05); }
+
+/* Buttons */
+.btn { border-radius: 8px; transition: all 0.2s ease; }
+.btn:hover { transform: scale(1.05); }
+
+/* Modal */
+.modal-content { 
+  border-radius: 16px; 
+  backdrop-filter: blur(10px); 
+  background: rgba(255,255,255,0.9); 
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15); 
+}
+#modalTitle { font-weight: 600; margin-bottom: 15px; }
+
+/* Animations */
+.fade-in { animation: fadeIn 0.6s ease-in-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Sliding toggle style */
+.switch { position: relative; display: inline-block; width: 120px; height: 34px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; background-color: #ccc; transition: 0.4s; border-radius: 34px; top: 0; left: 0; right: 0; bottom: 0; }
+.slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: 0.4s; border-radius: 50%; }
+input:checked + .slider { background-color: #28a745; }
+input:checked + .slider:before { transform: translateX(85px); }
+.status-text { position: absolute; width: 100%; text-align: center; font-weight: bold; color: white; top: 6px; font-size: 12px; }
+.inactive-row { opacity: 0.5; }
+
+/* Add this in your CSS file or <style> tag */
+.expired-row {
+  background-color: #f2f2f2; /* light grey */
+  color: #999; /* dim text */
+}
+.expired-row td {
+  color: #999;
+}
+
+.bg-orange {
+  background-color: #fd7e14 !important;
+  color: white;
+}
