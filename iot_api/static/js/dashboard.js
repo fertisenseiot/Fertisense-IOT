@@ -1,11 +1,13 @@
 
-// const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
-// const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
-// const BASE_URL = "http://192.168.0.100:8000"; // direct IP
+/* ============================================================
+   🌍 BASE CONFIGURATION
+   - API Base URL
+   - All API endpoint mappings
+   ============================================================ */
+
 // const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
-// const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
+  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+
 
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -35,6 +37,13 @@ const API = {
 
 API.devicesensorparameterlink = "virtual";
 
+/* ============================================================
+   🏷 HEADER LABEL MAPPING
+   - Table column display names
+   - DB fields → User friendly labels
+   ============================================================ */
+
+
 // ===== Custom header labels =====
 const HEADER_LABELS = {
   ORGANIZATION_ID: "ORGANIZATION NAME",
@@ -52,6 +61,10 @@ const HEADER_LABELS = {
 };
 
 
+/* ============================================================
+   🔑 PRIMARY KEY CONFIGURATION
+   - Each table ka primary key define karta hai
+   ============================================================ */
 
 
 // ===== Primary keys per table =====
@@ -80,6 +93,10 @@ const PRIMARY_KEYS = {
   mastersubscriptionhistory: "id"
 };
 
+/* ============================================================
+   📋 FIELD SCHEMA DEFINITIONS
+   - Empty table case me fallback headers
+   ============================================================ */
 
 // ===== Field schema for empty tables =====
 const FIELD_SCHEMAS = {
@@ -106,6 +123,15 @@ const FIELD_SCHEMAS = {
   masterplantype:["Plan_ID","Plan_Name"],
   mastersubscriptionhistory:["id","Device_ID","Subscription_Start_date"	,"Subcription_End_date"	,"Subscription_ID","Plan_ID","Payment_Date","Status"]
 };
+
+
+/* ============================================================
+   🛠 UTILITY FUNCTIONS
+   - normalizeKey
+   - fetchJSON
+   - logout
+   - formatTitle
+   ============================================================ */
 
 // helpers
 function normalizeKey(name){ return name.replace(/\s+/g,"").toLowerCase(); }
@@ -211,6 +237,12 @@ let dropdownLoaded = false;   // 🔥 ADD THIS LINE
 //   }
 // }
 
+/* ============================================================
+   🔄 DROPDOWN DATA LOADER
+   - Preload all master data
+   - Prevent duplicate loading
+   ============================================================ */
+
 async function loadDropdowns(){
 
   if (dropdownLoaded) return;   // ✅ Prevent reload
@@ -274,6 +306,12 @@ async function loadDropdowns(){
   }
 }
 
+/* ============================================================
+   🔽 GENERIC SORTING ENGINE
+   - Date based sorting
+   - Numeric sorting
+   - Custom table logic
+   ============================================================ */
 
 function sortDescending(table, data) {
   if (!data || data.length === 0) return data;
@@ -342,6 +380,14 @@ function calculateSubscriptionStatus(row) {
 }
 
 
+/* ============================================================
+   📊 MAIN TABLE LOADER
+   - Fetch API data
+   - Apply sorting
+   - Render headers
+   - Render rows
+   - Attach action buttons
+   ============================================================ */
 
 // ===== load & draw table =====
 async function loadTable(table) {
@@ -476,7 +522,6 @@ if (currentTable === "masterparameter") displayHeaders.push("PARAMETER_ID");
     return new Date(dateStr).toLocaleDateString("en-GB", options);
   }
 
-  // ----- Render table body -----
   // ----- Render table body -----
 if (currentData.length) {
   tbody.innerHTML = currentData.map((row, rowIdx) => {
@@ -698,6 +743,15 @@ if (currentTable === "mastersensor") {
     section.scrollIntoView({ behavior: "smooth" });
   }
 }
+
+/* ============================================================
+   🧾 MODAL MANAGEMENT
+   - addRow
+   - editRow
+   - openModal
+   - closeModal
+   ============================================================ */
+
 // ===== Modal =====
 function addRow(){
 
@@ -1283,6 +1337,14 @@ function closeModal(){
   if(instance) instance.hide();
 }
 
+
+/* ============================================================
+   💾 FORM SUBMISSION HANDLER
+   - Add / Edit logic
+   - Checkbox handling
+   - Special table handling
+   ============================================================ */
+
 // ===== submit (add / edit) =====
 document.getElementById('crudForm').addEventListener('submit', async function(e){
 
@@ -1419,6 +1481,13 @@ await updateSummary();
 
 });
 
+/* ============================================================
+   🔁 ACTIVE / INACTIVE TOGGLE
+   - Device status update
+   - Sensor status update
+   ============================================================ */
+
+
 function toggleActiveStatus(deviceId, checkbox) {
   const isActive = checkbox.checked;
   const tr = checkbox.closest("tr");
@@ -1461,8 +1530,12 @@ function toggleSensorStatus(sensorId, checkbox) {
   .catch(err => console.error("Failed to update SENSOR_STATUS:", err));
 }
 
+/* ============================================================
+   🗑 DELETE HANDLER
+   - Delete row API call
+   ============================================================ */
 
-// ===== Delete =====
+   // ===== Delete =====
 async function deleteRow(id){
   if(id==null || id===""){ alert("Invalid ID"); return; }
   if(!confirm("Delete this row?")) return;
@@ -1484,6 +1557,25 @@ async function deleteRow(id){
   await loadTable(currentTable);
   updateSummary();
 }
+
+/* ============================================================
+   📦 SUBSCRIPTION MANAGEMENT MODULE
+   ------------------------------------------------------------
+   - showPopupMessage() → Generic Bootstrap popup
+   - renew() → Validate & trigger subscription scheduling
+   - openScheduleForm() → Future subscription scheduling modal
+   - openRenewForm() → Immediate renewal modal
+   - Handles:
+        • Date validation
+        • Future start restriction
+        • Subscription status logic
+        • API POST request for new record
+        • Table refresh after success
+   ------------------------------------------------------------
+   This module does NOT update old record.
+   It always creates a NEW subscription entry.
+   ============================================================ */
+
 // Function to show a dynamic Bootstrap popup message
 function showPopupMessage(title, message) {
   // Remove existing popup if any
@@ -1732,7 +1824,10 @@ function openRenewForm(subscription) {
   modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
 }
 
-
+/* ============================================================
+   📈 SUMMARY CARDS
+   - updateSummary()
+   ============================================================ */
 
 // ===== Summary cards =====
 async function updateSummary(){
@@ -1749,6 +1844,15 @@ async function updateSummary(){
     document.getElementById('totalOrganizations').innerText=o.length;
   }catch(e){ console.warn("Summary update skipped:", e); }
 }
+
+/* ============================================================
+   📡 POPUP SYSTEM
+   - Device status popup
+   - Organization popup
+   - Sensor link popup
+   - Parameter popup
+   - Filter popup table
+   ============================================================ */
 
 async function showDeviceStatusPopup() {
 
@@ -2315,6 +2419,12 @@ function loadDeviceSensorParameterMaster() {
   document.getElementById("addBtn").style.display = "inline-block";
 }
 
+/* ============================================================
+   🚀 INITIALIZATION
+   - DOMContentLoaded
+   - Initial dropdown load
+   - Initial summary load
+   ============================================================ */
 
 // ===== init =====
 document.addEventListener("DOMContentLoaded", async () => {
