@@ -2,8 +2,8 @@
 // const BASE_URL = `${window.location.protocol}//${window.location.hostname}:8080/api/`; // ✅ Dynamic Base URL
 // const BASE_URL = "http://192.168.1.6:8000/api/"; // direct IP
 // const BASE_URL = "http://192.168.0.100:8000"; // direct IP
- const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-//const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 // const BASE_URL = "   https://16de7fd271a3.ngrok-free.app"; // direct IP
 // const BASE_URL = "https://1vs2c96b-8000.inc1.devtunnels.ms"; // direct IP
 
@@ -2314,3 +2314,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadDropdowns();
   updateSummary();
 });
+
