@@ -1,0 +1,538 @@
+/* ============================================================
+   GLOBAL PAGE RESET
+   - Remove default margin/padding
+   - Ensure full height layout
+   ============================================================ */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+
+
+/* ============================================================
+   NAVBAR FIXED HEIGHT
+   - Force 56px (Bootstrap default)
+   - Vertically center content
+   ============================================================ */
+.navbar{
+  height:56px !important;
+  min-height:56px !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+  display:flex;
+  align-items:center;
+}
+
+/* ============================================================
+   🖥️ DESKTOP LAYOUT ONLY
+   - Sidebar fixed
+   - Content shifted right
+   - Desktop navbar layout tweaks
+   - DOES NOT AFFECT MOBILE
+   ============================================================ */
+
+@media (min-width: 993px) {
+
+
+  body {
+    display: block;   /* 🔥 desktop me flex band */
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 56px;                 /* navbar height */
+    left: 0;
+    width: 260px;
+    height: calc(100vh - 56px);
+  }
+
+   .navbar .navbar-nav .nav-item{
+    white-space: nowrap;
+  }
+
+  .content {
+    margin-left: 260px;
+    padding-top: 80px;
+  }
+
+  .desktop-org-card button{
+    padding:1px 6px;
+    font-size:10px;
+  }
+    .org-title{
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .centre-title{
+    font-size: 12px;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .desktop-org-card i{
+    font-size: 12px;
+    opacity: 0.9;
+  }
+  .desktop-centre {
+    font-size: 11px;
+    opacity: 0.85;
+  }
+}
+
+.navbar {
+  background: linear-gradient(90deg, #0d6efd, #0a58ca);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.navbar .nav-link {
+  color: #fff !important;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  position: fixed;
+  top: 56px;          /* Bootstrap navbar height */
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  padding: 20px;
+  z-index: 1040;
+}
+
+
+.sidebar h5 {
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.sidebar .form-select,
+.sidebar input {
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+/* Summary Cards */
+.sidebar .summary-card {
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  color: #fff;
+  text-align: center;
+}
+
+/* 🔥 Custom Summary Colors */
+
+#activeSummaryCard{
+  background-color: #2bc445;
+  color: #0f3d1f;
+}
+
+#offlineSummaryCard{
+  background-color: #F14E45;
+  color: #ffffff;
+}
+
+
+.sidebar .summary-card i {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.sidebar .summary-card h6 {
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.sidebar .summary-card p {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Content area */
+.content {
+  margin-left: 260px;
+  padding: 75px 25px 25px;
+  flex: 1;
+  overflow-x: hidden;
+  transition: margin-left 0.3s ease;
+}
+
+/* ============================================================
+   📱 MOBILE SIDEBAR + NAVBAR BEHAVIOR
+   - Sidebar slide animation
+   - Content fixed (no shift)
+   - Navbar collapse adjustments
+   - MOBILE ONLY
+   ============================================================ */
+
+/* Responsive Fix */
+@media (max-width: 992px) {
+   .desktop-navbar{
+    display:none !important;
+  }
+  .sidebar {
+    position: fixed;
+    top: 56px;
+    left: -210px;
+    width: 210px;
+    height: calc(100vh - 56px);
+    z-index: 2000;
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  /* ⭐ content kabhi shift nahi hoga mobile me */
+  .content {
+    margin-left: 0 !important;
+  }
+
+  .content.shifted {
+    margin-left: 0 !important;
+  }
+
+    .navbar-collapse {
+    background: linear-gradient(90deg, #0d6efd, #0a58ca);
+    padding: 10px;
+  }
+
+  .navbar-nav {
+    align-items: flex-start;
+  }
+
+  #navbarOrgLabel,
+  #navbarCentreLabel {
+    margin-left: 0 !important;
+    font-size: 13px;
+  }
+
+  .mobile-user-info{
+   background:#ffffff;
+   padding:10px;
+   border-radius:10px;
+   box-shadow:0 2px 6px rgba(0,0,0,0.08);
+   font-size:13px;
+}
+}
+
+#offlineBadge {
+    min-width: 180px;
+    text-align: center;
+}
+
+
+#deviceTypeCards { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-top:50px; }
+.device-type-card { flex:1 1 calc(33.33% - 10px); max-width:calc(33.33% - 10px); height:120px; background:linear-gradient(135deg,#0d6efd,#6610f2); color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); cursor:pointer; transition:0.3s; }
+.device-type-card:hover { transform:translateY(-5px); box-shadow:0 6px 15px rgba(0,0,0,0.2); }
+.device-type-card.disabled { background:#e0e0e0 !important; color:#888 !important; cursor:not-allowed; }
+.device-card { padding:10px; border-radius:12px; color:white; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.15); margin-bottom:10px; max-width:300px; width:100%; }
+.device-card.bg-success { background:#fff; border:2px solid #28a745; color:#000; min-height:60px; max-width:400px; }
+.device-card.bg-danger { background:#fff; border:2px solid #dc3545; color:#000; min-height:60px; max-width:400px; }
+#deviceDetailsContainer { display:none; }
+#deviceList { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; align-items: flex-start; margin-bottom: 20px; }
+/* ⭐ jab sirf 1 device ho → center kar do */
+#deviceList:only-child,
+#deviceList > .device-card:only-child{
+  margin-left: auto;
+  margin-right: auto;
+}
+#deviceList .device-card { flex: 1 1 200px; max-width: 250px; min-width: 180px; }
+#alarmLog tr td { vertical-align:middle; }
+/* Hover effect for device cards */
+.device-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.device-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+#orgFilter,
+#centreFilter{
+  display:none;
+}
+
+#organizationSelect,
+#centreSelect{
+  visibility:hidden;
+}
+
+#deviceGraph{
+    position:absolute;
+    inset:0;
+}
+
+.graph-toolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+/* Left side buttons */
+.graph-toolbar .range-btns{
+    display:flex;
+    gap:8px;
+}
+
+.range-btns button{
+    min-width:120px;
+    height:34px;
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+}
+
+/* Right side AVG */
+#avgBox{
+    min-width:170px;
+    height:34px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:13px;
+    font-weight:700;
+    cursor:default;
+    background:#198754;
+    color:#fff;
+    transition:all .3s ease;
+}
+
+#avgBox.low{
+    background:#ffc107;
+    color:#000;
+}
+#avgBox.high{
+    background:#dc3545;
+}
+
+.device-reading{
+   font-size:13px;   /* pehle bada tha, ab compact */
+   font-weight:600;
+   letter-spacing:0.4px;
+}
+
+.device-hint{
+   font-size:11px;
+   margin-top:4px;
+   color:#e6ffe6;
+   opacity:0.85;
+   text-align:center;
+}
+
+#offlineBadge {
+    margin-left: 8px;
+    background: linear-gradient(90deg,#dc3545,#b02a37);
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+
+}
+
+
+@media (min-width:769px){
+   .alarm-24h-wrapper{
+      margin-left:-200px;
+   }
+}
+
+/* ============================================================
+   📱 MOBILE DEVICE + ALARM TABLE OPTIMIZATION
+   - Compact device cards
+   - Alarm table card layout
+   - Graph stacked layout
+   - MOBILE ONLY (<=768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+  
+  /* ✅ DEVICE CARD COMPACT */
+.device-card{
+    padding:8px;
+    min-height:auto;
+    max-width:100%;
+     box-shadow:0 2px 6px rgba(0,0,0,0.1);
+   margin-bottom: 2px !important;
+}
+
+.device-card h6{
+    font-size:14px;
+    margin-bottom:4px;
+}
+
+.device-reading{
+    font-size:12px;
+}
+
+ #deviceList{
+     margin-bottom:8px !important;
+  }
+
+.device-hint{
+    font-size:10px;
+  }
+
+  #deviceTypeCards{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-content:flex-start;
+    min-height:auto;        /* ⭐ vertical center */
+    gap:15px;
+    margin-top:10px !important;
+}
+
+.device-type-card{
+    flex:0 0 70%;
+    max-width:70%;
+}
+    hr{
+    margin:12px 0;
+  }
+
+#offlineBadge {
+    width: 100%;
+    max-width: 220px;
+    text-align: center;
+    margin: 6px auto 0 auto;
+}
+
+
+  .alarm-table thead {
+    display: none;
+  }
+
+  .alarm-table,
+  .alarm-table tbody,
+  .alarm-table tr,
+  .alarm-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .alarm-table tr {
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    min-height: 160px;
+  }
+
+  .alarm-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border: none;
+    color: #000;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .alarm-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #555;
+    flex: 0 0 48%;
+  }
+
+  .alarm-table td span.badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+    /* 🔥 Stack graph + alarm vertically */
+  .graph-section-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+   /* 🔥 Total Alarms (24h) card mobile fix */
+  .alarm-24h-wrapper {
+    margin-left: 0 !important;
+    width: 100%;
+    display:flex;
+    order: -1;              /* 🔥 sabse upar le aayega (mobile) */
+  }
+
+.alarm-24h-wrapper > div{
+   box-shadow:0 2px 6px rgba(0,0,0,0.1);
+   margin-bottom:2px !important;
+   margin-left:0 !important;
+   width:40%;
+   max-width:220px;
+   padding:5px !important;
+   border-radius:8px !important;
+}
+  .alarm-24h-wrapper h6{
+    font-size:12px !important;
+    margin-bottom:2px !important;
+  }
+
+  #alarm24h{
+    font-size:16px !important;
+    margin:0 !important;
+  }
+  
+  .graph-section-wrapper + div,
+  .graph-section-wrapper > div:last-child{
+     padding:8px !important;
+  }
+
+    /* 🔥 Stack graph + alarm vertically */
+  .graph-section-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap:6px !important;
+  } 
+
+   /* 🔥 Graph toolbar mobile layout */
+  .graph-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom:6px;
+  }
+
+  .graph-toolbar .range-btns {
+    justify-content: space-between;
+    width: 100%;
+  }
+   
+  .range-btns button{
+    min-width:auto;
+    height:30px;
+    font-size:11px;
+    padding:3px 8px;
+  }
+
+  #avgBox {
+    width: 4%;
+    margin:auto;
+    height: 28px;
+    font-size: 11px;
+    padding:4px;
+  }
+
+   #graphWrapper {
+    height: 190px;   /* 🔥 thoda extra space */
+  }
+}
