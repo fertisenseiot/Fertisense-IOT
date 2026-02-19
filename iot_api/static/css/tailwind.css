@@ -249,3 +249,24 @@ input:checked + .slider:before {
   background-color: #fd7e14 !important;
   color: white;
 }
+
+/* ============================================================
+   📈 USER DEVICE GRAPH SECTION
+   - Compact graph container
+   - Responsive control
+   ============================================================ */
+
+.graph-container {
+  height: 220px;          /* Graph height control */
+  max-width: 900px;       /* Max width */
+  margin: 20px auto;      /* Center align */
+  background: #fff;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.graph-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
