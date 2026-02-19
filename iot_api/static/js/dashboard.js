@@ -5,8 +5,8 @@
    - All API endpoint mappings
    ============================================================ */
 
-// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 
 
 const API = {
@@ -264,7 +264,8 @@ async function loadDropdowns(){
       subsHistory,
       readings,
       deviceSensor,
-      sensorParam
+      sensorParam,
+      userOrgCentre
     ] = await Promise.all([
       fetchJSON(API.masterorganizations),
       fetchJSON(API.mastercentre),
@@ -280,7 +281,8 @@ async function loadDropdowns(){
       fetchJSON(API.mastersubscriptionhistory),
       fetchJSON(API.devicereadinglog),
       fetchJSON(API.devicesensorlink),
-      fetchJSON(API.sensorparameterlink)
+      fetchJSON(API.sensorparameterlink),
+      fetchJSON(API.userorganizationcentrelink)
     ]);
 
     dropdownData.orgs = orgs;
@@ -298,6 +300,8 @@ async function loadDropdowns(){
     dropdownData.devicereadinglog = readings;
     dropdownData.devicesensorlink = deviceSensor;
     dropdownData.sensorparameterlink = sensorParam;
+    dropdownData.userorganizationcentrelink = userOrgCentre;
+
 
     dropdownLoaded = true;  // ✅ Mark loaded
 
@@ -305,6 +309,29 @@ async function loadDropdowns(){
     console.error("Dropdown preload failed:", err);
   }
 }
+
+// ======================================================
+// 🔥 USER DROPDOWN POPULATE FUNCTION
+// ======================================================
+
+function populateUserDropdown(){
+
+  const select = document.getElementById("userSelect");
+
+  if(!select) return; // safety check
+
+  select.innerHTML = `<option value="">-- Select User --</option>`;
+
+  (dropdownData.user || []).forEach(u => {
+    select.innerHTML += `
+      <option value="${u.USER_ID}">
+        ${u.USERNAME}
+      </option>
+    `;
+  });
+
+}
+
 
 /* ============================================================
    🔽 GENERIC SORTING ENGINE
@@ -391,6 +418,8 @@ function calculateSubscriptionStatus(row) {
 
 // ===== load & draw table =====
 async function loadTable(table) {
+  
+  history.pushState(null, "", location.pathname + "#" + normalizeKey(table));
 
   if (normalizeKey(table) === "devicesensorparameterlink") {
   loadDeviceSensorParameterMaster();
@@ -401,6 +430,24 @@ async function loadTable(table) {
   localStorage.setItem("lastOpenedTable", table);
 
   currentTable = normalizeKey(table);
+
+  // 🔥 If Device Reading Log → Show Graph Instead of Table
+if (currentTable === "devicereadinglog") {
+
+  document.getElementById("addBtn").style.display = "none";
+  document.getElementById("mainTable").style.display = "none";
+
+ try {
+    currentData = await fetchJSON(API.devicereadinglog);
+  } catch (err) {
+    console.error("Reading fetch failed:", err);
+    currentData = [];
+  }
+
+  renderDeviceReadingGraphSection();
+  return;
+}
+
   if (!API[currentTable]) {
     console.error("No API for:", table, currentTable);
     return;
@@ -2322,6 +2369,686 @@ function filterPopupTable(input) {
 
 }
 
+// ======================================================
+// 📊 Render Graph inside Device Reading Log
+// ======================================================
+
+function renderDeviceReadingGraphSection(){
+
+  const section = document.getElementById("tableSection");
+
+  document.getElementById("mainTable").style.display = "none";
+  document.getElementById("addBtn").style.display = "none";
+
+ section.innerHTML = `
+  <h3>User Device Graph</h3>
+
+  <div class="row mb-3">
+
+    <div class="col-md-4">
+      <label>Select User</label>
+      <select id="userSelect"
+              class="form-select"
+              onchange="handleUserChange()">
+        <option value="">-- Select User --</option>
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label>Select Device</label>
+      <select id="deviceSelect"
+              class="form-select"
+              onchange="loadUserGraph()">
+        <option value="">-- Select Device --</option>
+      </select>
+    </div>
+
+    <div class="col-md-4" id="parameterDropdownContainer" style="display:none;">
+  <label>Select Parameter</label>
+  <select id="parameterSelect"
+          class="form-select"
+          onchange="loadUserGraph()">
+    <option value="">-- Select Parameter --</option>
+  </select>
+</div>
+
+    <div class="col-md-4">
+      <label>Time Filter</label>
+      <select id="timeFilter"
+              class="form-select"
+              onchange="loadUserGraph()">
+        <option value="10">Last 10 Minutes</option>
+        <option value="60">Last 1 Hour</option>
+        <option value="1440">Last 1 Day</option>
+      </select>
+    </div>
+
+  </div>
+
+  <div class="graph-container">
+    <canvas id="userChart"></canvas>
+  </div>
+`;
+
+
+  populateUserDropdown();
+}
+
+function handleUserChange(){
+
+  const userId = document.getElementById("userSelect").value;
+  const deviceDropdown = document.getElementById("deviceSelect");
+
+  deviceDropdown.innerHTML = `<option value="">-- Select Device --</option>`;
+
+  if(!userId) return;
+
+  const userLinks = (dropdownData.userorganizationcentrelink || [])
+    .filter(link => link.USER_ID == userId);
+
+  const orgIds = userLinks.map(l => l.ORGANIZATION_ID);
+  const centreIds = userLinks.map(l => l.CENTRE_ID);
+
+  const userDevices = (dropdownData.devices || [])
+    .filter(d =>
+      orgIds.includes(d.ORGANIZATION_ID) &&
+      centreIds.includes(d.CENTRE_ID)
+    );
+
+  userDevices.forEach(device => {
+    deviceDropdown.innerHTML += `
+      <option value="${device.DEVICE_ID}">
+        ${device.DEVICE_NAME}
+      </option>
+    `;
+  });
+
+  if(userChartInstance){
+    userChartInstance.destroy();
+  }
+}
+
+// ======================================================
+// 📊 USER DEVICE GRAPH LOGIC
+// ======================================================
+
+let userChartInstance = null;
+
+function loadUserGraph(){
+
+  const deviceId = document.getElementById("deviceSelect").value;
+  const minutes = parseInt(document.getElementById("timeFilter").value);
+
+  if(!deviceId) return;
+
+  const now = new Date();
+
+  // ✅ PEHLE readings nikaalo
+  let deviceReadings = (currentData || [])
+    .filter(r => r.DEVICE_ID == deviceId);
+
+  // ✅ Time filter
+  deviceReadings = deviceReadings.filter(r => {
+    const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]);
+    const diffMinutes = (now - readingTime) / (1000 * 60);
+    return diffMinutes <= minutes;
+  });
+
+  if(deviceReadings.length === 0){
+    alert("No readings found");
+    return;
+  }
+
+  // ✅ Ab parameter count detect karo
+  const uniqueParams = [...new Set(
+    deviceReadings.map(r => r.PARAMETER_ID)
+  )];
+
+// ============================================
+// 🔥 Multi Parameter Handling
+// ============================================
+
+const parameterDropdown = document.getElementById("parameterSelect");
+const parameterContainer = document.getElementById("parameterDropdownContainer");
+
+if(uniqueParams.length > 1){
+
+    parameterContainer.style.display = "block";
+
+    parameterDropdown.innerHTML = `<option value="">-- Select Parameter --</option>`;
+
+    uniqueParams.forEach(paramId => {
+
+        const paramObj = dropdownData.parameters.find(p =>
+            p.PARAMETER_ID == paramId
+        );
+
+        if(paramObj){
+           const uomObj = dropdownData.uoms?.find(u =>
+    u.UOM_ID == paramObj.UOM_ID
+);
+
+const unit = uomObj ? uomObj.UOM_NAME : "";
+
+parameterDropdown.innerHTML += `
+    <option value="${paramId}">
+        ${paramObj.PARAMETER_NAME} (${unit})
+    </option>
+`;
+
+        }
+    });
+
+    const selectedParam = parameterDropdown.value;
+    if(!selectedParam) return;
+
+    deviceReadings = deviceReadings.filter(r =>
+        r.PARAMETER_ID == selectedParam
+    );
+
+} else {
+
+    parameterContainer.style.display = "none";
+
+}
+
+
+  // ✅ Sort for single parameter
+  deviceReadings.sort((a,b)=>{
+    return new Date(a.READING_DATE + "T" + a.READING_TIME) -
+           new Date(b.READING_DATE + "T" + b.READING_TIME);
+  });
+
+  const chartData = deviceReadings.map(d => {
+
+    const readingValue = Number(d.READING);
+
+    const param = dropdownData.parameters.find(p => 
+      p.PARAMETER_ID == d.PARAMETER_ID
+    );
+
+    let isAlarm = false;
+
+    if(param){
+      const lower = Number(param.LOWER_THRESHOLD);
+      const upper = Number(param.UPPER_THRESHOLD);
+
+      if(!isNaN(lower) && readingValue < lower) isAlarm = true;
+      if(!isNaN(upper) && readingValue > upper) isAlarm = true;
+    }
+
+    return {
+      x: new Date(d.READING_DATE + "T" + d.READING_TIME.split(".")[0]),
+      y: readingValue,
+      isAlarm: isAlarm
+    };
+  });
+
+  // ✅ Online / Offline check
+  const latest = deviceReadings[deviceReadings.length - 1];
+  const latestTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME.split(".")[0]);
+  const diff = (now - latestTime) / (1000 * 60);
+  const isOnline = diff <= 10;
+
+  drawSingleDeviceGraph(chartData, deviceId, isOnline);
+}
+
+
+/* ======================================================
+   📊 MULTI PARAMETER GRAPH LOADER
+   - Supports devices with multiple parameters
+   - Each parameter gets its own line
+   - Alarm detection per parameter
+====================================================== */
+
+function loadMultiParameterGraph(){
+
+  const deviceId = document.getElementById("deviceSelect").value;
+  const minutes = parseInt(document.getElementById("timeFilter").value);
+
+  if(!deviceId) return;
+
+  const now = new Date();
+
+  let deviceReadings = (currentData || [])
+    .filter(r => r.DEVICE_ID == deviceId);
+
+  // 🔥 Time filter apply
+  deviceReadings = deviceReadings.filter(r => {
+    const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]);
+    const diffMinutes = (now - readingTime) / (1000 * 60);
+    return diffMinutes <= minutes;
+  });
+
+  if(deviceReadings.length === 0){
+    alert("No readings found");
+    return;
+  }
+
+  // 🔥 Group readings by parameter
+  const grouped = {};
+
+  deviceReadings.forEach(r => {
+
+    if(!grouped[r.PARAMETER_ID]){
+      grouped[r.PARAMETER_ID] = [];
+    }
+
+    const readingValue = Number(r.READING);
+
+    const param = dropdownData.parameters.find(p =>
+      p.PARAMETER_ID == r.PARAMETER_ID
+    );
+
+    let isAlarm = false;
+
+    if(param){
+      const lower = Number(param.LOWER_THRESHOLD);
+      const upper = Number(param.UPPER_THRESHOLD);
+
+      if(!isNaN(lower) && readingValue < lower) isAlarm = true;
+      if(!isNaN(upper) && readingValue > upper) isAlarm = true;
+    }
+
+    grouped[r.PARAMETER_ID].push({
+      x: new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]),
+      y: readingValue,
+      isAlarm: isAlarm
+    });
+
+  });
+
+  drawMultiParameterGraph(deviceId, grouped);
+}
+
+/* ======================================================
+   📊 MULTI PARAMETER GRAPH DRAWER
+   - Creates multiple datasets dynamically
+====================================================== */
+
+function drawMultiParameterGraph(deviceId, groupedData){
+
+  const ctx = document.getElementById("userChart");
+
+  if(userChartInstance){
+    userChartInstance.destroy();
+  }
+
+  const datasets = [];
+
+  Object.keys(groupedData).forEach(paramId => {
+
+    const param = dropdownData.parameters.find(p =>
+      p.PARAMETER_ID == paramId
+    );
+
+    const uom = dropdownData.uoms.find(u =>
+      u.UOM_ID == param?.UOM_ID
+    );
+
+    const unit = uom ? (uom.SYMBOL || uom.UOM_NAME) : "";
+
+    // 🔵 Normal Line
+    datasets.push({
+      label: param ? param.PARAMETER_NAME + " (" + unit + ")" : "Parameter",
+      data: groupedData[paramId],
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0
+    });
+
+    // 🔴 Alarm Red Dots
+    datasets.push({
+      label: param ? param.PARAMETER_NAME + " Alarm" : "Alarm",
+      data: groupedData[paramId].filter(d => d.isAlarm),
+      showLine: false,
+      pointRadius: 6,
+      pointBackgroundColor: "red",
+      pointBorderColor: "white",
+      pointBorderWidth: 2
+    });
+
+  });
+
+  userChartInstance = new Chart(ctx, {
+    type: "line",
+    data: { datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'nearest',
+        intersect: false
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: getTimeUnit()
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
+
+
+function drawSingleDeviceGraph(chartData, deviceId, isOnline){
+
+  const device = dropdownData.devices.find(d => d.DEVICE_ID == deviceId);
+  const deviceName = device ? device.DEVICE_NAME : "Device";
+
+  const ctx = document.getElementById("userChart");
+
+  if(userChartInstance){
+    userChartInstance.destroy();
+  }
+
+  userChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+  datasets: [
+
+{
+  label: deviceName + (isOnline ? " (Online)" : " (Offline)"),
+  data: chartData,
+  borderWidth: 2,
+  fill: false,
+  tension: 0.3,
+  borderColor: isOnline ? "green" : "red",
+  pointRadius: 0,
+  pointHitRadius: 20,
+  pointHoverRadius: 6,
+  unit: getDeviceUnit(deviceId)   // 🔥 ADD THIS LINE
+},
+
+// 🔥 Alarm Red Dots Dataset
+{
+  label: "Alarm",
+  data: chartData.filter(d => d.isAlarm),
+  showLine: false,
+  pointRadius: 6,
+  pointBackgroundColor: "red",
+  pointBorderColor: "white",
+  pointBorderWidth: 2
+}
+
+]
+
+    },
+    options: {
+  responsive: true,
+  maintainAspectRatio: false,
+
+  interaction: {
+    mode: 'nearest',
+    intersect: false
+  },
+
+  plugins: {
+    tooltip: {
+      enabled: true,
+      mode: 'nearest',
+      intersect: false,
+      backgroundColor: '#000',   // 🔥 black box
+      titleColor: '#fff',
+      bodyColor: '#fff',
+      callbacks: {
+        title: function(context) {
+          const date = new Date(context[0].parsed.x);
+          return date.toLocaleString();  // date + time
+        },
+
+ label: function(context) {
+
+  const value = Math.round(context.parsed.y);
+
+  // 🔹 Alarm dataset ke liye
+  if(context.dataset.label === "Alarm"){
+    return "🚨 Alarm: " + value + " " + (context.dataset.unit || "");
+  }
+
+  // 🔹 Normal reading ke liye
+  return "Reading: " + value + " " + (context.dataset.unit || "");
+}
+
+
+
+      }
+    }
+  },
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: getTimeUnit(),
+             tooltipFormat: 'dd MMM yyyy hh:mm a',
+            displayFormats: {
+              minute: 'hh:mm a',
+              hour: 'hh:mm a'
+            }
+          }
+        },
+        y: {
+            beginAtZero: true,
+            ticks: {
+        precision: 0
+      }
+      }}
+    }
+  });
+}
+
+// 🔥 Device ka unit nikalne ke liye
+function getDeviceUnit(deviceId){
+
+  const reading = (currentData || []).find(r => 
+      r.DEVICE_ID == deviceId
+  );
+
+  if(!reading) return "";
+
+  const param = dropdownData.parameters.find(p =>
+      p.PARAMETER_ID == reading.PARAMETER_ID
+  );
+
+  if(!param) return "";
+
+  const uom = dropdownData.uoms.find(u =>
+      u.UOM_ID == param.UOM_ID
+  );
+
+  return uom ? (uom.SYMBOL || uom.UOM_NAME) : "";
+}
+
+
+function getSelectedUserDeviceName(){
+
+  const userId = document.getElementById("userSelect").value;
+
+  const userLinks = (dropdownData.userorganizationcentrelink || [])
+    .filter(link => link.USER_ID == userId);
+
+  const orgIds = userLinks.map(l => l.ORGANIZATION_ID);
+  const centreIds = userLinks.map(l => l.CENTRE_ID);
+
+  const userDevices = (dropdownData.devices || [])
+    .filter(d =>
+      orgIds.includes(d.ORGANIZATION_ID) &&
+      centreIds.includes(d.CENTRE_ID)
+    );
+
+  if(userDevices.length > 0){
+    return userDevices[0].DEVICE_NAME;
+  }
+
+  return "Unknown Device";
+}
+
+function getTimeUnit(){
+
+  const minutes = parseInt(document.getElementById("timeFilter").value);
+
+  if(minutes === 1440){
+    return 'hour';     // 🔥 Last 1 Day → 1 hour gap
+  }
+
+  if(minutes === 60){
+    return 'minute';   // 1 hour → minute ticks
+  }
+
+  return 'minute';     // 10 min → minute ticks
+}
+
+
+function drawUserGraph(data){
+
+  const sorted = data.sort((a,b)=>{
+    return new Date(a.READING_DATE + "T" + a.READING_TIME) -
+           new Date(b.READING_DATE + "T" + b.READING_TIME);
+  });
+
+const chartData = sorted.map(d => ({
+  x: new Date(d.READING_DATE + "T" + d.READING_TIME.split(".")[0]),
+  y: Number(d.READING)
+}));
+
+
+
+
+  const values = sorted.map(d => d.READING);
+
+  const ctx = document.getElementById("userChart");
+
+  if(userChartInstance){
+    userChartInstance.destroy();
+  }
+
+userChartInstance = new Chart(ctx, {
+  type: "line",
+  data: {
+    datasets: [{
+      label: getSelectedUserDeviceName(),
+      data: chartData,
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+      pointRadius: 0,          // ❌ Remove dots
+      pointHoverRadius: 6      // Hover pe point dikhega
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    interaction: {
+      mode: 'nearest',
+      intersect: false
+    },
+
+    scales: {
+      x: {
+        type: 'time',
+      time: {
+    unit: getTimeUnit(),          // 🔥 dynamic unit
+    stepSize: 1,
+    tooltipFormat: 'hh:mm a',
+    displayFormats: {
+      minute: 'hh:mm a',
+      hour: 'hh:mm a'
+    }
+        },
+        ticks: {
+          maxRotation: 0,
+          autoSkip: true
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0   // ❌ No decimals
+        }
+      }
+    },
+
+   plugins: {
+  tooltip: {
+    enabled: true,
+    mode: 'nearest',
+    intersect: false,
+    backgroundColor: '#000',
+    titleColor: '#fff',
+    bodyColor: '#fff',
+    callbacks: {
+      title: function(context) {
+        const date = new Date(context[0].parsed.x);
+        return date.toLocaleString();
+      },
+      label: function(context) {
+        return "Reading: " + parseInt(context.parsed.y);
+      }
+        }
+      }
+    }
+  }
+});
+
+}
+
+function drawMultiDeviceGraph(datasets){
+
+  const ctx = document.getElementById("userChart");
+
+  if(userChartInstance){
+    userChartInstance.destroy();
+  }
+
+  userChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+
+      interaction: {
+        mode: 'nearest',
+        intersect: false
+      },
+
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            unit: getTimeUnit(),
+            stepSize: 1,
+            tooltipFormat: 'hh:mm a',
+            displayFormats: {
+              minute: 'hh:mm a',
+              hour: 'hh:mm a'
+            }
+          }
+        },
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+
+
+
 function loadDeviceSensorParameterMaster() {
 
   currentTable = "devicesensorparameterlink";
@@ -2424,10 +3151,19 @@ function loadDeviceSensorParameterMaster() {
    - DOMContentLoaded
    - Initial dropdown load
    - Initial summary load
+   - 🔥 Handle direct URL hash & back button
    ============================================================ */
 
 // ===== init =====
 document.addEventListener("DOMContentLoaded", async () => {
   await loadDropdowns();
+  populateUserDropdown();
   updateSummary();
 });
+
+// 🔥 Handle direct URL hash & back button
+window.addEventListener("hashchange", function() {
+  const table = location.hash.replace("#", "");
+  if (table) loadTable(table);
+});
+
