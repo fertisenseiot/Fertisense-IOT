@@ -29,8 +29,8 @@
        - Luxon (Date Adapter)
        ============================================================ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.0/dist/chartjs-adapter-luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
 
 
   <!-- ============================================================
@@ -70,34 +70,34 @@
 
         <!-- ===== Masters Dropdown ===== -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle" href="javascript:void(0)" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-database"></i> Masters
           </a>
 
           <!-- Masters Menu Items -->
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master organizations')">Organizations</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master centre')">Centre</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('devices category')">Devices Category</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master devices')">Devices</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master subscriptioninfo')">Master Subscription Info</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master plan type')">Master Plan Type</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master subscription history')">
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masterorganizations')">Organizations</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('mastercentre')">Centre</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('devicescategory')">Devices Category</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masterdevices')">Devices</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('mastersubscriptioninfo')">Master Subscription Info</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masterplantype')">Master Plan Type</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('mastersubscriptionhistory')">
               Subscription History / <br> Renew Subscription
             </a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master sensor')">Sensors</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master parameter')">Parameter</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master uom')">Uom</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master role')">Roles</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('mastersensor')">Sensors</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masterparameter')">Parameter</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masteruom')">Uom</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masterrole')">Roles</a></li>
 
             <!-- Device-Sensor-Parameter Link -->
             <li>
-              <a class="dropdown-item" href="#" onclick="loadTable('device sensor parameter link')">
+              <a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('devicesensorparameterlink')">
                 Device-Sensor-Parameter Link
               </a>
             </li>
 
-            <li><a class="dropdown-item" href="#" onclick="loadTable('master notification time')">
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('masternotificationtime')">
               Master Notification Time
             </a></li>
           </ul>
@@ -105,25 +105,25 @@
 
         <!-- ===== Logs Dropdown ===== -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle" href="javascript:void(0)" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-journal-text"></i> Logs & Links
           </a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" onclick="loadTable('device reading log')">Device Readings</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('device alarm log')">Device Alarms</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('device alarm call log')">Alarm Calls</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('compass dates')">Compass Dates</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('devicereadinglog')">Device Readings</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('devicealarmlog')">Device Alarms</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('devicealarmcalllog')">Alarm Calls</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('compassdates')">Compass Dates</a></li>
           </ul>
         </li>
 
         <!-- ===== User Management Dropdown ===== -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle" href="javascript:void(0)" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-journal-text"></i> User-Management
           </a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" onclick="loadTable('create user')">Create-User</a></li>
-            <li><a class="dropdown-item" href="#" onclick="loadTable('user organization centre link')">
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('createuser')">Create-User</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTable('userorganizationcentrelink')">
               User-Organization-Centre-Links
             </a></li>
           </ul>
@@ -134,12 +134,12 @@
       <!-- =================== RIGHT SIDE (ADMIN) =================== -->
       <ul class="navbar-nav ms-auto">
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link dropdown-toggle" href="javascript:void(0)" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle"></i> Admin
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="#">Profile</a></li>
-            <li><a class="dropdown-item" href="#" onclick="logout()">Logout</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="logout()">Logout</a></li>
           </ul>
         </li>
       </ul>
