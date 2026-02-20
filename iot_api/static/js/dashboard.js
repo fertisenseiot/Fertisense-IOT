@@ -5,8 +5,8 @@
    - All API endpoint mappings
    ============================================================ */
 
-//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+ const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 
 
 const API = {
@@ -420,6 +420,23 @@ function calculateSubscriptionStatus(row) {
 async function loadTable(table) {
   
   history.pushState(null, "", location.pathname + "#" + normalizeKey(table));
+
+   // 🔥 GRAPH RESET
+  const graphSection = document.getElementById("graphSection");
+  if(graphSection){
+      graphSection.style.display = "none";
+  }
+
+  const mainTable = document.getElementById("mainTable");
+  const addBtn = document.getElementById("addBtn");
+
+  if(mainTable){
+      mainTable.style.display = "table";
+  }
+
+  if(addBtn){
+      addBtn.style.display = "inline-block";
+  }
 
   if (normalizeKey(table) === "devicesensorparameterlink") {
   loadDeviceSensorParameterMaster();
@@ -2375,61 +2392,68 @@ function filterPopupTable(input) {
 
 function renderDeviceReadingGraphSection(){
 
-  const section = document.getElementById("tableSection");
+  const graphSection = document.getElementById("graphSection");
+  const table = document.getElementById("mainTable");
+  const addBtn = document.getElementById("addBtn");
+  const title = document.getElementById("tableTitle");
 
-  document.getElementById("mainTable").style.display = "none";
-  document.getElementById("addBtn").style.display = "none";
+  // 🔹 Hide table + add button
+  table.style.display = "none";
+  addBtn.style.display = "none";
 
- section.innerHTML = `
-  <h3>User Device Graph</h3>
+  // 🔹 Change title
+  title.innerText = "User Device Graph";
 
-  <div class="row mb-3">
+  // 🔹 Show graph section
+  graphSection.style.display = "block";
 
-    <div class="col-md-4">
-      <label>Select User</label>
-      <select id="userSelect"
-              class="form-select"
-              onchange="handleUserChange()">
-        <option value="">-- Select User --</option>
-      </select>
+  graphSection.innerHTML = `
+    <div class="row mb-3">
+
+      <div class="col-md-4">
+        <label>Select User</label>
+        <select id="userSelect"
+                class="form-select"
+                onchange="handleUserChange()">
+          <option value="">-- Select User --</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label>Select Device</label>
+        <select id="deviceSelect"
+                class="form-select"
+                onchange="loadUserGraph()">
+          <option value="">-- Select Device --</option>
+        </select>
+      </div>
+
+      <div class="col-md-4" id="parameterDropdownContainer" style="display:none;">
+        <label>Select Parameter</label>
+        <select id="parameterSelect"
+                class="form-select"
+                onchange="loadUserGraph()">
+          <option value="">-- Select Parameter --</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label>Time Filter</label>
+        <select id="timeFilter"
+                class="form-select"
+                onchange="loadUserGraph()">
+          <option value="10">Last 10 Minutes</option>
+          <option value="60">Last 1 Hour</option>
+          <option value="1440">Last 1 Day</option>
+        </select>
+      </div>
+
     </div>
 
-    <div class="col-md-4">
-      <label>Select Device</label>
-      <select id="deviceSelect"
-              class="form-select"
-              onchange="loadUserGraph()">
-        <option value="">-- Select Device --</option>
-      </select>
+    <div class="graph-container">
+      <canvas id="userChart"></canvas>
     </div>
-
-    <div class="col-md-4" id="parameterDropdownContainer" style="display:none;">
-  <label>Select Parameter</label>
-  <select id="parameterSelect"
-          class="form-select"
-          onchange="loadUserGraph()">
-    <option value="">-- Select Parameter --</option>
-  </select>
-</div>
-
-    <div class="col-md-4">
-      <label>Time Filter</label>
-      <select id="timeFilter"
-              class="form-select"
-              onchange="loadUserGraph()">
-        <option value="10">Last 10 Minutes</option>
-        <option value="60">Last 1 Hour</option>
-        <option value="1440">Last 1 Day</option>
-      </select>
-    </div>
-
-  </div>
-
-  <div class="graph-container">
-    <canvas id="userChart"></canvas>
-  </div>
-`;
-
+  `;
 
   populateUserDropdown();
 }
