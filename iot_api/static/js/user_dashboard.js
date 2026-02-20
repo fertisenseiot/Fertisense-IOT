@@ -16,8 +16,8 @@
    BASE URL CONFIGURATION
    =============================== */
   
- const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
  const API = {
@@ -48,6 +48,7 @@ window.cache = {
 }; //for fast opening 1
 
 let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, currentUser=null;
+let editingUserId = null;
 let currentCategoryId=null, liveUpdateInterval=null;
 window.currentDeviceGraphDeviceId = null;
 let graphRangeMinutes = 1440;   // default = 1 day
@@ -123,6 +124,9 @@ if (userLinks.length > 0) {
         centreData.find(c => c.CENTRE_ID == userLinks[0].CENTRE_ID)?.CENTRE_NAME || "";
 
     setNavbarOrgCentre(orgName, centreName);
+
+    // 🔥 ROLE BASED CENTRE UI APPLY
+    applyCentreRoleUI(currentUser, centreData);
 }
 
   }catch(err){ console.error(err);}
@@ -357,13 +361,23 @@ function showCategoryCards(){
    ============================================================ */
 
 function showUserForm() {
-  document.getElementById("deviceDetailsContainer").style.display = "none";
-  document.getElementById("deviceTypeCards").style.display = "none";
-  document.getElementById("userManagementSection").style.display = "block";
-  document.getElementById("userFormContainer").style.display = "block";
-  document.getElementById("userListContainer").style.display = "block";
-  loadUserList(); // Form ke saath hi list bhi load kar do
+
+    if(currentUser.ROLE_ID !== 2) return;
+
+    const modal = new bootstrap.Modal(
+        document.getElementById('createUserModal')
+    );
+
+    modal.show();
+
+    // 🔥 ALSO LOAD USER LIST
+    loadUserList();
+
+    // 🔥 SHOW USER LIST SECTION
+    document.getElementById("userListContainer").style.display = "block";
 }
+
+
 
 /* ============================================================
    LOAD USER LIST CREATED BY CURRENT ADMIN
@@ -393,6 +407,12 @@ async function loadUserList() {
           <td>${u.PHONE || '-'}</td>
           <td>${u.ROLE_ID == 2 ? "IoT Admin" : "User"}</td>
           <td>${validity}</td>
+          <td>
+   <button class="btn btn-sm btn-warning"
+           onclick="editUser(${u.USER_ID})">
+      Edit
+   </button>
+</td>
         </tr>
       `;
     });
@@ -466,16 +486,29 @@ document.getElementById("createUserForm").addEventListener("submit", async (e) =
     };
 
     // 🔹 Submit to backend
-    const res = await fetch(BASE_URL + "/api/masteruser/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+let url = BASE_URL + "/api/masteruser/";
+let method = "POST";
+
+if(editingUserId){
+    url = BASE_URL + "/api/masteruser/" + editingUserId + "/";
+    method = "PUT";
+}
+
+const res = await fetch(url, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+});
+
 
 if (res.ok) {
-    alert("✅ User created successfully!");
+    alert(editingUserId ? "✅ User updated successfully!" : "✅ User created successfully!");
     document.getElementById("createUserForm").reset();
     loadUserList();
+
+    editingUserId = null;
+    document.querySelector("#createUserForm button[type='submit']").innerText = "Create";
+
 } else {
     const data = await res.json();
     // 🔹 Friendly error message
@@ -521,15 +554,20 @@ function handleRoleDisable() {
 
 // 🔹 Show/hide section
 function showUserOrgCentreLinkForm(){
-  document.getElementById("deviceTypeCards").style.display="none";
-  document.getElementById("deviceDetailsContainer").style.display="none";
-  document.getElementById("userManagementSection").style.display="none";
-  document.getElementById("userOrgCentreLinkSection").style.display="block";
 
-  loadUsersForLink();
-  loadOrganizationsForLink();
-  loadUserOrgCentreLinks();
+    if(currentUser.ROLE_ID !== 2) return;
+
+    const modal = new bootstrap.Modal(
+        document.getElementById('userLinkModal')
+    );
+
+    modal.show();
+
+    loadUsersForLink();
+    loadOrganizationsForLink();
+    loadUserOrgCentreLinks();
 }
+
 
 function togglePassword() {
   const passwordField = document.getElementById("newPassword");
@@ -2550,6 +2588,124 @@ const readingsDataRaw =
         console.error("Summary Live Error:",err);
     }
 }
+
+// ============================================================
+// EDIT USER FUNCTION
+// ============================================================
+
+function editUser(userId){
+
+    console.log("Edit clicked for:", userId);
+
+    // Find user from table list (temporary logic)
+    fetch(BASE_URL + "/api/masteruser/")
+        .then(res => res.json())
+        .then(users => {
+
+            const user = users.find(u => u.USER_ID == userId);
+            if(!user){
+                alert("User not found");
+                return;
+            }
+            editingUserId = user.USER_ID;
+
+            // 🔹 Fill form fields
+            document.getElementById("newActualName").value = user.ACTUAL_NAME || "";
+            document.getElementById("newUsername").value = user.USERNAME || "";
+            document.getElementById("email").value = user.EMAIL || "";
+            document.getElementById("phone").value = user.PHONE || "";
+            document.getElementById("validityStart").value = user.VALIDITY_START || "";
+            document.getElementById("validityEnd").value = user.VALIDITY_END || "";
+            document.getElementById("newUserRole").value = user.ROLE_ID;
+
+            // 🔹 Change button text
+            document.querySelector("#createUserForm button[type='submit']").innerText = "Update";
+
+            // 🔹 Open modal
+            const modal = new bootstrap.Modal(
+                document.getElementById('createUserModal')
+            );
+            modal.show();
+
+        });
+}
+
+
+function applyCentreRoleUI(user, centres) {
+
+    const centreText = document.getElementById("navbarCentreName");
+    const centreDropdown = document.getElementById("adminCentreDropdown");
+    const mobileDropdown = document.getElementById("mobileAdminCentreDropdown");
+
+    if (!centreText || !centreDropdown) return;
+
+    if (user.ROLE_ID == 2) {
+
+        // 🔥 Hide text
+        centreText.style.display = "none";
+
+        // 🔥 Show desktop dropdown
+        centreDropdown.style.display = "inline-block";
+
+        // 🔥 Show mobile dropdown (if exists)
+        if (mobileDropdown) {
+            mobileDropdown.style.display = "block";
+        }
+
+        centreDropdown.innerHTML = "";
+        if (mobileDropdown) mobileDropdown.innerHTML = "";
+
+        const orgId = document.getElementById("organizationSelect").value;
+
+        const filteredCentres = centres.filter(c => 
+            String(c.ORGANIZATION_ID) === String(orgId)
+        );
+
+        filteredCentres.forEach(c => {
+
+            // Desktop option
+            const option1 = document.createElement("option");
+            option1.value = c.CENTRE_ID;
+            option1.textContent = c.CENTRE_NAME;
+            centreDropdown.appendChild(option1);
+
+            // 🔥 Mobile option
+            if (mobileDropdown) {
+                const option2 = document.createElement("option");
+                option2.value = c.CENTRE_ID;
+                option2.textContent = c.CENTRE_NAME;
+                mobileDropdown.appendChild(option2);
+            }
+        });
+
+        centreDropdown.value = currentCentreId;
+        if (mobileDropdown) mobileDropdown.value = currentCentreId;
+
+        // Desktop change
+        centreDropdown.onchange = function () {
+            currentCentreId = this.value;
+            loadDevices(this.value);
+        };
+
+        // 🔥 Mobile change
+        if (mobileDropdown) {
+            mobileDropdown.onchange = function () {
+                currentCentreId = this.value;
+                loadDevices(this.value);
+            };
+        }
+
+    } else {
+
+        centreText.style.display = "inline";
+        centreDropdown.style.display = "none";
+
+        if (mobileDropdown) {
+            mobileDropdown.style.display = "none";
+        }
+    }
+}
+
 
 
 /* ============================================================
