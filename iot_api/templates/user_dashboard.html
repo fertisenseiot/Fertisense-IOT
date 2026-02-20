@@ -40,7 +40,35 @@
      ============================================================ -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#">IoT Dashboard</a>
+
+    <!-- LEFT SIDE -->
+    <div class="d-flex align-items-center">
+
+      <a class="navbar-brand me-4" href="#">IoT Dashboard</a>
+
+      <ul class="navbar-nav">
+        <!-- User Management -->
+        <li class="nav-item dropdown d-none ms-2" id="userManagementNav">
+          <a class="nav-link dropdown-toggle" href="#" id="userManagementDropdown"
+             role="button" data-bs-toggle="dropdown">
+            User Management
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="userManagementDropdown">
+            <!-- <li>
+              <a class="dropdown-item" href="#" onclick="showUserList()">View Users</a>
+            </li> -->
+            <li>
+              <a class="dropdown-item" href="#" onclick="showUserForm()">Create User</a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="#" onclick="showUserOrgCentreLinkForm()">User-Organization-Centre Links</a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+
+    </div>
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -55,9 +83,17 @@
   </span>
 
     <!-- CENTRE -->
-<span style="font-size:12px; opacity:.9;">
-    Centre: <span id="navbarCentreName"></span>
-  </span>
+<span id="navbarCentreWrapper" style="font-size:12px; opacity:.9;">
+  Centre:
+  <span id="navbarCentreName"></span>
+
+  <!-- Admin Dropdown (hidden by default) -->
+  <select id="adminCentreDropdown"
+          class="form-select form-select-sm mt-1"
+          style="display:none; width:80px; height:20px; font-size:10px;">
+  </select>
+</span>
+
     </li>
 
     <!-- LOGOUT -->
@@ -74,23 +110,7 @@
 
 
 
-        <!-- User Management Dropdown -->
-        <li class="nav-item dropdown d-none"id="userManagementNav">
-          <a class="nav-link dropdown-toggle" href="#" id="userManagementDropdown" role="button" data-bs-toggle="dropdown">
-            User Management
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userManagementDropdown">
-            <!-- <li>
-              <a class="dropdown-item" href="#" onclick="showUserList()">View Users</a>
-            </li> -->
-            <li>
-              <a class="dropdown-item" href="#" onclick="showUserForm()">Create User</a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="#" onclick="showUserOrgCentreLinkForm()">User-Organization-Centre Links</a>
-            </li>
-          </ul>
-        </li>
+ 
 
         <!-- Logout -->
         <!-- <li class="nav-item">
@@ -121,6 +141,13 @@
 
   <div class="fw-semibold">
      Centre: <span id="mobileCentreName">-</span>
+
+        <!-- 🔥 Mobile Admin Centre Dropdown -->
+   <select id="mobileAdminCentreDropdown"
+           class="form-select mt-2"
+           style="display:none; font-size:13px;">
+   </select>
+
   </div>
 
   <button class="btn btn-sm btn-outline-danger mt-2 w-100"
@@ -335,16 +362,33 @@
     </table>
   </div>
 
+  </div>
  <!-- ============================================================
        👤 USER MANAGEMENT SECTION
        - Create User Form
        - User List
        ============================================================ -->
-<div id="userFormContainer" class="card shadow-sm p-4 my-4" style="display:none; max-width: 1000px; margin:auto; border-radius:12px;">
-  <h4 class="mb-4 text-primary">Create New User</h4>
+<!-- ================= CREATE USER MODAL ================= -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Create / Edit User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 🔥 YAHAN TERA EXISTING CREATE USER FORM CUT PASTE KARNA HAI -->
+       <div id="userFormContainer" 
+     class="card shadow-sm p-3"
+     style="max-width: 700px; margin:auto; border-radius:10px;">
+
+
+  <h5 class="mb-3 text-primary">Create New User</h5>
   <form id="createUserForm">
     
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
       <div class="col-md-6">
         <label for="newActualName" class="form-label fw-semibold">Actual Name</label>
         <input type="text" id="newActualName" class="form-control" required placeholder="Enter actual name">
@@ -355,7 +399,7 @@
       </div>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
       <div class="col-md-6">
         <label for="phone" class="form-label fw-semibold">Phone</label>
         <input type="text" class="form-control" id="phone" placeholder="Enter phone">
@@ -375,7 +419,7 @@
       </div>
     </div>
 
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
       <div class="col-md-6">
         <label for="newPassword" class="form-label fw-semibold">Password</label>
         <input type="password" id="newPassword" class="form-control" required
@@ -397,16 +441,16 @@
       </div>
     </div>
 
-    <div class="row g-3 mb-3">
-      <div class="col-md-3">
+    <div class="row g-2 mb-2">
+      <div class="col-md-4">
         <label for="validityStart" class="form-label fw-semibold">Validity Start</label>
         <input type="date" id="validityStart" class="form-control">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label for="validityEnd" class="form-label fw-semibold">Validity End</label>
         <input type="date" id="validityEnd" class="form-control">
       </div>
-      <div class="col-md-2">
+      <div class="col-md-4">
         <label for="newUserRole" class="form-label fw-semibold">Role</label>
         <select id="newUserRole" class="form-select">
           <option value="2">IoT Admin</option>
@@ -417,7 +461,12 @@
 
     <div class="d-flex justify-content-start mt-4">
       <button type="submit" class="btn btn-primary me-3 px-4">Create</button>
-      <button type="button" class="btn btn-outline-secondary px-4" onclick="document.getElementById('userFormContainer').style.display='none'">Cancel</button>
+     <button type="button"
+        class="btn btn-outline-secondary px-4"
+        data-bs-dismiss="modal">
+  Cancel
+</button>
+
     </div>
 
   </form>
@@ -436,6 +485,7 @@
       <th>Phone</th>
       <th>Role</th>
       <th>Validity</th>
+      <th>Action</th>
     </tr>
   </thead>
   <tbody id="userListBody"></tbody>
@@ -443,16 +493,33 @@
 
   </div>
 </div>
+</div>      </div>
+
+    </div>
+  </div>
 </div>
 
- <!-- ============================================================
+
+<!-- ================= USER LINK MODAL ================= -->
+<div class="modal fade" id="userLinkModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">User-Organization-Centre Link</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 🔥 YAHAN USER ORG CENTRE LINK FORM CUT PASTE KARNA HAI -->
+       <!-- ============================================================
        🔗 USER-ORG-CENTRE LINK SECTION
        ============================================================ -->
-<div id="userOrgCentreLinkSection" class="card shadow-sm p-4 my-4" style="display:none; max-width: 900px; margin:auto; border-radius:12px;">
+<div id="userOrgCentreLinkSection" class="card shadow-sm p-4 my-4" style= "max-width: 900px; margin:auto; border-radius:12px;">
   <h4 class="mb-4 text-primary">User-Organization-Centre Linking</h4>
   <form id="userOrgCentreLinkForm">
 
-    <div class="row g-3 mb-3">
+    <div class="row g-2 mb-2">
       <div class="col-md-4">
         <label for="linkUserSelect" class="form-label fw-semibold">User</label>
         <select id="linkUserSelect" class="form-select"></select>
@@ -469,7 +536,12 @@
 
     <div class="d-flex justify-content-start mt-4">
       <button type="button" class="btn btn-primary me-3 px-4" id="saveUserLinkBtn">Save Link</button>
-      <button type="button" class="btn btn-outline-secondary px-4" onclick="hideUserOrgCentreLinkForm()">Cancel</button>
+      <button type="button"
+        class="btn btn-outline-secondary px-4"
+        data-bs-dismiss="modal">
+  Cancel
+</button>
+
     </div>
 
   </form>
@@ -484,6 +556,14 @@
 </div>
 
 </div>
+
+      
+      </div>
+
+    </div>
+  </div>
+</div>
+
 
 <!-- ============================================================
      🔻 JS FILES
