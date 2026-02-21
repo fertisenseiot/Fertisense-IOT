@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # django_heroku.settings(locals())
 SECRET_KEY = 'django-insecure-your-secret-key'
 DEBUG = True
-ALLOWED_HOSTS = ["*","https://16de7fd271a3.ngrok-free.app/"]
+ALLOWED_HOSTS = ["fertisense-iot-production.up.railway.app",]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://fertisense-iot-production.up.railway.app",   # tumhari current ngrok URL
