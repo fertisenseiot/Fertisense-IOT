@@ -45,6 +45,8 @@ window.cache = {
   masteruom: null,
   centreReadings: {},   // centreId → readings[]
   deviceReadings: {},   // deviceId → readings[]
+  deviceAlarms: {},
+  deviceStatusAlarms: {}
 }; //for fast opening 1
 
 let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, currentUser=null;
@@ -216,35 +218,45 @@ setNavbarOrgCentre(orgText, centreText);
    - Trigger live summary update
    ============================================================ */
 
+   async function preloadCentreData(centreId){
+
+  // Agar already cache me hai to dobara fetch mat karo
+  if(window.cache.centreReadings[centreId]){
+      console.log("Using cached centre readings");
+      return;
+  }
+
+  console.log("Fetching centre readings...");
+
+  const data = await fetch(
+      API.devicereadinglog + `?centre=${centreId}`
+  ).then(r => r.json());
+
+  window.cache.centreReadings[centreId] = data;
+}
+
 async function loadDevices(centreId){
   currentCentreId=centreId;
+
+   // 🔥 clear device alarm cache on centre change
+  window.cache.deviceAlarms = {};
+  window.cache.deviceStatusAlarms = {};
+
   try{
-    // const res = await fetch(API.masterDevices);
-    // allDevices = (await res.json()).filter(d=>d.CENTRE_ID==centreId);
-    // const catRes = await fetch(API.devicecategory);
-    // allCategories = await catRes.json();
-    // updateSummary();
-    // showCategoryCards();
-    // updateSummaryLive();// old version 1
 
     const [devices, categories] = await Promise.all([
-  fetch(API.masterDevices).then(r=>r.json()),
-  fetch(API.devicecategory).then(r=>r.json())
-]);
+      fetch(API.masterDevices).then(r=>r.json()),
+      fetch(API.devicecategory).then(r=>r.json())
+    ]);
 
-allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
-allCategories = categories;
+    allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
+    allCategories = categories;
 
-// 🔥 PEHLE UI
-showCategoryCards();
-
-// 🔥 STATUS BAAD ME
-setTimeout(updateSummaryLive, 0);
-// new fast opening 1
+    showCategoryCards();
+    setTimeout(updateSummaryLive, 0);
 
   }catch(err){console.error(err);}
 }
-
 
 
 
@@ -860,9 +872,10 @@ async function updateDashboardLive(categoryId){
 
     devices.forEach(device=>{
         // 1️⃣ Filter readings for this device only
-        const deviceReadings = readingsDataRaw
-            .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-            .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
+        data.sort((a,b)=>{
+    return new Date(a.READING_DATE+'T'+a.READING_TIME) -
+           new Date(b.READING_DATE+'T'+b.READING_TIME);
+});
         const latestReading = deviceReadings[deviceReadings.length-1];
 
         // 2️⃣ Determine online/offline
@@ -1074,7 +1087,9 @@ if (isMultiParam) {
     const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
 
     try{
-        const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
+        const res = 
+  window.cache.centreReadings[currentCentreId]
+    .filter(r => r.DEVICE_ID == device.DEVICE_ID);
         const data = await res.json();
 
         const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
@@ -1378,7 +1393,8 @@ console.log(
 
     // const now = new Date();
 
-    const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
+    const readingsDataRaw =
+    window.cache.centreReadings[currentCentreId] || [];
 
     // 🔐 HARD PARAMETER LOCK (FIRST LOAD ONLY)
 // 👉 reading se hi parameter lock karo (safe for multi-parameter devices)
@@ -1526,14 +1542,29 @@ const dataToPlot = downsample(
 
 
 // ⭐ STEP 1 — Alarm API YAHAN FETCH KARO
-const alarmsRaw = await (await fetch(
-    API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`
-)).json();
+// 🔥 ALARM CACHE
+if(!window.cache.deviceAlarms[device.DEVICE_ID]){
+    window.cache.deviceAlarms[device.DEVICE_ID] =
+        await fetch(
+            API.devicealarmlog + 
+            `?centre=${currentCentreId}&category=${currentCategoryId}`
+        ).then(r=>r.json());
+}
+
+const alarmsRaw = window.cache.deviceAlarms[device.DEVICE_ID];
 
 // ⭐ STEP 1.1 — DEVICE OFFLINE / ONLINE ALARM FETCH
-const statusAlarmsRaw = await (await fetch(
-    API.devicestatusalarmlog + `?device=${device.DEVICE_ID}`
-)).json();
+// 🔥 STATUS ALARM CACHE
+if(!window.cache.deviceStatusAlarms[device.DEVICE_ID]){
+    window.cache.deviceStatusAlarms[device.DEVICE_ID] =
+        await fetch(
+            API.devicestatusalarmlog + 
+            `?device=${device.DEVICE_ID}`
+        ).then(r=>r.json());
+}
+
+const statusAlarmsRaw =
+    window.cache.deviceStatusAlarms[device.DEVICE_ID];
 
 // ===== OFFLINE PERIOD FILTER BASED ON CURRENT GRAPH RANGE =====
 let offlinePeriods = [];
@@ -2719,5 +2750,4 @@ function applyCentreRoleUI(user, centres) {
 (async function(){ 
     await loadOrganizations();
     handleRoleDisable();
-    setInterval(updateSummaryLive,10000);
 })();// new fast opening 2
