@@ -16,8 +16,8 @@
    BASE URL CONFIGURATION
    =============================== */
   
-//const BASE_URL = "https://fertisense-iot-production.up.railway.app";
- const BASE_URL ="http://127.0.0.1:8000";
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+//const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
  const API = {
