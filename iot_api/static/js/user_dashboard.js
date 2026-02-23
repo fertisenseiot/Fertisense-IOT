@@ -16,8 +16,8 @@
    BASE URL CONFIGURATION
    =============================== */
   
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-//const BASE_URL ="http://127.0.0.1:8000";
+//const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+ const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
  const API = {
@@ -48,6 +48,17 @@ window.cache = {
   deviceAlarms: {},
   deviceStatusAlarms: {}
 }; //for fast opening 1
+
+// 🔥 Hide navbar labels until correct user loads
+document.addEventListener("DOMContentLoaded", function () {
+
+    const orgLabel = document.getElementById("navbarOrgLabel");
+    const centreLabel = document.getElementById("navbarCentreLabel");
+
+    if (orgLabel) orgLabel.style.display = "none";
+    if (centreLabel) centreLabel.style.display = "none";
+
+});
 
 let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, currentUser=null;
 let editingUserId = null;
@@ -778,6 +789,12 @@ function backToDashboard(){
 }
 
 function logout(){
+
+  // 🔥 Clear user specific storage
+  localStorage.removeItem("ORG_NAME");
+  localStorage.removeItem("CENTRE_NAME");
+  localStorage.removeItem("lastRefreshTime");
+
   fetch('/logout/', { credentials: "include" })
     .then(()=>window.location='/login/');
 }
@@ -2435,10 +2452,10 @@ window.addEventListener("load", function () {
 
     const saved = localStorage.getItem("lastRefreshTime");
 
-    setNavbarOrgCentre(
-  localStorage.getItem("ORG_NAME"),
-  localStorage.getItem("CENTRE_NAME")
-);
+//     setNavbarOrgCentre(
+//   localStorage.getItem("ORG_NAME"),
+//   localStorage.getItem("CENTRE_NAME")
+// );
 
 
     if (saved) {
