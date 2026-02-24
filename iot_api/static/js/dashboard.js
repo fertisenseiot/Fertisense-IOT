@@ -5,7 +5,7 @@
    - All API endpoint mappings
    ============================================================ */
 
-// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
  const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 
 
@@ -35,7 +35,7 @@ const API = {
   
 };
 
-API.devicesensorparameterlink = "virtual";
+
 
 /* ============================================================
    🏷 HEADER LABEL MAPPING
@@ -438,10 +438,7 @@ async function loadTable(table) {
       addBtn.style.display = "inline-block";
   }
 
-  if (normalizeKey(table) === "devicesensorparameterlink") {
-  loadDeviceSensorParameterMaster();
-  return;
-}
+
 
 
   localStorage.setItem("lastOpenedTable", table);
@@ -850,85 +847,44 @@ async function openModal(row ={}){
   const fieldsDiv = document.getElementById('modalFields');
   fieldsDiv.innerHTML = "";
 
-if (currentTable === "devicesensorparameterlink") {
+/* ===============================
+   CUSTOM FORM FOR DEVICE-SENSOR LINK
+================================== */
+if (normalizeKey(currentTable) === "devicesensorlink") {
 
   fieldsDiv.innerHTML = `
     <input type="hidden" name="id" value="${row?.id ?? ''}">
 
     <div class="mb-3">
       <label class="form-label">DEVICE</label>
-      <select class="form-select" name="DEVICE_ID" id="deviceSelect">
+      <select class="form-select" name="DEVICE_ID">
         <option value="">-- Choose Device --</option>
         ${(dropdownData.devices || [])
           .sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID)
           .map(d=>`
             <option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>
               ${d.DEVICE_NAME}
-            </option>`).join("")}
+            </option>
+          `).join("")}
       </select>
     </div>
 
     <div class="mb-3">
       <label class="form-label">SENSOR</label>
-      <select class="form-select" name="SENSOR_ID" id="sensorSelect">
+      <select class="form-select" name="SENSOR_ID">
         <option value="">-- Choose Sensor --</option>
-      </select>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label">PARAMETER</label>
-      <select class="form-select" name="PARAMETER_ID" id="parameterSelect">
-        <option value="">-- Choose Parameter --</option>
+        ${(dropdownData.sensors || [])
+          .sort((a,b)=>b.SENSOR_ID-a.SENSOR_ID)
+          .map(s=>`
+            <option value="${s.SENSOR_ID}" ${row.SENSOR_ID==s.SENSOR_ID?'selected':''}>
+              ${s.SENSOR_NAME}
+            </option>
+          `).join("")}
       </select>
     </div>
   `;
 
-  const deviceSelect = document.getElementById("deviceSelect");
-  const sensorSelect = document.getElementById("sensorSelect");
-  const parameterSelect = document.getElementById("parameterSelect");
-
-  function loadSensors(deviceId){
-    sensorSelect.innerHTML =
-      `<option value="">-- Choose Sensor --</option>` +
-      (dropdownData.devicesensorlink || [])
-        .filter(l => l.DEVICE_ID == deviceId)
-        .map(l=>{
-          const s = dropdownData.sensors.find(ss=>ss.SENSOR_ID==l.SENSOR_ID);
-          return s ? `<option value="${s.SENSOR_ID}">${s.SENSOR_NAME}</option>` : "";
-        }).join("");
-  }
-
-  function loadParameters(sensorId){
-    const relatedParams = (dropdownData.sensorparameterlink || [])
-      .filter(sp => sp.SENSOR_ID == sensorId);
-
-    parameterSelect.innerHTML =
-      `<option value="">-- Choose Parameter --</option>` +
-      relatedParams.map(sp=>{
-        const p = dropdownData.parameters.find(pp=>pp.PARAMETER_ID==sp.PARAMETER_ID);
-        return p ? `<option value="${p.PARAMETER_ID}">${p.PARAMETER_NAME}</option>` : "";
-      }).join("");
-  }
-
-  deviceSelect.addEventListener("change", function(){
-    loadSensors(this.value);
-    parameterSelect.innerHTML = `<option value="">-- Choose Parameter --</option>`;
-  });
-
-  sensorSelect.addEventListener("change", function(){
-    loadParameters(this.value);
-  });
-
-  // EDIT MODE PREFILL
-  if(row.DEVICE_ID){
-    loadSensors(row.DEVICE_ID);
-    sensorSelect.value = row.SENSOR_ID;
-
-    loadParameters(row.SENSOR_ID);
-    parameterSelect.value = row.PARAMETER_ID || "";
-  }
-
-  return;
+  return; // 🔥 VERY IMPORTANT
 }
 
 
@@ -1106,6 +1062,11 @@ if (usernameInput) {
   const pk = PRIMARY_KEYS[currentTable];
 
   schema.forEach(key => {
+
+  if(currentTable === "devicesensorlink" && 
+   (key === "ORGANIZATION_ID" || key === "CENTRE_ID")) {
+   return;
+}
       // ❌ created_by skip
   if (key === "CREATED_BY" || key === "created_by") return;
       // mastersensor ka SENSOR_STATUS add/edit form me skip
@@ -1444,46 +1405,25 @@ Object.keys(payload).forEach(k => {
   });
   
   // 👉 Special case: Device-Sensor Link me Org & Centre auto-attach
-if(currentTable === "devicesensorparameterlink"){
+if(currentTable === "devicesensorlink"){
 
   const selectedDevice = payload.DEVICE_ID;
-  const selectedSensor = payload.SENSOR_ID;
-  const selectedParameter = payload.PARAMETER_ID;
 
-  if(!selectedDevice || !selectedSensor || !selectedParameter){
-    alert("All fields required");
+  if(!selectedDevice){
+    alert("Device select karna mandatory hai");
     return;
   }
 
-  const device = dropdownData.devices.find(d=>d.DEVICE_ID==selectedDevice);
+  const device = dropdownData.devices.find(d => 
+      d.DEVICE_ID == selectedDevice
+  );
 
-  // 1️⃣ Save Device-Sensor
-  await fetch(API.devicesensorlink,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      DEVICE_ID: selectedDevice,
-      SENSOR_ID: selectedSensor,
-      ORGANIZATION_ID: device?.ORGANIZATION_ID,
-      CENTRE_ID: device?.CENTRE_ID
-    })
-  });
+  if(device){
+    payload.ORGANIZATION_ID = device.ORGANIZATION_ID;
+    payload.CENTRE_ID = device.CENTRE_ID;
+  }
 
-  // 2️⃣ Save Sensor-Parameter
-  await fetch(API.sensorparameterlink,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      SENSOR_ID: selectedSensor,
-      PARAMETER_ID: selectedParameter
-    })
-  });
-
-  closeModal();
-  loadDeviceSensorParameterMaster();
-  await loadDropdowns();
-  updateSummary();
-  return;
+  // ⚠️ No manual fetch here
 }
 
   // primary key detect
