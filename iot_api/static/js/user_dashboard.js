@@ -853,8 +853,8 @@ function applyDateFilter(){
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     // ⛔ Limit 3 days
-    if(diffDays > 3){
-        alert("⚠ You can view data for maximum 3 days only.");
+    if(diffDays > 10){
+        alert("⚠ You can view data for maximum 10 days only.");
         return;
     }
 
