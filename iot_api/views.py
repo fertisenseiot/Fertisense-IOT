@@ -131,6 +131,20 @@ class DeviceReadingLogViewSet(viewsets.ModelViewSet):
     queryset = DeviceReadingLog.objects.all()
     serializer_class = DeviceReadingLogSerializer
 
+    def get_queryset(self):
+        queryset = DeviceReadingLog.objects.all()
+
+        user_id = self.request.query_params.get("user_id")
+        device_id = self.request.query_params.get("device_id")
+
+        if user_id:
+            queryset = queryset.filter(DEVICE_ID__USER_ID=user_id)
+
+        if device_id:
+            queryset = queryset.filter(DEVICE_ID=device_id)
+
+        return queryset.order_by("-READING_DATE", "-READING_TIME")
+
 class DeviceAlarmLogViewSet(viewsets.ModelViewSet):
     queryset = DeviceAlarmLog.objects.all()
     serializer_class = DeviceAlarmLogSerializer
@@ -343,10 +357,20 @@ from datetime import date
 @permission_classes([AllowAny])
 def devicecheck(request, device_id):
 
-    device = get_object_or_404(MasterDevice, DEVICE_ID=device_id)
+    device = MasterDevice.objects.filter(DEVICE_ID=device_id).first()
+
+    if not device:
+        return Response({
+            "device_id": device_id,
+            "exists": False,
+            "plan_type": None,
+            "valid_till": None,
+            "status": "Device Not Found"
+        }, status=200)
+
     today = date.today()
 
-    # 1️⃣ Pehle ACTIVE subscription dhundo
+    # 1️⃣ Active subscription
     sub = (
         SubscriptionHistory.objects
         .filter(
@@ -358,7 +382,7 @@ def devicecheck(request, device_id):
         .first()
     )
 
-    # 2️⃣ Agar active nahi mili → FUTURE subscription
+    # 2️⃣ Future subscription
     if not sub:
         sub = (
             SubscriptionHistory.objects
@@ -370,19 +394,21 @@ def devicecheck(request, device_id):
             .first()
         )
 
-    # 3️⃣ Agar kuch bhi nahi mila
+    # 3️⃣ No subscription
     if not sub:
         return Response({
             "device_id": device_id,
+            "exists": True,
             "plan_type": None,
             "valid_till": None,
             "status": "No Subscription"
         })
 
-    plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
+    plan = sub.Plan_ID  # assuming FK
 
     return Response({
         "device_id": device_id,
+        "exists": True,
         "plan_type": plan.Plan_Name if plan else "Unknown",
         "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
         "status": (
