@@ -404,7 +404,7 @@ def devicecheck(request, device_id):
             "status": "No Subscription"
         })
 
-    plan = sub.Plan_ID  # assuming FK
+    plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
 
     return Response({
         "device_id": device_id,
