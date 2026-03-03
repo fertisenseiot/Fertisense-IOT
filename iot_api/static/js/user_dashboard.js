@@ -878,41 +878,22 @@ function applyDateFilter(){
 async function updateDashboardLive(categoryId){
     if(!currentCentreId) return;
 
-     // 🔥 ADD THIS EXACTLY HERE
-    if(!window.cache.centreReadings[currentCentreId]){
-        await preloadCentreData(currentCentreId);
-    }
-
     const devices = allDevices.filter(d => d.CATEGORY_ID === categoryId);
     const [masterparameter, masteruom] = await Promise.all([
         fetch(API.masterparameter).then(r=>r.json()),
         fetch(API.masteruom).then(r=>r.json())
     ]);
 
-    // const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${categoryId}`)).json();
-    
-    // 🔥 Use centre cache instead of category API call
-if (!window.cache.centreReadings[currentCentreId]) {
-    window.cache.centreReadings[currentCentreId] =
-        await fetch(API.devicereadinglog + `?centre=${currentCentreId}`)
-            .then(r => r.json());
-}
-
-const readingsDataRaw = window.cache.centreReadings[currentCentreId]
-    .filter(r => r.CATEGORY_ID === categoryId);
-
+    const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${categoryId}`)).json();
     const now = new Date();
 
     devices.forEach(device=>{
         // 1️⃣ Filter readings for this device only
-        const deviceReadings = readingsDataRaw
-    .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-    .sort((a,b)=>
-    new Date(a.READING_DATE+'T'+a.READING_TIME + "+05:30") -
-    new Date(b.READING_DATE+'T'+b.READING_TIME + "+05:30")
-);
-
-    const latestReading = deviceReadings[deviceReadings.length - 1];
+        data.sort((a,b)=>{
+    return new Date(a.READING_DATE+'T'+a.READING_TIME) -
+           new Date(b.READING_DATE+'T'+b.READING_TIME);
+});
+        const latestReading = deviceReadings[deviceReadings.length-1];
 
         // 2️⃣ Determine online/offline
 // 2️⃣ Determine online/offline
@@ -941,9 +922,7 @@ const latestReading = filteredReadings[filteredReadings.length - 1]
                    || deviceReadings[deviceReadings.length - 1];
 
 
-    const readingTime = new Date(
-    latestReading.READING_DATE + 'T' + latestReading.READING_TIME + "+05:30"
-);
+    const readingTime = new Date(latestReading.READING_DATE + 'T' + latestReading.READING_TIME);
     if (now - readingTime <= 10 * 60 * 1000) {
         status = "active";
 
@@ -985,12 +964,12 @@ device.status = status;
     //     loadDeviceReadings(allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId));
     // }
 
-//     // function manualRefresh(){
+    function manualRefresh(){
 
-//     // if(currentCategoryId){
-//     //     updateDashboardLive(currentCategoryId);
-//     // }
-// }
+    if(currentCategoryId){
+        updateDashboardLive(currentCategoryId);
+    }
+}
 
 
     // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
@@ -1008,7 +987,7 @@ if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshIn
 
 
     // Update summary accurately device-wise
-    // updateSummary();
+    updateSummary();
 }
 
 
@@ -1103,9 +1082,6 @@ devices.forEach(device=>{
 
 async function loadCardReadingFast(device, masterparameter, masteruom){
 
-    if(!window.cache.centreReadings[currentCentreId]){
-    await preloadCentreData(currentCentreId);
-}
     const cardEl = document.getElementById(`card_${device.DEVICE_ID}`);
      
      // ✅ FIX: category yahin define karo
@@ -1128,10 +1104,10 @@ if (isMultiParam) {
     const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
 
     try{
-        const data = 
-            window.cache.centreReadings[currentCentreId]
-              ?.filter(r => r.DEVICE_ID == device.DEVICE_ID) || [];
-        
+        const res = 
+  window.cache.centreReadings[currentCentreId]
+    .filter(r => r.DEVICE_ID == device.DEVICE_ID);
+        const data = await res.json();
 
         const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
 
@@ -1242,20 +1218,18 @@ let latestTime = null;
 
 keys.forEach(k => {
     const last = grouped[k][grouped[k].length - 1];
-    const dt = new Date(
-    last.READING_DATE + "T" + last.READING_TIME + "+05:30"
-);
+    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
     if (!latestTime || dt > latestTime) latestTime = dt;
 });
 
 // 15 min rule
-if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
+if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
     cardEl.className = "device-card bg-secondary";   // OFFLINE
 } else {
     cardEl.className = "device-card bg-success";     // ONLINE
 }
 
-if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
+if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
     p1.innerText = "Offline";
     p2.innerText = "";
     p3.innerText = "";
@@ -1300,7 +1274,7 @@ try {
     }
 
     const last = ownReadings[ownReadings.length - 1];
-    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME + "+05:30");
+    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
 
     if (Date.now() - dt.getTime() > 10 * 60 * 1000) {
         valueEl.innerText = "Offline";
@@ -1466,7 +1440,7 @@ let dataPoints = readingsDataRaw
     .filter(r => r.DEVICE_ID === device.DEVICE_ID)
     //.filter(r => !window.currentGraphParameterId || String(r.PARAMETER_ID) === String(window.currentGraphParameterId))
     .map(r => ({
-    x: new Date(r.READING_DATE + "T" + r.READING_TIME + "+05:30"),
+        x: new Date(r.READING_DATE + "T" + r.READING_TIME),
         y: parseFloat(r.READING),
         paramId: r.PARAMETER_ID
     }))
@@ -2620,16 +2594,15 @@ async function updateSummaryLive(){
 
     try{
 
-          // 🔥 ADD THIS HERE (VERY IMPORTANT)
-        if(!window.cache.centreReadings[currentCentreId]){
-            await preloadCentreData(currentCentreId);
-        }
-
         // 🔥 CACHE BASED FETCH (sirf pehli baar API call)
-const readingsDataRaw = window.cache.centreReadings[currentCentreId] || [];
+if (!window.cache.centreReadings[currentCentreId]) {
+    window.cache.centreReadings[currentCentreId] =
+        await fetch(API.devicereadinglog + `?centre=${currentCentreId}`)
+            .then(r => r.json());
+}
 
-// const readingsDataRaw =
-//     window.cache.centreReadings[currentCentreId];// new fast opening 1
+const readingsDataRaw =
+    window.cache.centreReadings[currentCentreId];// new fast opening 1
 
 
         const now = new Date();
@@ -2638,10 +2611,7 @@ const readingsDataRaw = window.cache.centreReadings[currentCentreId] || [];
 
             const deviceReadings = readingsDataRaw
                 .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-                .sort((a,b)=>
-    new Date(a.READING_DATE+'T'+a.READING_TIME + "+05:30") -
-    new Date(b.READING_DATE+'T'+b.READING_TIME + "+05:30")
-);
+                .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
 
             const latest = deviceReadings[deviceReadings.length-1];
 
@@ -2650,9 +2620,7 @@ const readingsDataRaw = window.cache.centreReadings[currentCentreId] || [];
                 return;
             }
 
-            const readingTime = new Date(
-    latest.READING_DATE + "T" + latest.READING_TIME + "+05:30"
-);
+            const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
 
             device.status =
                 (now - readingTime <= 10*60*1000)
