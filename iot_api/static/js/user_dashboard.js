@@ -1222,14 +1222,14 @@ keys.forEach(k => {
     if (!latestTime || dt > latestTime) latestTime = dt;
 });
 
-// 15 min rule
-if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+// 10 min rule
+if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
     cardEl.className = "device-card bg-secondary";   // OFFLINE
 } else {
     cardEl.className = "device-card bg-success";     // ONLINE
 }
 
-if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
     p1.innerText = "Offline";
     p2.innerText = "";
     p3.innerText = "";
