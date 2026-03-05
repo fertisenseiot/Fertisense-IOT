@@ -1071,7 +1071,7 @@ devices.forEach(device=>{
     loadCardReadingFast(device, masterparameter, masteruom);
 });
 
-
+updateDashboardLive(categoryId);
 }
 
 /* ============================================================
@@ -2357,6 +2357,7 @@ document.getElementById("activeAlarmCount").textContent = activeCount;
 if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
 
     updateSummary();
+    updateDashboardLive(currentCategoryId);
 
 }
 
