@@ -1046,13 +1046,13 @@ if(isMultiParam){
     <div id="param2_${device.DEVICE_ID}" class="device-reading"></div>
     <div id="param3_${device.DEVICE_ID}" class="device-reading"></div>
 
-    <div class="device-hint">Click to view </div>
+    <div class="device-hint"></div>
   `;
 }else{
   div.innerHTML = `
     <h6>${device.DEVICE_NAME}</h6>
     <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p>
-    <div class="device-hint">Click to view </div>
+    <div class="device-hint"></div>
   `;
 }
 
