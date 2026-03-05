@@ -2366,7 +2366,7 @@ document.getElementById("activeAlarmCount").textContent = activeCount;
 if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
 
     updateSummary();
-    updateDashboardLive(currentCategoryId);
+    // updateDashboardLive(currentCategoryId);
 
 }
 
