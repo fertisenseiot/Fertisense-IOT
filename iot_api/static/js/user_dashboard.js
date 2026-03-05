@@ -1759,15 +1759,24 @@ if (latest) {
 
     // 🔥 ONLY update currentTemp for NON-INCUBATOR
     if (!isIncubator) {
-        const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-        if (el) {
-            el.innerHTML = `
-                <span class="device-reading">
-                    ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
-                </span>
-            `;
-            el.parentElement.className = `device-card ${colorClass}`;
-        }
+       const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+if (el) {
+
+    // ⭐ Graph open hone par parameter name show karo
+    if(window.currentDeviceGraphDeviceId === device.DEVICE_ID){
+        el.innerHTML = `
+            <span class="device-reading">
+                ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
+            </span>
+        `;
+    }
+    else{
+        // ⭐ Normal dashboard card
+        el.innerHTML = `${Math.round(readingVal)} ${uom}`;
+    }
+
+    el.parentElement.className = `device-card ${colorClass}`;
+}
     }
 
     if(Date.now() - latest.x.getTime() <= 10 * 60 * 1000){
