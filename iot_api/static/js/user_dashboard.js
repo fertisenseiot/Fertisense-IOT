@@ -17,7 +17,7 @@
    =============================== */
   
 const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-//const BASE_URL ="http://127.0.0.1:8000";
+// const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
  const API = {
@@ -886,7 +886,7 @@ async function updateDashboardLive(categoryId){
             new Date(b.READING_DATE+'T'+b.READING_TIME)
         );
 
-    const latestReading = deviceReadings[deviceReadings.length - 1];
+    //const latestReading = deviceReadings[deviceReadings.length - 1];
 
         // 2️⃣ Determine online/offline
 // 2️⃣ Determine online/offline
@@ -935,8 +935,14 @@ device.status = status;
         const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
         if(!el) return;
         el.textContent = displayVal;
-        el.parentElement.className = status==="active" ? "device-card bg-success" : "device-card bg-secondary";
-    });
+       const card = document.getElementById(`card_${device.DEVICE_ID}`);
+       if(card){
+       card.className =
+        status==="active"
+        ? "device-card bg-success"
+        : "device-card bg-secondary";
+}
+});
 
     // 4️⃣ Update summary
     const total = devices.length;
@@ -957,12 +963,12 @@ device.status = status;
     //     loadDeviceReadings(allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId));
     // }
 
-    function manualRefresh(){
+//     function manualRefresh(){
 
-    if(currentCategoryId){
-        updateDashboardLive(currentCategoryId);
-    }
-}
+//     if(currentCategoryId){
+//         updateDashboardLive(currentCategoryId);
+//     }
+// }
 
 
     // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
@@ -996,6 +1002,9 @@ async function openDeviceDashboard(categoryId){
 
     currentCategoryId = categoryId;
 
+    // 🔥 ADD THIS
+    window.currentGraphParameterId = null;
+
     document.getElementById("deviceTypeCards").innerHTML="";
     document.getElementById("deviceDetailsContainer").style.display="block";
 
@@ -1003,13 +1012,13 @@ async function openDeviceDashboard(categoryId){
     document.getElementById("deviceTypeTitle").textContent =
         category?.CATEGORY_NAME || categoryId;
 
-      if(window.currentGraphParameterId){
-    const p = masterparameter.find(x=>x.PARAMETER_ID==window.currentGraphParameterId);
-    if(p){
-        document.getElementById("deviceTypeTitle").textContent =
-           device.DEVICE_NAME + " → " + p.PARAMETER_NAME;
-    }
-}
+//       if(window.currentGraphParameterId){
+//     const p = masterparameter.find(x=>x.PARAMETER_ID==window.currentGraphParameterId);
+//     if(p){
+//         document.getElementById("deviceTypeTitle").textContent =
+//            device.DEVICE_NAME + " → " + p.PARAMETER_NAME;
+//     }
+// }
 
 
     const devices = allDevices.filter(d=>d.CATEGORY_ID===categoryId);
@@ -1101,7 +1110,12 @@ const data = await fetch(
     API.devicereadinglog + `?centre=${currentCentreId}`
 ).then(r => r.json());
 
-const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+const ownReadings = data
+    .filter(r => r.DEVICE_ID == device.DEVICE_ID)
+    .sort((a,b)=>
+        new Date(a.READING_DATE+"T"+a.READING_TIME) -
+        new Date(b.READING_DATE+"T"+b.READING_TIME)
+    );
 
         if(!ownReadings.length){
             p1.innerText = "Offline";
@@ -1221,11 +1235,11 @@ if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
     cardEl.className = "device-card bg-success";     // ONLINE
 }
 
-if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
-    p1.innerText = "Offline";
-    p2.innerText = "";
-    p3.innerText = "";
-}
+// if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
+//     p1.innerText = "Offline";
+//     p2.innerText = "";
+//     p3.innerText = "";
+// }
 
 
 
@@ -1553,29 +1567,16 @@ const dataToPlot = downsample(
 
 
 // ⭐ STEP 1 — Alarm API YAHAN FETCH KARO
-// 🔥 ALARM CACHE
-if(!window.cache.deviceAlarms[device.DEVICE_ID]){
-    window.cache.deviceAlarms[device.DEVICE_ID] =
-        await fetch(
-            API.devicealarmlog + 
-            `?centre=${currentCentreId}&category=${currentCategoryId}`
-        ).then(r=>r.json());
-}
-
-const alarmsRaw = window.cache.deviceAlarms[device.DEVICE_ID];
+const alarmsRaw = await fetch(
+    API.devicealarmlog + 
+    `?centre=${currentCentreId}&category=${currentCategoryId}`
+).then(r=>r.json());
 
 // ⭐ STEP 1.1 — DEVICE OFFLINE / ONLINE ALARM FETCH
-// 🔥 STATUS ALARM CACHE
-if(!window.cache.deviceStatusAlarms[device.DEVICE_ID]){
-    window.cache.deviceStatusAlarms[device.DEVICE_ID] =
-        await fetch(
-            API.devicestatusalarmlog + 
-            `?device=${device.DEVICE_ID}`
-        ).then(r=>r.json());
-}
-
-const statusAlarmsRaw =
-    window.cache.deviceStatusAlarms[device.DEVICE_ID];
+const statusAlarmsRaw = await fetch(
+    API.devicestatusalarmlog + 
+    `?device=${device.DEVICE_ID}`
+).then(r=>r.json());
 
 // ===== OFFLINE PERIOD FILTER BASED ON CURRENT GRAPH RANGE =====
 let offlinePeriods = [];
@@ -1769,7 +1770,11 @@ if (latest) {
         }
     }
 
+    if(Date.now() - latest.x.getTime() <= 10 * 60 * 1000){
     device.status = "active";
+}else{
+    device.status = "offline";
+}
 }
 else {
     device.status = "offline";
@@ -2624,11 +2629,13 @@ allDevices.forEach(device=>{
     if(el){
         el.innerText = displayVal;
 
-        el.parentElement.className =
+        const card = document.getElementById(`card_${device.DEVICE_ID}`);
+        if(card){
+        card.className =
             status === "active"
             ? "device-card bg-success"
             : "device-card bg-secondary";
-    }
+    }}
 
 });
 
