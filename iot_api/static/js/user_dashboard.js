@@ -39,16 +39,6 @@ const BASE_URL = "https://fertisense-iot-production.up.railway.app";
    GLOBAL STATE VARIABLES
    =============================== */
 
-// Cached data to reduce API calls
-window.cache = {
-  masterparameter: null,
-  masteruom: null,
-  centreReadings: {},   // centreId → readings[]
-  deviceReadings: {},   // deviceId → readings[]
-  deviceAlarms: {},
-  deviceStatusAlarms: {}
-}; //for fast opening 1
-
 // 🔥 Hide navbar labels until correct user loads
 document.addEventListener("DOMContentLoaded", function () {
 
@@ -229,29 +219,29 @@ setNavbarOrgCentre(orgText, centreText);
    - Trigger live summary update
    ============================================================ */
 
-   async function preloadCentreData(centreId){
+// async function preloadCentreData(centreId){
 
-  // Agar already cache me hai to dobara fetch mat karo
-  if(window.cache.centreReadings[centreId]){
-      console.log("Using cached centre readings");
-      return;
-  }
+//   console.log("Fetching centre readings for centre:", centreId);
 
-  console.log("Fetching centre readings...");
+//   const data = await fetch(
+//       API.devicereadinglog + `?centre=${centreId}`
+//   ).then(r => r.json());
 
-  const data = await fetch(
-      API.devicereadinglog + `?centre=${centreId}`
-  ).then(r => r.json());
-
-  window.cache.centreReadings[centreId] = data;
-}
+//   window.cache.centreReadings[centreId] = data || [];
+// }
 
 async function loadDevices(centreId){
-  currentCentreId=centreId;
+
+  currentCentreId = centreId;
+
+  // reset cache
+ // window.cache.centreReadings = {};
+
+ // await preloadCentreData(centreId);
 
    // 🔥 clear device alarm cache on centre change
-  window.cache.deviceAlarms = {};
-  window.cache.deviceStatusAlarms = {};
+  //window.cache.deviceAlarms = {};
+ // window.cache.deviceStatusAlarms = {};
 
   try{
 
@@ -887,13 +877,16 @@ async function updateDashboardLive(categoryId){
     const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${categoryId}`)).json();
     const now = new Date();
 
-    devices.forEach(device=>{
-        // 1️⃣ Filter readings for this device only
-        data.sort((a,b)=>{
-    return new Date(a.READING_DATE+'T'+a.READING_TIME) -
-           new Date(b.READING_DATE+'T'+b.READING_TIME);
-});
-        const latestReading = deviceReadings[deviceReadings.length-1];
+   devices.forEach(device => {
+
+    const deviceReadings = readingsDataRaw
+        .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+        .sort((a,b)=>
+            new Date(a.READING_DATE+'T'+a.READING_TIME) -
+            new Date(b.READING_DATE+'T'+b.READING_TIME)
+        );
+
+    const latestReading = deviceReadings[deviceReadings.length - 1];
 
         // 2️⃣ Determine online/offline
 // 2️⃣ Determine online/offline
@@ -1104,12 +1097,11 @@ if (isMultiParam) {
     const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
 
     try{
-        const res = 
-  window.cache.centreReadings[currentCentreId]
-    .filter(r => r.DEVICE_ID == device.DEVICE_ID);
-        const data = await res.json();
+const data = await fetch(
+    API.devicereadinglog + `?centre=${currentCentreId}`
+).then(r => r.json());
 
-        const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
 
         if(!ownReadings.length){
             p1.innerText = "Offline";
@@ -1222,14 +1214,14 @@ keys.forEach(k => {
     if (!latestTime || dt > latestTime) latestTime = dt;
 });
 
-// 15 min rule
-if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+// 10 min rule
+if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
     cardEl.className = "device-card bg-secondary";   // OFFLINE
 } else {
     cardEl.className = "device-card bg-success";     // ONLINE
 }
 
-if (!latestTime || (Date.now() - latestTime.getTime()) > 15 * 60 * 1000) {
+if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
     p1.innerText = "Offline";
     p2.innerText = "";
     p3.innerText = "";
@@ -1261,9 +1253,10 @@ if (!valueEl) {
 }
 
 try {
-
-    const res = await fetch(API.devicereadinglog + `?device=${device.DEVICE_ID}`);
-    const data = await res.json();
+const data = await fetch(
+    API.devicereadinglog + `?centre=${currentCentreId}`
+).then(r => r.json());
+    
 
     const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
 
@@ -1410,8 +1403,9 @@ console.log(
 
     // const now = new Date();
 
-    const readingsDataRaw =
-    window.cache.centreReadings[currentCentreId] || [];
+const readingsDataRaw = await fetch(
+    API.devicereadinglog + `?centre=${currentCentreId}`
+).then(r => r.json());
 
     // 🔐 HARD PARAMETER LOCK (FIRST LOAD ONLY)
 // 👉 reading se hi parameter lock karo (safe for multi-parameter devices)
@@ -2594,40 +2588,49 @@ async function updateSummaryLive(){
 
     try{
 
-        // 🔥 CACHE BASED FETCH (sirf pehli baar API call)
-if (!window.cache.centreReadings[currentCentreId]) {
-    window.cache.centreReadings[currentCentreId] =
-        await fetch(API.devicereadinglog + `?centre=${currentCentreId}`)
-            .then(r => r.json());
-}
-
-const readingsDataRaw =
-    window.cache.centreReadings[currentCentreId];// new fast opening 1
+const readingsDataRaw = await fetch(
+    API.devicereadinglog + `?centre=${currentCentreId}`
+).then(r => r.json());
 
 
         const now = new Date();
 
-        allDevices.forEach(device=>{
+allDevices.forEach(device=>{
 
-            const deviceReadings = readingsDataRaw
-                .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-                .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
+    const deviceReadings = readingsDataRaw
+        .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+        .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
 
-            const latest = deviceReadings[deviceReadings.length-1];
+    const latest = deviceReadings[deviceReadings.length-1];
 
-            if(!latest){
-                device.status = "offline";
-                return;
-            }
+    let status = "offline";
+    let displayVal = "Offline";
 
-            const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
+    if(latest){
 
-            device.status =
-                (now - readingTime <= 10*60*1000)
-                ? "active"
-                : "offline";
+        const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
 
-        });
+        if(now - readingTime <= 10*60*1000){
+            status = "active";
+            displayVal = Math.round(latest.READING);
+        }
+    }
+
+    device.status = status;
+
+    // ⭐ CARD UPDATE
+    const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+
+    if(el){
+        el.innerText = displayVal;
+
+        el.parentElement.className =
+            status === "active"
+            ? "device-card bg-success"
+            : "device-card bg-secondary";
+    }
+
+});
 
         updateSummary();
 
