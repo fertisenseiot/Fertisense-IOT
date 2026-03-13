@@ -67,6 +67,25 @@ window.currentGraphParameterId = null;   // incubator ke liye active parameter
    ============================================================ */
 // ------------- LOAD DATA -------------
 
+function getDeviceType(device){
+
+    const category = allCategories.find(
+        c => c.CATEGORY_ID === device.CATEGORY_ID
+    );
+
+    const name = category?.CATEGORY_NAME?.toLowerCase() || "";
+
+    if(name.includes("incubator") || name.includes("voc")){
+        return "MULTI";
+    }
+
+    if(name.includes("refricheck") || name.includes("cryo")){
+        return "SINGLE";
+    }
+
+    return "UNKNOWN";
+}
+
 async function loadOrganizations(){
   try{
 const userRes = await fetch(BASE_URL + "/api/currentuser/", {
@@ -1032,10 +1051,8 @@ async function openDeviceDashboard(categoryId){
         div.style.cursor = "pointer";
         div.id = `card_${device.DEVICE_ID}`;
 
-const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
-const isMultiParam =
-  category?.CATEGORY_NAME?.toLowerCase().includes("incubator") ||
-  category?.CATEGORY_NAME?.toLowerCase().includes("voc");
+        const deviceType = getDeviceType(device);
+        const isMultiParam = deviceType === "MULTI";
 
 
 if(isMultiParam){
@@ -1092,9 +1109,8 @@ async function loadCardReadingFast(device, masterparameter, masteruom){
     );
 
     // -------------------- CHECK INCUBATOR CATEGORY --------------------
-const isMultiParam =
-  category?.CATEGORY_NAME?.toLowerCase().includes("incubator") ||
-  category?.CATEGORY_NAME?.toLowerCase().includes("voc");
+const deviceType = getDeviceType(device);
+const isMultiParam = deviceType === "MULTI";
 
     // ===============================================================
     //      🌟 SPECIAL LOGIC ONLY FOR INCUBATOR DEVICES
@@ -1490,8 +1506,7 @@ if (window.currentGraphParameterId) {
 // 🔥 ONLY for INCUBATOR: allow old data if offline
 if (
    !dataPoints.length &&
-   allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)
-       ?.CATEGORY_NAME?.toLowerCase().includes("incubator")
+   getDeviceType(device) === "MULTI"
 ) {
 
 
@@ -1537,7 +1552,7 @@ if (window.currentGraphParameterId) {
 
 
 // 🔹 Detect if VOC category
-const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
+const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
 const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
 // 🔹 If VOC → keep only VOC readings
@@ -1779,24 +1794,14 @@ if (el) {
 }
     }
 
-    if(Date.now() - latest.x.getTime() <= 10 * 60 * 1000){
-    device.status = "active";
-}else{
-    device.status = "offline";
-}
+// 🔒 Device status graph se change nahi karna
+// Status already updateDashboardLive() handle karta hai
 }
 else {
-    device.status = "offline";
 
-    // 🔥 INCUBATOR offline handling
-    if (isIncubator) {
-        const card = document.getElementById(`card_${device.DEVICE_ID}`);
-        if (card) {
-            card.classList.remove("bg-success","bg-danger");
-            card.classList.add("bg-secondary");
-        }
-    }
-    // normal devices untouched
+    // ❌ graph me data nahi mila to device offline mat karo
+    console.log("No graph data in selected range");
+
 }
 
 // 🔥 STEP 1: y-axis ko 5 ke gap pe force karne wala plugin
@@ -2095,13 +2100,19 @@ let alarms = alarmsRaw.filter(a => {
         (a.ALARM_TIME || a.CREATED_TIME || '')
     );
 
-    // ❌ invalid date guard
     if (isNaN(alarmTime)) return false;
 
-    // ✅ ONLY LAST 24 HOURS
     return (now - alarmTime) <= (24 * 60 * 60 * 1000);
 });
 
+// 🔥 incubator / voc parameter filter
+if(getDeviceType(device) === "MULTI" && window.currentGraphParameterId){
+
+    alarms = alarms.filter(a =>
+        String(a.PARAMETER_ID) === String(window.currentGraphParameterId)
+    );
+
+}
 const offlineEvents = statusAlarmsRaw.map(s => ({
     DEVICE_ID: s.DEVICE_ID,
 
@@ -2126,10 +2137,15 @@ const offlineEvents = statusAlarmsRaw.map(s => ({
 // 🔥 ONLY selected parameter ka alarm dekho (Incubator logic)
 let filteredAlarms = alarms;
 
-if (window.currentGraphParameterId) {
+// 🔥 Only multi parameter devices filter alarms
+if(getDeviceType(device) === "MULTI" && window.currentGraphParameterId){
+
     filteredAlarms = alarms.filter(a =>
         String(a.PARAMETER_ID) === String(window.currentGraphParameterId)
     );
+
+}else{
+    filteredAlarms = alarms;
 }
 
 // 🔥 sirf selected parameter ka ACTIVE alarm
@@ -2149,17 +2165,18 @@ const isSpecial =
 if (card) {
 
     // 🟢 Special devices → card always green if online
-    if (isSpecial) {
+if (isSpecial) {
 
-        if (device.status === "active") {
-            card.classList.remove("bg-secondary");
-            card.classList.add("bg-success");
-        } else {
-            card.classList.remove("bg-success");
-            card.classList.add("bg-secondary");
-        }
-
+    if (device.status === "active") {
+        card.classList.remove("bg-secondary","bg-danger");
+        card.classList.add("bg-success");
+    } 
+    else {
+        card.classList.remove("bg-success","bg-danger");
+        card.classList.add("bg-secondary");
     }
+
+}
     // 🔴 Normal devices (Refri / Cryo) → old logic same
     else {
 
@@ -2265,7 +2282,7 @@ alarms.forEach(a => {
     if (isActive) activeCount++;
 
     // check incubator category
-    const category = allCategories.find(c => c.CATEGORY_ID === currentCategoryId);
+    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
     const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
 
     // get parameter name
