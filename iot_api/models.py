@@ -259,7 +259,7 @@ class DeviceReadingLog(models.Model):
             return
         
 
-        breached = (self.READING > param.UPPER_THRESHOLD or self.READING < param.LOWER_THRESHOLD)
+        breached = (self.READING >= param.UPPER_THRESHOLD or self.READING <= param.LOWER_THRESHOLD)
         
         # 🔹 Step 4: Check for active alarm
         active_alarm = (
