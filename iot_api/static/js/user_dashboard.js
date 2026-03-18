@@ -1158,6 +1158,20 @@ keys.forEach((k, idx) => {
     const recs = grouped[k];
     const last = recs[recs.length - 1];
 
+    const readingTime = new Date(
+    last.READING_DATE + "T" + last.READING_TIME
+);
+
+// 🔴 10 min se purani reading → OFFLINE
+if (Date.now() - readingTime.getTime() > 10 * 60 * 1000) {
+
+    p1.innerText = "Offline";
+    p2.innerText = "";
+    p3.innerText = "";
+
+    cardEl.className = "device-card bg-secondary";
+    return;
+}
     const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
     const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
 
