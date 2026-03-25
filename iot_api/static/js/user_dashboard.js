@@ -1959,7 +1959,6 @@ tooltip: {
     grid: { color: "rgba(0,0,0,0.06)" },
 
     ticks: {
-       stepSize: 50,
        autoSkip: true,
        maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8,
        precision: 0,
@@ -1971,7 +1970,7 @@ tooltip: {
   },
 
   // 🔥 STEP 2: YAHAN LAGANA HAI
-  plugins: [step5TicksPlugin]
+  // plugins: [step5TicksPlugin]
 });
 
 // ✅ YAHI ADD KARNA HAI
