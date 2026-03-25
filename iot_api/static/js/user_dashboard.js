@@ -1953,8 +1953,8 @@ tooltip: {
       },
       y: {
         beginAtZero: true,
-        suggestedMin: Math.min(...dataToPlot.map(d => d.y)) - 10,
-    suggestedMax: Math.max(...dataToPlot.map(d => d.y)) + 10,
+        suggestedMin: Math.min(...dataToPlot.map(d => d.y)) - 5,
+    suggestedMax: Math.max(...dataToPlot.map(d => d.y)) + 5,
 
     grid: { color: "rgba(0,0,0,0.06)" },
 
