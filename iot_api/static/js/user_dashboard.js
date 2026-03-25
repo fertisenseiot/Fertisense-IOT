@@ -1953,16 +1953,16 @@ tooltip: {
       },
       y: {
         beginAtZero: true,
-        suggestedMin: Math.min(...dataToPlot.map(d => d.y)) - 10,
-        suggestedMax: Math.max(...dataToPlot.map(d => d.y)) + 10,
+       min: Math.floor(Math.min(...dataToPlot.map(d => d.y)) / 50) * 50,
+    max: Math.ceil(Math.max(...dataToPlot.map(d => d.y)) / 50) * 50,
 
     grid: { color: "rgba(0,0,0,0.06)" },
 
     ticks: {
-       autoSkip: true,
-       maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8,
-       precision: 0,
-       padding: 6
+        stepSize: 50,
+        autoSkip: false,
+        precision: 0,
+        padding: 6
 
         }
       }
