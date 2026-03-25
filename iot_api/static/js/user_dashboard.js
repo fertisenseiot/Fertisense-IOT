@@ -1954,7 +1954,7 @@ tooltip: {
       y: {
         beginAtZero: true,
         // grace: '10%',
-        //min:0,
+        min:-250,
         grid: { color: "rgba(0,0,0,0.06)" },
 
         ticks: {
