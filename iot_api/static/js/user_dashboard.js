@@ -1826,7 +1826,7 @@ const step5TicksPlugin = {
 
     const min = scale.min;
     const max = scale.max;
-    const step = 5;
+    const step = 50;
 
     const start = Math.floor(min / step) * step;
     const end   = Math.ceil(max / step) * step;
@@ -1953,8 +1953,8 @@ tooltip: {
       },
       y: {
         beginAtZero: true,
-        suggestedMin: Math.min(...dataToPlot.map(d => d.y)) - 5,
-    suggestedMax: Math.max(...dataToPlot.map(d => d.y)) + 5,
+        suggestedMin: Math.min(...dataToPlot.map(d => d.y)) - 10,
+        suggestedMax: Math.max(...dataToPlot.map(d => d.y)) + 10,
 
     grid: { color: "rgba(0,0,0,0.06)" },
 
