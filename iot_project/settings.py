@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'iot_api',
+    'iot_api.apps.IotApiConfig',
 ]
 
 MIDDLEWARE = [
