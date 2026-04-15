@@ -953,7 +953,36 @@ device.status = status;
         // 3️⃣ Update device card
         const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
         if(!el) return;
-        el.textContent = displayVal;
+        // el.textContent = displayVal;
+
+        // 🔥 Latest reading nikaalo
+const latest = deviceReadings[deviceReadings.length - 1];
+
+if(!latest){
+    el.innerText = "Offline";
+    return;
+}
+
+// 🔥 PARAM + UOM
+const param = masterparameter.find(
+    p => String(p.PARAMETER_ID) === String(latest.PARAMETER_ID)
+);
+
+const uomObj = param
+    ? masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID))
+    : null;
+
+const uom = uomObj?.UOM_NAME || "";
+
+// 🔥 FINAL UI (ALWAYS PARAM SHOW)
+el.innerHTML = `
+    <div style="font-size:10px;">
+        ${param?.PARAMETER_NAME || "Reading"}
+    </div>
+    <div style="font-size:16px;font-weight:600;">
+        ${Math.round(parseFloat(latest.READING))} ${uom}
+    </div>
+`;
        const card = document.getElementById(`card_${device.DEVICE_ID}`);
        if(card){
        card.className =
@@ -1158,7 +1187,7 @@ keys.forEach((k, idx) => {
     const recs = grouped[k];
     const last = recs[recs.length - 1];
 
-    const readingTime = new Date(
+const readingTime = new Date(
     last.READING_DATE + "T" + last.READING_TIME
 );
 
@@ -1172,6 +1201,7 @@ if (Date.now() - readingTime.getTime() > 10 * 60 * 1000) {
     cardEl.className = "device-card bg-secondary";
     return;
 }
+
     const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
     const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
 
@@ -1826,7 +1856,7 @@ const step5TicksPlugin = {
 
     const min = scale.min;
     const max = scale.max;
-    const step = 50;
+    const step = 5;
 
     const start = Math.floor(min / step) * step;
     const end   = Math.ceil(max / step) * step;
@@ -1953,16 +1983,15 @@ tooltip: {
       },
       y: {
         beginAtZero: true,
-       min: Math.floor(Math.min(...dataToPlot.map(d => d.y)) / 5) * 5,
-    max: Math.ceil(Math.max(...dataToPlot.map(d => d.y)) / 5) * 5,
+        // grace: '10%',
+        min:0,
+        grid: { color: "rgba(0,0,0,0.06)" },
 
-    grid: { color: "rgba(0,0,0,0.06)" },
-
-    ticks: {
-        stepSize: 5,
-        autoSkip: false,
-        precision: 0,
-        padding: 6
+        ticks: {
+           autoSkip: true,
+           maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8,
+           precision: 0,
+           padding: 6
 
         }
       }
@@ -1970,7 +1999,7 @@ tooltip: {
   },
 
   // 🔥 STEP 2: YAHAN LAGANA HAI
-  // plugins: [step5TicksPlugin]
+  plugins: [step5TicksPlugin]
 });
 
 // ✅ YAHI ADD KARNA HAI
