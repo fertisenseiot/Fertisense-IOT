@@ -16,16 +16,20 @@ body {
    - Force 56px (Bootstrap default)
    - Vertically center content
    ============================================================ */
-.navbar{
-  height:56px !important;
-  min-height:56px !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
-  display:flex;
-  align-items:center;
-
-  position: relative;     /* 🔥 ADD THIS */
-  z-index: 3000;          /* 🔥 ADD THIS */
+.navbar {
+  position: fixed !important;   /* 🔥 YEH ADD KARO */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px !important;
+  min-height: 56px !important;
+  z-index: 9999 !important;     /* sabse upar rakho */
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, #0d6efd, #0a58ca);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .dropdown-menu{
