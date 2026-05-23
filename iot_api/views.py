@@ -456,3 +456,41 @@ def twilio_call_status(request):
 
     return HttpResponse("OK")
 
+
+@api_view(['GET'])
+def hardware_payment_status_api(request):
+
+    device_id = request.GET.get("device_id")
+
+    # ❌ device_id missing
+    if not device_id:
+        return Response({
+            "status": 0
+        })
+
+    try:
+
+        device = MasterDevice.objects.get(
+            DEVICE_ID=device_id
+        )
+
+        return Response({
+
+            "status": 1,
+
+            "device_id": device.DEVICE_ID,
+
+            # 0 = payment pending
+            # 1 = payment done
+            "hardware_payment_done": device.IS_HARDWARE_PAYMENT_DONE
+
+        })
+
+    except MasterDevice.DoesNotExist:
+
+        return Response({
+
+            "status": 0
+
+        })
+
