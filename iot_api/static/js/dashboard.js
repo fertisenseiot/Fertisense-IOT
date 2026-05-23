@@ -6,7 +6,7 @@
    ============================================================ */
 
 //const BASE_URL = "http://127.0.0.1:8000"; // direct IP
- const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";
 
 
 const API = {
@@ -102,7 +102,7 @@ const PRIMARY_KEYS = {
 const FIELD_SCHEMAS = {
   masterorganizations: ["ORGANIZATION_ID","ORGANIZATION_NAME",],
   mastercentre: ["CENTRE_ID","ORGANIZATION_ID","CENTRE_NAME"],
-  masterdevices: ["DEVICE_ID","DEVICE_NAME","DEVICE_IP","ORGANIZATION_ID","CENTRE_ID","DEVICE_STATUS"],
+  masterdevices: ["DEVICE_ID","DEVICE_NAME","DEVICE_IP","ORGANIZATION_ID","CENTRE_ID","DEVICE_STATUS","IS_HARDWARE_PAYMENT_DONE"],
   mastersensor: ["SENSOR_ID","SENSOR_NAME","SENSOR_TYPE","UOM_ID"],
   masterparameter: ["PARAMETER_ID","PARAMETER_NAME","UOM_ID","LOWER_THRESHOLD","UPPER_THRESHOLD","THRESHOLD"],
   masteruom: ["UOM_ID","UOM_NAME","SYMBOL"],
@@ -622,6 +622,10 @@ if (currentTable === "mastersubscriptionhistory") {
       // ✅ Convert boolean true/false to Yes/No for SEND_SMS & SEND_EMAIL
 if (h === "SEND_SMS" || h === "SEND_EMAIL") {
   cellVal = (row[h] === true || row[h] === 1 || row[h] === "true") ? "Yes" : "No";
+}
+
+if (currentTable === "masterdevices" && h === "IS_HARDWARE_PAYMENT_DONE") {
+  cellVal = row[h] == 1 ? "Yes" : "No";
 }
 
 
@@ -1237,6 +1241,79 @@ if (key === "USER_ID") {
       ${options.map(u => `<option value="${u.USER_ID}" ${(u.USER_ID == (row[key] ?? "")) ? 'selected' : ''}>${u.USERNAME}</option>`).join("")}
     </select>
   </div>`;
+  return;
+}
+
+
+// ================================
+// Hardware Payment Dropdown
+// ================================
+if (
+    currentTable === "masterdevices" &&
+    key === "IS_HARDWARE_PAYMENT_DONE"
+) {
+
+    fieldsDiv.innerHTML += `
+        <div class="mb-3">
+            <label class="form-label">
+                IS HARDWARE PAYMENT DONE
+            </label>
+
+            <select class="form-select"
+                    name="IS_HARDWARE_PAYMENT_DONE">
+
+               <option value="1" selected>
+                  Yes
+              </option>
+
+                <option value="1"
+                    ${row[key] == 1 ? "selected" : ""}>
+                    Yes
+                </option>
+
+                <option value="0"
+                    ${row[key] == 0 ? "selected" : ""}>
+                    No
+                </option>
+
+            </select>
+        </div>
+    `;
+
+    return;
+}
+
+
+// ================================
+// CATEGORY DROPDOWN
+// ================================
+if (key === "CATEGORY_ID") {
+
+  const options = (dropdownData.devicescategory || [])
+    .sort((a, b) => b.CATEGORY_ID - a.CATEGORY_ID);
+
+  fieldsDiv.innerHTML += `
+    <div class="mb-3">
+      <label class="form-label">CATEGORY</label>
+
+      <select class="form-select" name="CATEGORY_ID">
+
+        <option value="">
+          -- Choose Category --
+        </option>
+
+        ${options.map(dc => `
+          <option value="${dc.CATEGORY_ID}"
+            ${(dc.CATEGORY_ID == (row[key] ?? "")) ? 'selected' : ''}>
+
+            ${dc.CATEGORY_NAME}
+
+          </option>
+        `).join("")}
+
+      </select>
+    </div>`;
+
   return;
 }
 
