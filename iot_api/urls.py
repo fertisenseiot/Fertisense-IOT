@@ -57,5 +57,10 @@ urlpatterns = [
     path('devicecheck/<int:device_id>/', views.devicecheck, name='devicecheck'),
     path("twilio/call-status/", twilio_call_status),
 
+    path(
+    'hardware-payment-status-api/',
+    hardware_payment_status_api,
+    name='hardware_payment_status_api'
+),
     
 ]
