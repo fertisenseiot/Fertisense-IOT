@@ -362,6 +362,10 @@ class MasterDevice(models.Model):
     DEVICE_IP = models.CharField(max_length=30, null=True, blank=True) 
     DEVICE_STATUS = models.IntegerField(default=1) 
     DEVICE_STATUS_CD = models.IntegerField(default=1) 
+
+     # 👇 NEW FIELD
+    IS_HARDWARE_PAYMENT_DONE = models.IntegerField(default=1)
+    
     ORGANIZATION_ID = models.IntegerField() 
     CENTRE_ID = models.IntegerField() 
     CRT_DT = models.DateField(null=True, blank=True) 
