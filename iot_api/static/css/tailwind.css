@@ -1,272 +1,134 @@
 /* ============================================================
    🌍 GLOBAL BASE STYLING
-   - Body background
-   - Default font
-   - Navbar spacing offset
    ============================================================ */
-
 body { 
-  background: #f1f3f8; 
-  font-family: 'Segoe UI', sans-serif; 
-  padding-top: 70px; /* Navbar fixed-top offset */
+  background-color: #f4f7fe; 
+  font-family: 'Poppins', sans-serif; 
+  color: #2b3674;
+  margin: 0;
+  overflow-x: hidden;
 }
-
+.layout-wrapper { min-height: 100vh; }
 
 /* ============================================================
-   🧭 NAVBAR STYLING
-   - Gradient background
-   - Brand styling
+   🧊 SIDEBAR STYLING
    ============================================================ */
-
-.navbar { 
-  background: linear-gradient(90deg, #007bff, #0056b3); 
+.sidebar { 
+  width: 260px; background: #111c44; color: #fff; position: fixed; top: 0; left: 0; 
+  height: 100vh; z-index: 1000; display: flex; flex-direction: column; transition: all 0.3s ease;
 }
-
-.navbar-brand { 
-  font-weight: bold; 
-  font-size: 1.3rem; 
-}
-
+.sidebar-brand { padding: 20px; display: flex; align-items: center; font-size: 1.2rem; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.08); letter-spacing: 0.5px; }
+.sidebar .nav-link { color: #a3aed1; padding: 10px 18px; margin: 3px 12px; border-radius: 8px; font-weight: 500; font-size: 0.9rem; display: flex; align-items: center; transition: all 0.2s ease-in-out; }
+.sidebar .nav-icon { font-size: 1.1rem; margin-right: 10px; color: #4318FF; }
+.sidebar .nav-link:hover, .sidebar .nav-link[aria-expanded="true"] { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+.sidebar .nav-link[aria-expanded="true"] .nav-icon { color: #05CD99; }
+.toggle-arrow { font-size: 0.75rem; transition: transform 0.3s ease; }
+.sidebar .nav-link[aria-expanded="true"] .toggle-arrow { transform: rotate(180deg); }
+.sub-menu { background: rgba(0, 0, 0, 0.15); border-radius: 8px; margin: 4px 12px; padding: 8px 0; }
+.sub-menu .nav-link { padding: 6px 15px 6px 40px; margin: 2px 8px; font-size: 0.8rem; background: transparent !important; }
+.sub-menu .nav-link:hover { color: #4318FF !important; transform: translateX(3px); }
+.custom-scrollbar { overflow-y: auto; overflow-x: auto; padding-bottom: 20px; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(163, 174, 209, 0.5); border-radius: 10px; }
 
 /* ============================================================
-   📊 SUMMARY CARDS (Dashboard Top Cards)
-   - Hover animation
-   - Shadow
-   - Icon styling
+   📰 MAIN CONTENT & HEADER
    ============================================================ */
-
-.summary-card { 
-  border-radius: 16px; 
-  padding: 20px; 
-  color: #fff; 
-  box-shadow: 0 6px 18px rgba(0,0,0,0.1); 
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Card hover effect */
-.summary-card:hover { 
-  transform: translateY(-5px); 
-  box-shadow: 0 12px 24px rgba(0,0,0,0.2); 
-}
-
-.summary-card h5 { 
-  margin-bottom: 10px; 
-  font-weight: 600; 
-}
-
-.summary-card i { 
-  font-size: 2.5rem; 
-  opacity: 0.8; 
-}
-
+.main-content { margin-left: 260px; min-height: 100vh; display: flex; flex-direction: column; transition: margin-left 0.3s ease; }
+.top-header { background: #ffffff; height: 60px; position: sticky; top: 0; z-index: 998; }
+.mobile-toggle-btn { display: none; background: none; border: none; font-size: 1.6rem; color: #111c44; cursor: pointer; padding: 0; }
 
 /* ============================================================
-   📋 TABLE SECTION STYLING
-   - Table container box
-   - Sticky header
-   - Hover row effect
+   📊 SUMMARY CARDS
    ============================================================ */
-
-.table-container { 
-  margin-top: 25px; 
-  background: #fff; 
-  padding: 20px; 
-  border-radius: 16px; 
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08); 
-  overflow-x:auto; 
-}
-
-/* Sticky table header */
-.table thead { 
-  position: sticky; 
-  top: 0; 
-  background: #007bff; 
-  color: white; 
-}
-
-/* Table cell alignment */
-.table th, 
-.table td { 
-  vertical-align: middle; 
-  white-space: nowrap; 
-}
-
-/* Row hover effect */
-.table-hover tbody tr:hover { 
-  background-color: rgba(0,123,255,0.05); 
-}
-
+.summary-card { background: #ffffff; border-radius: 14px; padding: 15px 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; border: 1px solid rgba(0,0,0,0.03); }
+.summary-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+.card-content h3 { color: #2b3674; font-size: 1.3rem; }
+.card-content p { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: #a3aed1; }
+.icon-box { width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.icon-primary { background: rgba(67, 24, 255, 0.1); color: #4318FF; }
+.icon-success { background: rgba(5, 205, 153, 0.1); color: #05CD99; }
+.icon-warning { background: rgba(255, 181, 71, 0.1); color: #FFB547; }
+.icon-danger  { background: rgba(238, 93, 80, 0.1); color: #EE5D50; }
 
 /* ============================================================
-   🔘 BUTTON STYLING
-   - Rounded edges
-   - Hover scale animation
+   📋 FULL WIDTH TABLE (Super Compact & 100% Zoom Fit)
    ============================================================ */
+.table-container { background: #ffffff; padding: 12px 18px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow-x: auto; }
+.custom-table { border-spacing: 0 2px; border-collapse: separate; margin-top: -2px; width: 100%; table-layout: auto; }
 
-.btn { 
-  border-radius: 8px; 
-  transition: all 0.2s ease; 
+.custom-table thead th { 
+  color: #a3aed1; font-size: 0.62rem; text-transform: uppercase; 
+  letter-spacing: 0.2px; padding: 5px 6px; font-weight: 600; 
+  border-bottom: 2px solid #f4f7fe; white-space: nowrap; 
 }
+.custom-table tbody tr { box-shadow: 0 1px 2px rgba(0,0,0,0.02); transition: transform 0.2s; background: #fff;}
+.custom-table tbody tr:hover { transform: scale(1.001); box-shadow: 0 3px 8px rgba(0,0,0,0.04); background-color: #fcfcfc;}
 
-.btn:hover { 
-  transform: scale(1.05); 
+.custom-table tbody td { 
+  padding: 4px 6px; vertical-align: middle; color: #2b3674; 
+  font-weight: 500; font-size: 0.68rem; border-top: 1px solid #f8f9fa; 
+  border-bottom: 1px solid #f8f9fa; max-width: 140px; overflow: hidden; 
+  text-overflow: ellipsis; white-space: nowrap; 
 }
+.custom-table tbody td:first-child { border-left: 1px solid #f8f9fa; border-radius: 6px 0 0 6px; }
+.custom-table tbody td:last-child { border-right: 1px solid #f8f9fa; border-radius: 0 6px 6px 0; max-width: none; }
 
+/* Sticky Actions Column Fix */
+.custom-table th:last-child, .custom-table td:last-child { position: sticky; right: 0; background-color: #fff; z-index: 1; border-left: 1px solid #f0f2f5; box-shadow: -4px 0 8px rgba(0,0,0,0.02); }
+.custom-table thead th:last-child { z-index: 11; background-color: #ffffff; }
+.custom-table tbody tr:hover td:last-child { background-color: #fcfcfc; }
+
+/* Premium Action Buttons */
+.btn-action { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; border: none; transition: all 0.2s ease; font-size: 0.65rem; cursor: pointer; }
+.btn-action.edit { color: #4318FF; background: rgba(67, 24, 255, 0.08); }
+.btn-action.edit:hover { background: #4318FF; color: #fff; transform: translateY(-2px); box-shadow: 0 3px 6px rgba(67, 24, 255, 0.2); }
+.btn-action.delete { color: #EE5D50; background: rgba(238, 93, 80, 0.08); }
+.btn-action.delete:hover { background: #EE5D50; color: #fff; transform: translateY(-2px); box-shadow: 0 3px 6px rgba(238, 93, 80, 0.2); }
+.btn { border-radius: 6px; font-weight: 500; padding: 4px 10px; white-space: nowrap; font-size: 0.75rem; }
+.btn-primary { background-color: #4318FF; border: none; }
+.btn-primary:hover { background-color: #3311db; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.3); }
 
 /* ============================================================
-   🪟 MODAL STYLING
-   - Glass effect
-   - Rounded design
+   🪟 COMPACT FORM UI & MODALS
    ============================================================ */
+.form-label { font-size: 0.65rem; font-weight: 600; color: #8f9bba; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; margin-top: 6px;}
+.form-control, .form-select { border-radius: 8px; border: 1px solid #e0e5f2; padding: 7px 10px; font-size: 0.8rem; color: #2b3674; background-color: #fcfcfd; transition: all 0.2s; box-shadow: none; }
+.form-control:focus, .form-select:focus { background-color: #fff; border-color: #4318FF; box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1); outline: none; }
+.fade-in { animation: fadeIn 0.4s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.modal-content { 
-  border-radius: 16px; 
-  backdrop-filter: blur(10px); 
-  background: rgba(255,255,255,0.9); 
-  box-shadow: 0 6px 18px rgba(0,0,0,0.15); 
-}
-
-#modalTitle { 
-  font-weight: 600; 
-  margin-bottom: 15px; 
-}
-
+/* Modal Adjustments for compactness */
+.modal-content { border-radius: 14px; border: none; }
+.modal-header { border-bottom: 1px solid #f0f2f5; background: #fcfcfd; border-radius: 14px 14px 0 0; }
+.modal-dialog-scrollable .modal-body { max-height: 65vh; overflow-y: auto; }
 
 /* ============================================================
-   ✨ FADE-IN ANIMATION
-   - Smooth entrance effect
+   🔁 TOGGLE SWITCH (Modern iOS Style)
    ============================================================ */
+.switch { position: relative; display: inline-block; width: 70px; height: 24px; margin: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; background-color: #e9ecef; transition: 0.4s; border-radius: 30px; top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: 0.4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+input:checked + .slider { background-color: #05CD99; }
+input:checked + .slider:before { transform: translateX(46px); }
+.status-text { position: absolute; width: 100%; text-align: center; font-weight: 600; color: #a3aed1; top: 4px; font-size: 9px; z-index: 1; pointer-events: none; }
+input:checked + .slider .status-text { color: white; padding-right: 14px; }
+input:not(:checked) + .slider .status-text { padding-left: 14px; }
 
-.fade-in { 
-  animation: fadeIn 0.6s ease-in-out; 
-}
+.inactive-row td { opacity: 0.5; }
+.expired-row td { background-color: #f8f9fa; color: #a3aed1; }
 
-@keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
-}
-
+.graph-container { height: 260px; width: 100%; background: #fafbfc; border-radius: 12px; padding: 12px; border: 1px solid #f0f2f5; }
 
 /* ============================================================
-   🔁 CUSTOM SLIDING TOGGLE SWITCH
-   - Used for Active / Inactive status
-   - Animated slider
+   📱 RESPONSIVE MEDIA QUERIES
    ============================================================ */
-
-.switch { 
-  position: relative; 
-  display: inline-block; 
-  width: 120px; 
-  height: 34px; 
+@media (max-width: 991.98px) {
+  .sidebar { transform: translateX(-100%); box-shadow: none; }
+  .sidebar.active { transform: translateX(0); box-shadow: 4px 0 25px rgba(0,0,0,0.5); }
+  .main-content { margin-left: 0; width: 100%; }
+  .mobile-toggle-btn { display: block !important; }
 }
-
-.switch input { 
-  opacity: 0; 
-  width: 0; 
-  height: 0; 
-}
-
-.slider { 
-  position: absolute; 
-  cursor: pointer; 
-  background-color: #ccc; 
-  transition: 0.4s; 
-  border-radius: 34px; 
-  top: 0; 
-  left: 0; 
-  right: 0; 
-  bottom: 0; 
-}
-
-/* Circle inside toggle */
-.slider:before { 
-  position: absolute; 
-  content: ""; 
-  height: 26px; 
-  width: 26px; 
-  left: 4px; 
-  bottom: 4px; 
-  background-color: white; 
-  transition: 0.4s; 
-  border-radius: 50%; 
-}
-
-/* Active state */
-input:checked + .slider { 
-  background-color: #28a745; 
-}
-
-/* Move circle on active */
-input:checked + .slider:before { 
-  transform: translateX(85px); 
-}
-
-/* Text inside toggle */
-.status-text { 
-  position: absolute; 
-  width: 100%; 
-  text-align: center; 
-  font-weight: bold; 
-  color: white; 
-  top: 6px; 
-  font-size: 12px; 
-}
-
-/* Row dim when inactive */
-.inactive-row { 
-  opacity: 0.5; 
-}
-
-
-/* ============================================================
-   ⚠ EXPIRED SUBSCRIPTION ROW STYLE
-   - Light grey background
-   - Dimmed text
-   ============================================================ */
-
-.expired-row {
-  background-color: #f2f2f2; /* light grey */
-  color: #999; /* dim text */
-}
-
-.expired-row td {
-  color: #999;
-}
-
-
-/* ============================================================
-   🟠 CUSTOM ORANGE BADGE
-   - Used for subscription nearing expiry
-   ============================================================ */
-
-.bg-orange {
-  background-color: #fd7e14 !important;
-  color: white;
-}
-
-/* ============================================================
-   📈 USER DEVICE GRAPH SECTION
-   - Compact graph container
-   - Responsive control
-   ============================================================ */
-
-.graph-container {
-  height: 220px;          /* Graph height control */
-  max-width: 900px;       /* Max width */
-  margin: 20px auto;      /* Center align */
-  background: #fff;
-  padding: 15px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-
-.graph-container canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
+.sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+.sidebar-overlay.active { display: block; }
