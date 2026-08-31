@@ -1,13 +1,8 @@
-
 /* ============================================================
    🌍 BASE CONFIGURATION
-   - API Base URL
-   - All API endpoint mappings
    ============================================================ */
-
-//const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-
+const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+// const BASE_URL = "https://fertisense-iot-production.up.railway.app"; 
 
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -19,3192 +14,725 @@ const API = {
   masteruom:           BASE_URL + "/api/masteruom/",
   createuser:          BASE_URL + "/api/masteruser/",
   masterrole:          BASE_URL + "/api/masterrole/",  
-  // seuser:              BASE_URL + "/api/seuser/",
   devicereadinglog:    BASE_URL + "/api/devicereadinglog/",
   devicealarmlog:      BASE_URL + "/api/devicealarmlog/",
   devicealarmcalllog:  BASE_URL + "/api/devicealarmcalllog/",
   sensorparameterlink: BASE_URL + "/api/sensorparameterlink/",
   devicesensorlink:    BASE_URL + "/api/devicesensorlink/",
   compassdates:        BASE_URL + "/api/compassdates/",
-  // centreorganizationlink: BASE_URL + "centreorganizationlink/",
   userorganizationcentrelink: BASE_URL + "/api/userorganizationcentrelink/",
   masternotificationtime: BASE_URL + "/api/masternotificationtime/",
   mastersubscriptioninfo: BASE_URL +"/api/mastersubscriptioninfo/",
   masterplantype: BASE_URL +"/api/masterplantype/",
   mastersubscriptionhistory: BASE_URL +"/api/subscriptionhistory/",
-  
 };
 
-
-
-/* ============================================================
-   🏷 HEADER LABEL MAPPING
-   - Table column display names
-   - DB fields → User friendly labels
-   ============================================================ */
-
-
-// ===== Custom header labels =====
 const HEADER_LABELS = {
-  ORGANIZATION_ID: "ORGANIZATION NAME",
-  DEVICE_ID: "DEVICE NAME",
-  Device_ID: "DEVICE NAME",
-  CENTRE_ID: "CENTRE NAME",
-  SENSOR_ID: "SENSOR NAME",
-  PARAMETER_ID: "PARAMETER NAME",
-  ROLE_ID: "ROLE NAME",
-  UOM_ID: "UNIT",
-  USER_ID: "USER NAME",
-  CATEGORY_ID: "CATEGORY NAME",
-  Subscription_ID:"Subscription_Name",
-  Plan_ID:"Plan_Name",
+  ORGANIZATION_ID: "ORGANIZATION NAME", DEVICE_ID: "DEVICE NAME", Device_ID: "DEVICE NAME",
+  CENTRE_ID: "CENTRE NAME", SENSOR_ID: "SENSOR NAME", PARAMETER_ID: "PARAMETER NAME",
+  ROLE_ID: "ROLE NAME", UOM_ID: "UNIT", USER_ID: "USER NAME", CATEGORY_ID: "CATEGORY NAME",
+  Subscription_ID:"Subscription_Name", Plan_ID:"Plan_Name", IS_HARDWARE_PAYMENT_DONE: "HW PAYMENT"
 };
 
-
-/* ============================================================
-   🔑 PRIMARY KEY CONFIGURATION
-   - Each table ka primary key define karta hai
-   ============================================================ */
-
-
-// ===== Primary keys per table =====
 const PRIMARY_KEYS = {
-  masterorganizations: "ORGANIZATION_ID",
-  mastercentre: "CENTRE_ID",
-  masterdevices: "DEVICE_ID",
-  mastersensor: "SENSOR_ID",
-  masterparameter: "PARAMETER_ID",
-  masteruom: "UOM_ID",
-  createuser: "USER_ID",
-  masterrole: "ROLE_ID",
-  seuser: "USER_ID",
-  devicereadinglog: "ID",
-  devicealarmlog: "id",
-  devicealarmcalllog: "ID",
-  sensorparameterlink: "id",
-  devicesensorlink: "id",
-  compassdates: "ID",
-  centreorganizationlink: "id",
-  userorganizationcentrelink: "id",
-  masternotificationtime: "id",
-  devicescategory: "CATEGORY_ID",
-  mastersubscriptioninfo: "Subscription_ID",
-  masterplantype: "Plan_ID",
-  mastersubscriptionhistory: "id"
+  masterorganizations: "ORGANIZATION_ID", mastercentre: "CENTRE_ID", masterdevices: "DEVICE_ID",
+  mastersensor: "SENSOR_ID", masterparameter: "PARAMETER_ID", masteruom: "UOM_ID",
+  createuser: "USER_ID", masterrole: "ROLE_ID", seuser: "USER_ID", devicereadinglog: "ID",
+  devicealarmlog: "id", devicealarmcalllog: "ID", sensorparameterlink: "id", devicesensorlink: "id",
+  compassdates: "ID", centreorganizationlink: "id", userorganizationcentrelink: "id",
+  masternotificationtime: "id", devicescategory: "CATEGORY_ID", mastersubscriptioninfo: "Subscription_ID",
+  masterplantype: "Plan_ID", mastersubscriptionhistory: "id"
 };
 
-/* ============================================================
-   📋 FIELD SCHEMA DEFINITIONS
-   - Empty table case me fallback headers
-   ============================================================ */
-
-// ===== Field schema for empty tables =====
 const FIELD_SCHEMAS = {
-  masterorganizations: ["ORGANIZATION_ID","ORGANIZATION_NAME",],
-  mastercentre: ["CENTRE_ID","ORGANIZATION_ID","CENTRE_NAME"],
+  masterorganizations: ["ORGANIZATION_ID","ORGANIZATION_NAME"], mastercentre: ["CENTRE_ID","ORGANIZATION_ID","CENTRE_NAME"],
   masterdevices: ["DEVICE_ID","DEVICE_NAME","DEVICE_IP","ORGANIZATION_ID","CENTRE_ID","DEVICE_STATUS","IS_HARDWARE_PAYMENT_DONE"],
-  mastersensor: ["SENSOR_ID","SENSOR_NAME","SENSOR_TYPE","UOM_ID"],
-  masterparameter: ["PARAMETER_ID","PARAMETER_NAME","UOM_ID","LOWER_THRESHOLD","UPPER_THRESHOLD","THRESHOLD"],
-  masteruom: ["UOM_ID","UOM_NAME","SYMBOL"],
-  createuser: ["USER_ID","ACTUAL_NAME","USERNAME","ROLE_ID","PHONE","SEND_SMS","EMAIL","SEND_EMAIL","PASSWORD","confirm_password","VALIDITY_START","VALIDITY_END"],
-  masterrole: ["ROLE_ID","ROLE_NAME"],
-  seuser: ["USER_ID","USERNAME","EMAIL","PASSWORD","ROLE","ORGANIZATION_ID"],
-  devicereadinglog: ["ID","DEVICE_ID","SENSOR_ID","PARAMETER_ID","READING","RAISED_TIME"],
-  devicealarmlog: ["ID","DEVICE_ID","SENSOR_ID","PARAMETER_ID","MESSAGE","RAISED_TIME"],
-  devicealarmcalllog: ["ID","ALARM_ID","CALLED_AT","STATUS"],
-  sensorparameterlink: ["ID","SENSOR_ID","PARAMETER_ID"],
-  devicesensorlink: ["ID","DEVICE_ID","SENSOR_ID"],
-  compassdates: ["ID","ORGANIZATION_ID","BRANCH_ID","CMPS_DT"],
-  // centreorganizationlink: ["ID", "ORGANIZATION_ID","CENTRE_ID"],
-  userorganizationcentrelink: ["USER_ID","ORGANIZATION_ID","CENTRE_ID"],
-  masternotificationtime: ["NOTIFICATION_TIME","ORGANIZATION_ID"],
-  devicescategory:["CATEGORY_ID","CATEGORY_NAME"],
-  mastersubscriptioninfo:["Subscription_ID","Package_Name",],
-  masterplantype:["Plan_ID","Plan_Name"],
-  mastersubscriptionhistory:["id","Device_ID","Subscription_Start_date"	,"Subcription_End_date"	,"Subscription_ID","Plan_ID","Payment_Date","Status"]
+  mastersensor: ["SENSOR_ID","SENSOR_NAME","SENSOR_TYPE","UOM_ID"], masterparameter: ["PARAMETER_ID","PARAMETER_NAME","UOM_ID","LOWER_THRESHOLD","UPPER_THRESHOLD","THRESHOLD"],
+  masteruom: ["UOM_ID","UOM_NAME","SYMBOL"], createuser: ["USER_ID","ACTUAL_NAME","USERNAME","ROLE_ID","PHONE","SEND_SMS","EMAIL","SEND_EMAIL","PASSWORD","confirm_password","VALIDITY_START","VALIDITY_END"],
+  masterrole: ["ROLE_ID","ROLE_NAME"], devicereadinglog: ["ID","DEVICE_ID","SENSOR_ID","PARAMETER_ID","READING","RAISED_TIME"],
+  devicealarmlog: ["ID","DEVICE_ID","SENSOR_ID","PARAMETER_ID","MESSAGE","RAISED_TIME"], devicealarmcalllog: ["ID","ALARM_ID","CALLED_AT","STATUS"],
+  sensorparameterlink: ["ID","SENSOR_ID","PARAMETER_ID"], devicesensorlink: ["ID","DEVICE_ID","SENSOR_ID"],
+  compassdates: ["ID","ORGANIZATION_ID","BRANCH_ID","CMPS_DT"], userorganizationcentrelink: ["USER_ID","ORGANIZATION_ID","CENTRE_ID"],
+  masternotificationtime: ["NOTIFICATION_TIME","ORGANIZATION_ID"], devicescategory:["CATEGORY_ID","CATEGORY_NAME"],
+  mastersubscriptioninfo:["Subscription_ID","Package_Name"], masterplantype:["Plan_ID","Plan_Name"],
+  mastersubscriptionhistory:["id","Device_ID","Subscription_Start_date","Subcription_End_date","Subscription_ID","Plan_ID","Payment_Date","Status"]
 };
 
-
-/* ============================================================
-   🛠 UTILITY FUNCTIONS
-   - normalizeKey
-   - fetchJSON
-   - logout
-   - formatTitle
-   ============================================================ */
-
-// helpers
 function normalizeKey(name){ return name.replace(/\s+/g,"").toLowerCase(); }
-async function fetchJSON(url){
-  const res = await fetch(url);
-  if(!res.ok){ throw new Error(`${res.status} ${res.statusText} -> ${url}`); }
-  return res.json();
-}
+async function fetchJSON(url){ const res = await fetch(url); if(!res.ok){ throw new Error(`${res.status} ${res.statusText} -> ${url}`); } return res.json(); }
 function logout(){ fetch('/logout/').then(()=>window.location='/login/'); }
 function formatTitle(table) {
-
-  function calculateSubscriptionStatus(row) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const start = new Date(row.Subscription_Start_date);
-  start.setHours(0,0,0,0);
-
-  const end = new Date(row.Subcription_End_date);
-  end.setHours(0,0,0,0);
-
-  if (today < start) return "Future";
-  if (today > end) return "Expired";
-  return "Active";
+  if (!table) return ""; let t = table;
+  if (/^master/i.test(t)) t = t.replace(/^master/i, "Master ");
+  if (/^devicescategory/i.test(t)) t = t.replace(/^devicescategory/i, "Device Category ");
+  if (/^devicesensorlink/i.test(t)) t = t.replace(/^devicesensorlink/i, "Device Senor Link");
+  if (/^sensorparameterlink/i.test(t)) t = t.replace(/^sensorparameterlink/i, "Sensor Parameter Link");
+  if (/^userorganizationcentrelink/i.test(t)) t = t.replace(/^userorganizationcentrelink/i, "User Organization Centre Link");
+  t = t.replace(/[_-]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+  return t.replace(/\b\w+/g, word => word.toUpperCase() === word ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).trim();
 }
 
-  if (!table) return "";
-
-  let t = table;
-
-  // 1️⃣ Check if starts with 'master'
-  if (/^master/i.test(t)) {
-    t = t.replace(/^master/i, "Master ");
-  }
-
-    if (/^devicescategory/i.test(t)) {
-    t = t.replace(/^devicescategory/i, "Device Category ");
-  }
-
-  if (/^devicesensorlink/i.test(t)) {
-    t = t.replace(/^devicesensorlink/i, "Device Senor Link");
-  }
-  
-  if (/^sensorparameterlink/i.test(t)) {
-    t = t.replace(/^sensorparameterlink/i, "Sensor Parameter Link");
-  }
-
-  if (/^userorganizationcentrelink/i.test(t)) {
-    t = t.replace(/^userorganizationcentrelink/i, "User Organization Centre Link");
-  }
-
-  // 2️⃣ Replace underscores or hyphens with spaces
-  t = t.replace(/[_-]+/g, " ");
-
-  // 3️⃣ Add space before uppercase letters (camelCase split)
-  t = t.replace(/([a-z])([A-Z])/g, "$1 $2");
-
-  // 4️⃣ Handle long mixed words like “Userorganizationcentrelink”
-  t = t.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
-
-  // 5️⃣ Capitalize every word nicely
-  t = t.replace(/\b\w+/g, word => {
-    // If full word is uppercase (like API, ID), leave it
-    return word.toUpperCase() === word
-      ? word
-      : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  });
-
-  // 6️⃣ Clean up extra spaces
-  return t.trim().replace(/\s+/g, " ");
-}
-
-
-let currentTable="", currentData=[], dropdownData={};const rowStatus = {};// Current active status map for rows
-
-const activeStatusMap = {}; // key = row id, value = true/false
-let dropdownLoaded = false;   // 🔥 ADD THIS LINE
- // tableName_rowId = true/false
-
-
-// ===== preload dropdown datasets =====
-// async function loadDropdowns(){
-//   try{
-//     dropdownData.orgs    = await fetchJSON(API.masterorganizations);
-//     dropdownData.centres = await fetchJSON(API.mastercentre);
-//     dropdownData.uoms    = await fetchJSON(API.masteruom);
-//     dropdownData.devices = await fetchJSON(API.masterdevices);
-//     dropdownData.sensors = await fetchJSON(API.mastersensor);
-//     dropdownData.parameters = await fetchJSON(API.masterparameter);
-//     dropdownData.roles   = await fetchJSON(API.masterrole);
-//     dropdownData.user   = await fetchJSON(API.createuser);
-//     dropdownData.devicescategory = await fetchJSON(API.devicescategory);
-//     dropdownData.mastersubscriptioninfo = await fetchJSON(API.mastersubscriptioninfo)
-//     dropdownData.masterplantype = await fetchJSON(API.masterplantype)
-//     dropdownData.mastersubscriptionhistory = await fetchJSON(API.mastersubscriptionhistory)
-//     dropdownData.devicereadinglog = await fetchJSON(API.devicereadinglog);
-//     dropdownData.devicesensorlink = await fetchJSON(API.devicesensorlink);
-//     dropdownData.sensorparameterlink = await fetchJSON(API.sensorparameterlink);
-
-
-//   }catch(err){
-//     console.error("Dropdown preload failed:", err);
-//   }
-// }
-
-/* ============================================================
-   🔄 DROPDOWN DATA LOADER
-   - Preload all master data
-   - Prevent duplicate loading
-   ============================================================ */
+let currentTable="", currentData=[], dropdownData={}, dropdownLoaded = false; 
 
 async function loadDropdowns(){
-
-  if (dropdownLoaded) return;   // ✅ Prevent reload
-
+  if (dropdownLoaded) return; 
   try{
-
-    const [
-      orgs,
-      centres,
-      uoms,
-      devices,
-      sensors,
-      parameters,
-      roles,
-      users,
-      categories,
-      subsInfo,
-      planType,
-      subsHistory,
-      readings,
-      deviceSensor,
-      sensorParam,
-      userOrgCentre
-    ] = await Promise.all([
-      fetchJSON(API.masterorganizations),
-      fetchJSON(API.mastercentre),
-      fetchJSON(API.masteruom),
-      fetchJSON(API.masterdevices),
-      fetchJSON(API.mastersensor),
-      fetchJSON(API.masterparameter),
-      fetchJSON(API.masterrole),
-      fetchJSON(API.createuser),
-      fetchJSON(API.devicescategory),
-      fetchJSON(API.mastersubscriptioninfo),
-      fetchJSON(API.masterplantype),
-      fetchJSON(API.mastersubscriptionhistory),
-      fetchJSON(API.devicereadinglog),
-      fetchJSON(API.devicesensorlink),
-      fetchJSON(API.sensorparameterlink),
-      fetchJSON(API.userorganizationcentrelink)
+    const [orgs, centres, uoms, devices, sensors, parameters, roles, users, categories, subsInfo, planType, subsHistory, deviceSensor, sensorParam, userOrgCentre] = await Promise.all([
+      fetchJSON(API.masterorganizations), fetchJSON(API.mastercentre), fetchJSON(API.masteruom), fetchJSON(API.masterdevices), fetchJSON(API.mastersensor), fetchJSON(API.masterparameter),
+      fetchJSON(API.masterrole), fetchJSON(API.createuser), fetchJSON(API.devicescategory), fetchJSON(API.mastersubscriptioninfo), fetchJSON(API.masterplantype), fetchJSON(API.mastersubscriptionhistory),
+      fetchJSON(API.devicesensorlink), fetchJSON(API.sensorparameterlink), fetchJSON(API.userorganizationcentrelink)
     ]);
-
-    dropdownData.orgs = orgs;
-    dropdownData.centres = centres;
-    dropdownData.uoms = uoms;
-    dropdownData.devices = devices;
-    dropdownData.sensors = sensors;
-    dropdownData.parameters = parameters;
-    dropdownData.roles = roles;
-    dropdownData.user = users;
-    dropdownData.devicescategory = categories;
-    dropdownData.mastersubscriptioninfo = subsInfo;
-    dropdownData.masterplantype = planType;
-    dropdownData.mastersubscriptionhistory = subsHistory;
-    dropdownData.devicereadinglog = readings;
-    dropdownData.devicesensorlink = deviceSensor;
-    dropdownData.sensorparameterlink = sensorParam;
-    dropdownData.userorganizationcentrelink = userOrgCentre;
-
-
-    dropdownLoaded = true;  // ✅ Mark loaded
-
-  }catch(err){
-    console.error("Dropdown preload failed:", err);
-  }
+    dropdownData = {orgs, centres, uoms, devices, sensors, parameters, roles, user:users, devicescategory:categories, mastersubscriptioninfo:subsInfo, masterplantype:planType, mastersubscriptionhistory:subsHistory, devicesensorlink:deviceSensor, sensorparameterlink:sensorParam, userorganizationcentrelink:userOrgCentre};
+    dropdownLoaded = true; 
+  }catch(err){}
 }
-
-// ======================================================
-// 🔥 USER DROPDOWN POPULATE FUNCTION
-// ======================================================
 
 function populateUserDropdown(){
-
-  const select = document.getElementById("userSelect");
-
-  if(!select) return; // safety check
-
-  select.innerHTML = `<option value="">-- Select User --</option>`;
-
-  (dropdownData.user || []).forEach(u => {
-    select.innerHTML += `
-      <option value="${u.USER_ID}">
-        ${u.USERNAME}
-      </option>
-    `;
-  });
-
+  const sel = document.getElementById("userSelect"); if(!sel) return; sel.innerHTML = `<option value="">-- Select User --</option>`;
+  (dropdownData.user || []).forEach(u => sel.innerHTML += `<option value="${u.USER_ID}">${u.USERNAME}</option>`);
 }
-
-
-/* ============================================================
-   🔽 GENERIC SORTING ENGINE
-   - Date based sorting
-   - Numeric sorting
-   - Custom table logic
-   ============================================================ */
 
 function sortDescending(table, data) {
   if (!data || data.length === 0) return data;
-
-  const sample = data[0];
-
-  // Date/Time fields check
-  const dateKeys = Object.keys(sample).filter(k => k.toLowerCase().includes("date") || k.toLowerCase().includes("time"));
-  if (dateKeys.length) {
-    // Sort by first date/time field
-    const key = dateKeys[0];
-    return data.sort((a, b) => new Date(b[key]) - new Date(a[key]));
-  }
-
-  // Numeric fields check (ID, reading, etc.)
-  const numberKeys = Object.keys(sample).filter(k => typeof sample[k] === "number" || !isNaN(Number(sample[k])));
-  if (numberKeys.length) {
-    const key = numberKeys[0];
-    return data.sort((a, b) => Number(b[key]) - Number(a[key]));
-  }
-
-  return data; // fallback: as is
+  if (table === "mastersubscriptionhistory") return data[0].id ? data.sort((a,b)=>b.id-a.id) : data.sort((a,b)=>new Date(b.Subscription_Start_date)-new Date(a.Subscription_Start_date));
+  const dateKeys = Object.keys(data[0]).filter(k => k.toLowerCase().includes("date") || k.toLowerCase().includes("time"));
+  if (dateKeys.length) return data.sort((a,b)=>new Date(b[dateKeys[0]])-new Date(a[dateKeys[0]]));
+  const numberKeys = Object.keys(data[0]).filter(k => typeof data[0][k] === "number" || !isNaN(Number(data[0][k])));
+  if (numberKeys.length) return data.sort((a,b)=>Number(b[numberKeys[0]])-Number(a[numberKeys[0]]));
+  return data; 
 }
 
 function calculateSubscriptionStatus(row) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const start = new Date(row.Subscription_Start_date);
-  start.setHours(0, 0, 0, 0);
-
-  const end = row.Subcription_End_date
-    ? new Date(row.Subcription_End_date)
-    : null;
-
-  if (end) end.setHours(0, 0, 0, 0);
-
-  if (today < start) return "Future";
-  if (end && today > end) return "Expired";
-  return "Active";
+  const today = new Date(); today.setHours(0,0,0,0); const start = new Date(row.Subscription_Start_date); start.setHours(0,0,0,0);
+  const end = row.Subcription_End_date ? new Date(row.Subcription_End_date) : null; if(end) end.setHours(0,0,0,0);
+  return (end && end < today) ? "Expired" : (start > today ? "Future" : "Active");
 }
-
-function calculateSubscriptionStatus(row) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  const start = new Date(row.Subscription_Start_date);
-  start.setHours(0,0,0,0);
-
-  const end = row.Subcription_End_date
-    ? new Date(row.Subcription_End_date)
-    : null;
-
-  if (end) end.setHours(0,0,0,0);
-
-  // 🔥 CORE LOGIC
-  if (end && end < today) {
-    return "Expired";
-  }
-
-  if (start > today) {
-    return "Future";
-  }
-
-  return "Active";
-}
-
 
 /* ============================================================
    📊 MAIN TABLE LOADER
-   - Fetch API data
-   - Apply sorting
-   - Render headers
-   - Render rows
-   - Attach action buttons
    ============================================================ */
-
-// ===== load & draw table =====
 async function loadTable(table) {
-  
   history.pushState(null, "", location.pathname + "#" + normalizeKey(table));
-
-   // 🔥 GRAPH RESET
-  const graphSection = document.getElementById("graphSection");
-  if(graphSection){
-      graphSection.style.display = "none";
-  }
-
-  const mainTable = document.getElementById("mainTable");
-  const addBtn = document.getElementById("addBtn");
-
-  if(mainTable){
-      mainTable.style.display = "table";
-  }
-
-  if(addBtn){
-      addBtn.style.display = "inline-block";
-  }
-
-
-
-
-  localStorage.setItem("lastOpenedTable", table);
-
+  document.getElementById("graphSection").style.display = "none";
   currentTable = normalizeKey(table);
 
-  // 🔥 If Device Reading Log → Show Graph Instead of Table
-if (currentTable === "devicereadinglog") {
-
-  document.getElementById("addBtn").style.display = "none";
-  document.getElementById("mainTable").style.display = "none";
-
- try {
-    currentData = await fetchJSON(API.devicereadinglog);
-  } catch (err) {
-    console.error("Reading fetch failed:", err);
-    currentData = [];
-  }
-
-  renderDeviceReadingGraphSection();
-  return;
-}
-
-  if (!API[currentTable]) {
-    console.error("No API for:", table, currentTable);
+  if (currentTable === "devicereadinglog") {
+    document.getElementById("mainTable").style.display = "none";
+    try { currentData = await fetchJSON(API.devicereadinglog); } catch (err) { currentData = []; }
+    renderDeviceReadingGraphSection();
     return;
-  }
+  } else { document.getElementById("mainTable").style.display = "table"; }
 
-  document.getElementById('tableTitle').innerText = formatTitle(table);
+  if (!API[currentTable]) return;
+  document.getElementById('tableTitle').innerText = formatTitle(table) + " Directory";
+
+  // 🔥 Completely hide "Add New" button for device reading logs and restricted tables
+  const restrictedAddTables = ["devicealarmlog", "devicealarmcalllog", "compassdates", "mastersensor", "devicesensorlink", "sensorparameterlink", "devicereadinglog"];
+  document.getElementById("addBtn").style.display = restrictedAddTables.includes(currentTable) ? "none" : "inline-block";
 
   try {
     currentData = await fetchJSON(API[currentTable]);
-
-    // ✅ Apply generic descending sort for all tables
     currentData = sortDescending(currentTable, currentData);
-
-    // ✅ Sorting for readings & alarms
-    if (currentTable === "devicereadinglog") {
-      if (currentData.length > 0 && currentData[0].READING_DATE && currentData[0].READING_TIME) {
-        currentData.sort((a, b) => new Date(b.READING_DATE + " " + b.READING_TIME) - new Date(a.READING_DATE + " " + a.READING_TIME));
-      } else if (currentData.length > 0 && currentData[0].READING !== undefined) {
-        currentData.sort((a, b) => b.READING - a.READING);
-      }
-    }
-
-if (currentTable === "devicealarmlog") {
-  currentData.sort((a, b) => {
-    const aDateTime = new Date(
-      (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || '')
-    );
-    const bDateTime = new Date(
-      (b.ALARM_DATE || b.CREATED_DATE || b.DATE || '') + " " + (b.ALARM_TIME || b.CREATED_TIME || '')
-    );
-    
-    // If both valid dates, compare normally
-    if (!isNaN(aDateTime) && !isNaN(bDateTime)) {
-      return bDateTime - aDateTime; // latest first
-    }
-
-    // fallback: compare ID or reading if dates invalid
-    if (a.S_NO && b.S_NO) return b.S_NO - a.S_NO;
-    if (a.READING && b.READING) return b.READING - a.READING;
-    return 0;
-  });
-}
-
-
-  } catch (err) {
-    console.error("Fetch table failed:", err);
-    currentData = [];
-  }
-
-  function sortDescending(table, data) {
-  if (!data || data.length === 0) return data;
-
-  // ✅ mastersubscriptionhistory: latest entry first
-  if (table === "mastersubscriptionhistory") {
-    // Prefer ID-based DESC (most reliable)
-    if (data[0].id) {
-      return data.sort((a, b) => b.id - a.id);
-    }
-    // Fallback to date if ID not found
-    return data.sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
-  }
-
-  // ✅ Default sort logic for others
-  const sample = data[0];
-  const dateKeys = Object.keys(sample).filter(k =>
-    k.toLowerCase().includes("date") || k.toLowerCase().includes("time")
-  );
-  if (dateKeys.length) {
-    const key = dateKeys[0];
-    return data.sort((a, b) => new Date(b[key]) - new Date(a[key]));
-  }
-
-  const numberKeys = Object.keys(sample).filter(
-    k => typeof sample[k] === "number" || !isNaN(Number(sample[k]))
-  );
-  if (numberKeys.length) {
-    const key = numberKeys[0];
-    return data.sort((a, b) => Number(b[key]) - Number(a[key]));
-  }
-
-  return data;
-}
+  } catch (err) { currentData = []; }
 
   const tableEl = document.getElementById('mainTable');
-  const thead = tableEl.querySelector('thead');
-  const tbody = tableEl.querySelector('tbody');
+  const thead = tableEl.querySelector('thead'); const tbody = tableEl.querySelector('tbody');
   thead.innerHTML = tbody.innerHTML = "";
 
   let headers = currentData.length ? Object.keys(currentData[0]) : (FIELD_SCHEMAS[currentTable] || []);
   const pk = PRIMARY_KEYS[currentTable] || headers[0];
-
-  // ✅ Add extra ID field for master tables
   if (currentTable === "masterdevices" && !headers.includes("DEVICE_ID")) headers.push("DEVICE_ID");
   if (currentTable === "mastersensor" && !headers.includes("SENSOR_ID")) headers.push("SENSOR_ID");
   if (currentTable === "masterparameter" && !headers.includes("PARAMETER_ID")) headers.push("PARAMETER_ID");
 
-  // ✅ Render table headers with friendly names
-  const displayHeaders = headers.map(h => {
-    if (["masterorganizations","mastercentre","masterdevices","mastersensor","masterparameter","masteruom","createuser","masterrole","sensorparameterlink","devicesensorlink","userorganizationcentrelink","masternotificationtime","devicescategory","devicealarmlog","devicereadinglog","mastersubscriptioninfo","masterplantype","mastersubscriptionhistory",].includes(currentTable) && h === pk) {
-      return "S_NO";
-    }
-    return HEADER_LABELS[h] || h;
-  });
+  const displayHeaders = headers.map(h => ["masterorganizations","mastercentre","masterdevices","mastersensor","masterparameter","masteruom","createuser","masterrole","sensorparameterlink","devicesensorlink","userorganizationcentrelink","masternotificationtime","devicescategory","devicealarmlog","devicereadinglog","mastersubscriptioninfo","masterplantype","mastersubscriptionhistory"].includes(currentTable) && h === pk ? "S_NO" : (HEADER_LABELS[h] || h));
+  if (currentTable === "masterdevices") displayHeaders.push("DEVICE_ID");
+  if (currentTable === "mastersensor") displayHeaders.push("SENSOR_ID");
+  if (currentTable === "masterparameter") displayHeaders.push("PARAMETER_ID");
 
-  // ✅ Add extra header for master IDs
-if (currentTable === "masterdevices") displayHeaders.push("DEVICE_ID");
-if (currentTable === "mastersensor") displayHeaders.push("SENSOR_ID");
-if (currentTable === "masterparameter") displayHeaders.push("PARAMETER_ID");
+  const noActionTables = ["devicealarmlog", "devicealarmcalllog", "compassdates"];
+  thead.innerHTML = `<tr>${displayHeaders.filter((h,i) => headers[i] !== "PASSWORD" && headers[i] !== "DEVICE_STATUS").map(h => `<th>${h}</th>`).join("")}${noActionTables.includes(currentTable) ? "" : "<th>Actions</th>"}</tr>`;
 
+  if (currentData.length) {
+    tbody.innerHTML = currentData.map((row, rowIdx) => {
+      let computedStatus = currentTable === "mastersubscriptionhistory" ? calculateSubscriptionStatus(row) : null;
+      let rowCells = headers.filter(h => h !== "PASSWORD" && h !== "DEVICE_STATUS").map(h => {
+        if (currentTable === "mastersubscriptionhistory" && h === "Status") return `<td>${computedStatus}</td>`;
+        let cellVal = row[h] ?? "";
+        if (h === "SEND_SMS" || h === "SEND_EMAIL") cellVal = (row[h] === true || row[h] === 1 || row[h] === "true") ? "Yes" : "No";
+        if (currentTable === "masterdevices" && h === "IS_HARDWARE_PAYMENT_DONE") cellVal = row[h] == 1 ? "Yes" : "No";
+        if (h === pk && ["masterorganizations","mastercentre","masterdevices","mastersensor","masterparameter","masteruom","createuser","masterrole","sensorparameterlink","devicesensorlink","userorganizationcentrelink","masternotificationtime","devicescategory","devicereadinglog","devicealarmlog","mastersubscriptioninfo","masterplantype","mastersubscriptionhistory"].includes(currentTable)) return `<td>${rowIdx + 1}</td>`;
 
-  thead.innerHTML = `<tr>${
-    displayHeaders.filter((h,i) => headers[i] !== "PASSWORD").map(h => `<th>${h}</th>`).join("")
-  }${ (currentTable === "devicealarmlog" || currentTable === "devicereadinglog") ? "" : "<th>Actions</th>" }
-   </tr>`;
+        if (h === "ORG_ID" || h === "ORGANIZATION_ID") { const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]); cellVal = org ? org.ORGANIZATION_NAME : row[h]; }
+        if (h === "CENTRE_ID") { const c = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]); cellVal = c ? c.CENTRE_NAME : row[h]; }
+        if (h === "CATEGORY_ID") { const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]); cellVal = cat ? cat.CATEGORY_NAME : row[h]; }
+        if (h === "DEVICE_ID" && currentTable !== "masterdevices") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? d.DEVICE_NAME : row[h]; }
+        if (h === "Device_ID") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? d.DEVICE_NAME : row[h]; }
+        if (h === "SENSOR_ID" && currentTable !== "mastersensor") { const s = (dropdownData.sensors || []).find(s => s.SENSOR_ID == row[h]); cellVal = s ? s.SENSOR_NAME : row[h]; }
+        if (h === "PARAMETER_ID" && currentTable !== "masterparameter") { const p = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == row[h]); cellVal = p ? p.PARAMETER_NAME : row[h]; }
+        if (h === "USER_ID") { const u = (dropdownData.user || []).find(u => u.USER_ID == row[h]); cellVal = u ? u.USERNAME : row[h]; }
+        if (h === "ROLE_ID") { const r = (dropdownData.roles || []).find(r => r.ROLE_ID == row[h]); cellVal = r ? r.ROLE_NAME : row[h]; }
+        if (h === "UOM_ID") { const u = (dropdownData.uoms || []).find(u => u.UOM_ID == row[h]); cellVal = u ? u.UOM_NAME : row[h]; }
+        if (h === "Subscription_ID") { const p = (dropdownData.mastersubscriptioninfo || []).find(p => p.Subscription_ID == row[h]); cellVal = p ? p.Package_Name : row[h]; }
+        if (h === "Plan_ID") { const p = (dropdownData.masterplantype || []).find(p => p.Plan_ID == row[h]); cellVal = p ? p.Plan_Name : row[h]; }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) { cellVal = new Date(cellVal).toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "2-digit" }); }
+        return `<td>${cellVal}</td>`;
+      }).join("");
 
-  function formatDate(dateStr) {
-    if (!dateStr) return "";
-    const options = { year: "numeric", month: "short", day: "2-digit" };
-    return new Date(dateStr).toLocaleDateString("en-GB", options);
-  }
+      if (currentTable === "masterdevices") rowCells += `<td>${row.DEVICE_ID || ""}</td>`;
+      if (currentTable === "mastersensor") rowCells += `<td>${row.SENSOR_ID || ""}</td>`;
+      if (currentTable === "masterparameter") rowCells += `<td>${row.PARAMETER_ID || ""}</td>`;
 
-  // ----- Render table body -----
-if (currentData.length) {
-  tbody.innerHTML = currentData.map((row, rowIdx) => {
-    
-let computedStatus = null;
+      const idVal = row[pk];
 
-if (currentTable === "mastersubscriptionhistory") {
-  const today = new Date();
-
-  const start = new Date(row.Subscription_Start_date);
-  const end   = row.Subcription_End_date
-    ? new Date(row.Subcription_End_date)
-    : null;
-
-  if (end && end < today) {
-    computedStatus = "Expired";
-  } else if (start > today) {
-    computedStatus = "Future";
-  } else {
-    computedStatus = "Active";
-  }
-}
-
-
-
-    let rowCells = headers.filter(h => h !== "PASSWORD").map(h => {
-     
-      
-    // ✅ STATUS: plain text only
-    if (currentTable === "mastersubscriptionhistory" && h === "Status") {
-      const computedStatus = calculateSubscriptionStatus(row);
-      return `<td>${computedStatus}</td>`;
-    }
-
-      let cellVal = row[h] ?? "";
-
-      // ✅ Convert boolean true/false to Yes/No for SEND_SMS & SEND_EMAIL
-if (h === "SEND_SMS" || h === "SEND_EMAIL") {
-  cellVal = (row[h] === true || row[h] === 1 || row[h] === "true") ? "Yes" : "No";
-}
-
-if (currentTable === "masterdevices" && h === "IS_HARDWARE_PAYMENT_DONE") {
-  cellVal = row[h] == 1 ? "Yes" : "No";
-}
-
-
-      // PK → S_NO numbering
-      if (h === pk && ["masterorganizations","mastercentre","masterdevices","mastersensor","masterparameter","masteruom","createuser","masterrole","sensorparameterlink","devicesensorlink","userorganizationcentrelink","masternotificationtime","devicescategory","devicereadinglog","devicealarmlog","mastersubscriptioninfo","masterplantype","mastersubscriptionhistory",].includes(currentTable)) {
-        return `<td>${rowIdx + 1}</td>`;
+      if (currentTable === "mastersubscriptionhistory") {
+        return `<tr class="${computedStatus === 'Expired' ? 'expired-row' : ''}">${rowCells}
+          <td>
+            <div class="d-flex align-items-center">
+              <button class="btn-action edit me-2" onclick='openModal(${JSON.stringify(row)})' title="Edit"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm py-1" style="font-size:0.75rem;" onclick='renew(${row[pk] || row.id})'>Renew</button>
+            </div>
+          </td>
+        </tr>`;
       }
-
-      // Map IDs → Names
-      if (h === "ORG_ID" || h === "ORGANIZATION_ID") {
-        const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]);
-        cellVal = org ? `${org.ORGANIZATION_NAME} (${org.ORGANIZATION_ID})` : row[h];
+      if (currentTable === "masterdevices") {
+        return `<tr class="${row.DEVICE_STATUS === 1 ? '' : 'inactive-row'}">${rowCells}
+          <td><div class="d-flex align-items-center"><button class="btn-action edit me-3" onclick='openModal(${JSON.stringify(row)})' title="Edit"><i class="bi bi-pencil"></i></button><label class="switch mb-0"><input type="checkbox" ${row.DEVICE_STATUS === 1 ? "checked" : ""} onchange="toggleActiveStatus(${row.DEVICE_ID}, this)"><span class="slider round"><span class="status-text">${row.DEVICE_STATUS === 1 ? "Active" : "Inactive"}</span></span></label></div></td></tr>`;
       }
-      if (h === "CENTRE_ID") {
-        const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]);
-        cellVal = centre ? `${centre.CENTRE_NAME} (${centre.CENTRE_ID})` : row[h];
+      if (currentTable === "mastersensor") {
+        return `<tr class="${row.SENSOR_STATUS === 1 ? '' : 'inactive-row'}">${rowCells}
+          <td><div class="d-flex align-items-center"><button class="btn-action edit me-3" onclick='openModal(${JSON.stringify(row)})' title="Edit"><i class="bi bi-pencil"></i></button><label class="switch mb-0"><input type="checkbox" ${row.SENSOR_STATUS === 1 ? "checked" : ""} onchange="toggleSensorStatus(${row.SENSOR_ID}, this)"><span class="slider round"><span class="status-text">${row.SENSOR_STATUS === 1 ? "Active" : "Inactive"}</span></span></label></div></td></tr>`;
       }
-      if (h === "CATEGORY_ID") {
-        const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]);
-        cellVal = cat ? cat.CATEGORY_NAME : row[h];
-      }
-      if (h === "DEVICE_ID" && currentTable !== "masterdevices") {
-        const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
-        cellVal = device ? `${device.DEVICE_NAME} (${device.DEVICE_ID})` : row[h];
-      }
-      if (h === "Device_ID") {
-        const device = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]);
-        cellVal = device ? device.DEVICE_NAME : row[h];
-      }
-      
-      if (h === "SENSOR_ID" && currentTable !== "mastersensor") {
-        const sensor = (dropdownData.sensors || []).find(s => s.SENSOR_ID == row[h]);
-        cellVal = sensor ? `${sensor.SENSOR_NAME} (${sensor.SENSOR_ID})` : row[h];
-      }
-      if (h === "PARAMETER_ID" && currentTable !== "masterparameter") {
-        const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == row[h]);
-        cellVal = param ? `${param.PARAMETER_NAME} (${param.PARAMETER_ID})` : row[h];
-      }
-      if (h === "USER_ID") {
-        const user = (dropdownData.user || []).find(u => u.USER_ID == row[h]);
-        cellVal = user ? user.USERNAME : row[h];
-      }
-      if (h === "ROLE_ID") {
-        const role = (dropdownData.roles || []).find(r => r.ROLE_ID == row[h]);
-        cellVal = role ? role.ROLE_NAME : row[h];
-      }
-      if (h === "UOM_ID") {
-        const uom = (dropdownData.uoms || []).find(u => u.UOM_ID == row[h]);
-        cellVal = uom ? uom.UOM_NAME : row[h];
-      }
-
-      if (h === "Subscription_ID") {
-        const pkg = (dropdownData.mastersubscriptioninfo || []).find(p => p.Subscription_ID == row[h]);
-        cellVal = pkg ? pkg.Package_Name : row[h];
-      }
-
-      if (h === "Plan_ID") {
-        const plan = (dropdownData.masterplantype || []).find(p => p.Plan_ID == row[h]);
-        cellVal = plan ? plan.Plan_Name : row[h];
-}
-
-
-      // Format date
-      // if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
-      //   const options = { year: "numeric", month: "short", day: "2-digit" };
-      //   cellVal = new Date(cellVal).toLocaleDateString("en-GB", options);
-      // }
-
-      // return `<td>${cellVal}</td>`;
-
-
-// sirf display formatting
-if (/^\d{4}-\d{2}-\d{2}$/.test(cellVal)) {
-  cellVal = new Date(cellVal).toLocaleDateString("en-GB", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit"
-  });
-}
-
-return `<td>${cellVal}</td>`;
-
+      return `<tr>${rowCells}${noActionTables.includes(currentTable) ? "" : `
+        <td><div class="d-flex align-items-center"><button class="btn-action edit me-2" onclick='openModal(${JSON.stringify(row)})'><i class="bi bi-pencil"></i></button><button class="btn-action delete" onclick='deleteRow(${JSON.stringify(idVal)})'><i class="bi bi-trash"></i></button></div></td>`}</tr>`;
     }).join("");
-
-    // ✅ Manually append ID column for master tables
-    if (currentTable === "masterdevices") rowCells += `<td>${row.DEVICE_ID || ""}</td>`;
-    if (currentTable === "mastersensor") rowCells += `<td>${row.SENSOR_ID || ""}</td>`;
-    if (currentTable === "masterparameter") rowCells += `<td>${row.PARAMETER_ID || ""}</td>`;
-
-    const addBtn = document.getElementById("addBtn");
-    if (currentTable === "devicereadinglog" || currentTable === "devicealarmlog") {
-      addBtn.style.display = "none";
-    } else {
-      addBtn.style.display = "inline-block";
-    }
-
-    const idVal = row[pk];
-    const noActions = (currentTable === "devicealarmlog" || currentTable === "devicereadinglog");
-
-if (currentTable === "mastersubscriptionhistory") {
-
-  const computedStatus = calculateSubscriptionStatus(row);
-  const pk = PRIMARY_KEYS[currentTable];
-  const rowId = row[pk];
-
-  return `<tr class="${computedStatus === 'Expired' ? 'expired-row' : ''}">
-    ${rowCells}
-
-
-
-    <!-- ACTIONS COLUMN -->
-    <td>
-      <button class="btn btn-sm btn-warning"
-        onclick='editRow(${JSON.stringify(row)})'>
-        <i class="bi bi-pencil"></i>
-      </button>
-
-      <button class="btn btn-sm btn-success"
-        onclick='renew(${rowId})'>
-        Renew
-      </button>
-    </td>
-  </tr>`;
-}
-
-
-
-
-if (currentTable === "masterdevices") {
-  return `<tr class="${row.DEVICE_STATUS === 1 ? '' : 'inactive-row'}">
-    ${rowCells}${noActions ? "" : `
-      <td>
-        <button class="btn btn-sm btn-warning me-2" onclick='editRow(${JSON.stringify(row)})'>
-          <i class="bi bi-pencil"></i>
-        </button>
-        <label class="switch">
-          <input type="checkbox" ${row.DEVICE_STATUS === 1 ? "checked" : ""} 
-            onchange="toggleActiveStatus(${row.DEVICE_ID}, this)">
-          <span class="slider round">
-            <span class="status-text">${row.DEVICE_STATUS === 1 ? "Active" : "Inactive"}</span>
-          </span>
-        </label>
-      </td>`}
-  </tr>`;
-}
-
-if (currentTable === "mastersensor") {
-  return `<tr class="${row.SENSOR_STATUS === 1 ? '' : 'inactive-row'}">
-    ${rowCells}${noActions ? "" : `
-      <td>
-        <button class="btn btn-sm btn-warning me-2" onclick='editRow(${JSON.stringify(row)})'>
-          <i class="bi bi-pencil"></i>
-        </button>
-        <label class="switch">
-          <input type="checkbox" ${row.SENSOR_STATUS === 1 ? "checked" : ""} 
-            onchange="toggleSensorStatus(${row.SENSOR_ID}, this)">
-          <span class="slider round">
-            <span class="status-text">${row.SENSOR_STATUS === 1 ? "Active" : "Inactive"}</span>
-          </span>
-        </label>
-      </td>`}
-  </tr>`;
-}
-    return `<tr>${rowCells}${noActions ? "" : `
-      <td>
-        <button class="btn btn-sm btn-warning" onclick='editRow(${JSON.stringify(row)})'><i class="bi bi-pencil"></i></button>
-        <button class="btn btn-sm btn-danger" onclick='deleteRow(${JSON.stringify(idVal)})'><i class="bi bi-trash"></i></button>
-      </td>`}
-    </tr>`;
-  }).join("");
-} else {
-  if (headers.length) {
-    tbody.innerHTML = `<tr><td colspan="${headers.length + 1}" class="text-center text-muted">No records found</td></tr>`;
-  }
-}
-
-
-  const section = document.getElementById("tableSection");
-  if (section) {
-    section.scrollIntoView({ behavior: "smooth" });
+  } else {
+    tbody.innerHTML = `<tr><td colspan="${headers.length + 1}" class="text-center text-muted py-4">No records found</td></tr>`;
   }
 }
 
 /* ============================================================
-   🧾 MODAL MANAGEMENT
-   - addRow
-   - editRow
-   - openModal
-   - closeModal
+   🧾 SMART CRUD POPUP (Compact Modal + Static Lock)
    ============================================================ */
+function addRow(){ openModal({}); }
 
-// ===== Modal =====
-function addRow(){
-
-  openModal({});
-}
-
-function editRow(row){ openModal(row); }
-
-function formatFirstWord(str){
-  str = str.trimStart();
-  if(!str) return "";
-  let parts = str.split(" ");
-  parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
-  return parts.join(" ");
-}
-
-function openModal(row){
-}
+const autoCapStr = `oninput="if(this.value.length > 0) this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1);"`;
 
 async function openModal(row ={}){
-
-  const modalEl = document.getElementById('crudModal');
-  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-  modal.show();
-
   const isEdit = Object.keys(row).length > 0;
-  document.getElementById('modalTitle').innerText = (isEdit?"Edit ":"Add ") + formatTitle(currentTable);
+  document.getElementById('modalTitle').innerHTML = `<i class="bi ${isEdit ? 'bi-pencil-square' : 'bi-plus-square'} me-2"></i> ${isEdit ? "Edit" : "Add"} Record`;
+  document.getElementById('submitBtnText').innerText = isEdit ? `Update Changes` : `Save Record`;
 
-  const submitBtn = document.querySelector('#crudForm button[type="submit"]');
-  submitBtn.innerHTML = isEdit ? `<i class="bi bi-check2"></i> Update` : `<i class="bi bi-check2"></i> Save`;
+  const fieldsDiv = document.getElementById('modalFields'); fieldsDiv.innerHTML = "";
 
-  const fieldsDiv = document.getElementById('modalFields');
-  fieldsDiv.innerHTML = "";
+  if (currentTable === "masterdevices") {
+    const today = new Date(); const nextYear = new Date(); nextYear.setFullYear(today.getFullYear() + 1);
+    const startStr = today.toISOString().split('T')[0]; const endStr = nextYear.toISOString().split('T')[0];
 
-/* ===============================
-   CUSTOM FORM FOR DEVICE-SENSOR LINK
-================================== */
-if (normalizeKey(currentTable) === "devicesensorlink") {
+    let linkedSensorId = "", linkedParamId = "", subPkgId = "", subPlanId = "", subStart = startStr, subEnd = endStr;
 
-  fieldsDiv.innerHTML = `
-    <input type="hidden" name="id" value="${row?.id ?? ''}">
-
-    <div class="mb-3">
-      <label class="form-label">DEVICE</label>
-      <select class="form-select" name="DEVICE_ID">
-        <option value="">-- Choose Device --</option>
-        ${(dropdownData.devices || [])
-          .sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID)
-          .map(d=>`
-            <option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>
-              ${d.DEVICE_NAME}
-            </option>
-          `).join("")}
-      </select>
-    </div>
-
-    <div class="mb-3">
-      <label class="form-label">SENSOR</label>
-      <select class="form-select" name="SENSOR_ID">
-        <option value="">-- Choose Sensor --</option>
-        ${(dropdownData.sensors || [])
-          .sort((a,b)=>b.SENSOR_ID-a.SENSOR_ID)
-          .map(s=>`
-            <option value="${s.SENSOR_ID}" ${row.SENSOR_ID==s.SENSOR_ID?'selected':''}>
-              ${s.SENSOR_NAME}
-            </option>
-          `).join("")}
-      </select>
-    </div>
-  `;
-
-  return; // 🔥 VERY IMPORTANT
-}
-
-
-
-if (currentTable === "createuser") {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  const formattedToday = `${yyyy}-${mm}-${dd}`; // ✅ yyyy-mm-dd for input[type=date]
-
-  // ✅ default validity end = +1 saal
-  const nextYear = new Date(today);
-  nextYear.setFullYear(today.getFullYear() + 1);
-  const yyyyEnd = nextYear.getFullYear();
-  const mmEnd = String(nextYear.getMonth() + 1).padStart(2, "0");
-  const ddEnd = String(nextYear.getDate()).padStart(2, "0");
-  const formattedEnd = `${yyyyEnd}-${mmEnd}-${ddEnd}`;
-
-  fieldsDiv.innerHTML = `
-    <input type="hidden" name="USER_ID" value="${row.USER_ID ?? ''}">
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Actual Name</label>
-        <input type="text" class="form-control" name="ACTUAL_NAME" value="${row.ACTUAL_NAME ?? ''}">
-      </div>
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Username</label>
-        <input type="text" class="form-control" name="USERNAME" value="${row.USERNAME ?? ''}">
-      </div>
-<div class="col-md-6 mb-3">
-  <label class="form-label">Role</label>
-  <select class="form-select" name="ROLE_ID">
-    <option value="">-- Choose Role --</option>
-    ${(dropdownData.roles || []).map(r => `
-      <option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? row.ROLE ?? "")) ? "selected" : ""}>
-        ${r.ROLE_NAME}
-      </option>
-    `).join("")}
-  </select>
-</div>
-
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Phone</label>
-        <input type="text" class="form-control" name="PHONE" value="${row.PHONE ?? ''}">
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" name="SEND_SMS" ${row.SEND_SMS ? "checked" : ""}>
-          <label class="form-check-label">Send SMS</label>
-        </div>
-      </div>
-
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Email</label>
-        <input type="text"
-       class="form-control"
-       name="EMAIL"
-       value="${row.EMAIL ?? ''}"
-       placeholder="Enter one or more emails separated by comma">
-
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" name="SEND_EMAIL" ${row.SEND_EMAIL ? "checked" : ""}>
-          <label class="form-check-label">Send Email</label>
-        </div>
-      </div>
-
-   <div class="col-md-6 mb-3">
-        <label class="form-label">Password</label>
-        <input type="password" class="form-control" id="PASSWORD" name="PASSWORD" value="${row.PASSWORD ?? ''}">
-        <div id="PASSWORD-error" class="text-danger mt-1"></div>
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox"  id="showPassword">
-          <label class="form-check-label" for="showPassword">Show Password</label>
-        </div>
-      </div>
-
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Confirm Password</label>
-        <input type="password" class="form-control" id="confirm_password" name="confirm_password" value="${row.PASSWORD ?? ''}">
-        <div id="confirm_password-error" class="text-danger mt-1"></div>
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="showConfirmPassword">
-          <label class="form-check-label" for="showConfirmPassword">Show Confirm Password</label>
-        </div>
-      </div>
-
-      <!-- Validity fields -->
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Validity Start</label>
-        <input type="date" class="form-control" name="VALIDITY_START" value="${row.VALIDITY_START ?? formattedToday}">
-      </div>
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Validity End</label>
-        <input type="date" class="form-control" name="VALIDITY_END" value="${row.VALIDITY_END ?? formattedEnd}">
-      </div>
-    </div>
-  `;
-
-  // 🔥 Fresh users load (important)
-dropdownData.user = await fetchJSON(API.createuser);
-
-// 🔥 USERNAME duplicate check (NO setTimeout)
-const usernameInput = fieldsDiv.querySelector('input[name="USERNAME"]');
-
-if (usernameInput) {
-
-  let warning = document.createElement("small");
-  warning.style.color = "red";
-  warning.classList.add("d-block", "mt-1");
-  usernameInput.parentNode.appendChild(warning);
-
-  usernameInput.addEventListener("input", function () {
-
-    const value = this.value.trim().toLowerCase();
-
-    const exists = (dropdownData.user || []).some(u =>
-      u.USERNAME.toLowerCase() === value &&
-      u.USER_ID != (row.USER_ID ?? "")
-    );
-
-    if (exists) {
-      warning.innerText = "Username already taken";
-    } else {
-      warning.innerText = "";
-    }
-
-  });
-}
-
-
-
-  // Show/Hide password logic
-  setTimeout(() => {
-    document.getElementById("showPassword")?.addEventListener("change", function() {
-      document.getElementById("PASSWORD").type = this.checked ? "text" : "password";
-    });
-    document.getElementById("showConfirmPassword")?.addEventListener("change", function() {
-      document.getElementById("confirm_password").type = this.checked ? "text" : "password";
-    });
-
-    // Password validation on input
-    const passwordInput = document.getElementById("PASSWORD");
-    const confirmInput = document.getElementById("confirm_password");
-
-    function validatePassword() {
-      const value = passwordInput.value;
-      const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-      const errorEl = document.getElementById("PASSWORD-error");
-
-      if (!regex.test(value)) {
-        errorEl.textContent = "Password must be min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.";
-      } else {
-        errorEl.textContent = "";
+    if(isEdit) {
+      const dsl = (dropdownData.devicesensorlink || []).find(l => l.DEVICE_ID == row.DEVICE_ID);
+      if(dsl) {
+        linkedSensorId = dsl.SENSOR_ID;
+        const spl = (dropdownData.sensorparameterlink || []).find(l => l.SENSOR_ID == dsl.SENSOR_ID);
+        if(spl) linkedParamId = spl.PARAMETER_ID;
       }
-
-      // Confirm password match
-      const confirmEl = document.getElementById("confirm_password-error");
-      if (confirmInput.value && value !== confirmInput.value) {
-        confirmEl.textContent = "Passwords do not match.";
-      } else {
-        confirmEl.textContent = "";
+      const subs = (dropdownData.mastersubscriptionhistory || []).filter(s => s.Device_ID == row.DEVICE_ID).sort((a,b)=>b.id-a.id);
+      if(subs.length > 0) {
+        subPkgId = subs[0].Subscription_ID; subPlanId = subs[0].Plan_ID;
+        subStart = subs[0].Subscription_Start_date ? subs[0].Subscription_Start_date.split('T')[0] : startStr;
+        subEnd = subs[0].Subcription_End_date ? subs[0].Subcription_End_date.split('T')[0] : endStr;
       }
     }
 
-    passwordInput.addEventListener("input", validatePassword);
-    confirmInput.addEventListener("input", validatePassword);
-  }, 100);
+    fieldsDiv.innerHTML = `
+      <input type="hidden" name="DEVICE_ID" value="${row.DEVICE_ID ?? ''}">
+      
+      <div class="col-md-6 mb-1"><label class="form-label">Device Name</label><input type="text" class="form-control" name="DEVICE_NAME" value="${row.DEVICE_NAME ?? ''}" ${autoCapStr} required></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Category</label><select class="form-select" name="CATEGORY_ID" required><option value="">Select Category</option>${(dropdownData.devicescategory||[]).map(c=>`<option value="${c.CATEGORY_ID}" ${row.CATEGORY_ID==c.CATEGORY_ID?'selected':''}>${c.CATEGORY_NAME}</option>`).join('')}</select></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Organization</label><select class="form-select" name="ORGANIZATION_ID" id="dev_org_select" required><option value="">Select Org</option>${(dropdownData.orgs||[]).map(o=>`<option value="${o.ORGANIZATION_ID}" ${row.ORGANIZATION_ID==o.ORGANIZATION_ID?'selected':''}>${o.ORGANIZATION_NAME}</option>`).join('')}</select></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Centre</label><select class="form-select" name="CENTRE_ID" id="dev_centre_select" required><option value="">Select Centre</option>${(dropdownData.centres||[]).filter(c => c.ORGANIZATION_ID == row.ORGANIZATION_ID).map(c=>`<option value="${c.CENTRE_ID}" ${row.CENTRE_ID==c.CENTRE_ID?'selected':''}>${c.CENTRE_NAME}</option>`).join('')}</select></div>
+      <div class="col-md-12 mb-1"><label class="form-label">HW Payment Done</label><select class="form-select" name="IS_HARDWARE_PAYMENT_DONE"><option value="1" ${row.IS_HARDWARE_PAYMENT_DONE==1?'selected':''}>Yes</option><option value="0" ${row.IS_HARDWARE_PAYMENT_DONE==0?'selected':''}>No</option></select></div>
+      
+      <div class="col-12 mt-2 pt-2 border-top"><label class="form-label text-success">Sensor & Parameter Linking</label></div>
+      <div class="col-md-6 mb-1">
+        <label class="form-label text-muted">Create New Sensor</label>
+        <input type="text" class="form-control border-success mb-1" name="NEW_SENSOR_NAME" placeholder="Sensor Name" ${autoCapStr}>
+        <input type="text" class="form-control border-success" name="NEW_SENSOR_TYPE" placeholder="Sensor Type (e.g. DHT11)" ${autoCapStr}>
+      </div>
+      <div class="col-md-6 mb-1">
+        <label class="form-label text-muted">OR Pick Existing Sensor</label>
+        <select class="form-select border-success mb-2" name="EXISTING_SENSOR_ID"><option value="">-- Choose Existing Sensor --</option>${(dropdownData.sensors||[]).map(s=>`<option value="${s.SENSOR_ID}" ${linkedSensorId==s.SENSOR_ID?'selected':''}>${s.SENSOR_NAME}</option>`).join('')}</select>
+        
+        <label class="form-label text-success">Link Parameter</label>
+        <select class="form-select border-success" name="LINK_PARAMETER_ID"><option value="">-- Select Parameter --</option>${(dropdownData.parameters||[]).map(p=>`<option value="${p.PARAMETER_ID}" ${linkedParamId==p.PARAMETER_ID?'selected':''}>${p.PARAMETER_NAME}</option>`).join('')}</select>
+      </div>
 
-  return;
-}
-
-
-
-
-  const schema = currentData.length ? Object.keys(currentData[0]) : (FIELD_SCHEMAS[currentTable] || []);
-  const pk = PRIMARY_KEYS[currentTable];
-
-  schema.forEach(key => {
-
-  if(currentTable === "devicesensorlink" && 
-   (key === "ORGANIZATION_ID" || key === "CENTRE_ID")) {
-   return;
-}
-      // ❌ created_by skip
-  if (key === "CREATED_BY" || key === "created_by") return;
-      // mastersensor ka SENSOR_STATUS add/edit form me skip
-  if (currentTable === "mastersensor" && key === "SENSOR_STATUS") return;
-  if (currentTable === "masterdevices" && key === "DEVICE_STATUS") return;
-  if (currentTable === "mastersubscriptionhistory" && key === "Status") return;
-
-  let fieldHtml = "";
-    // PK handling
- if(key === pk){
-  // if(currentTable === "userorganizationcentrelink"){
-  //   return;  // add + edit dono me skip
-  // }
-  fieldsDiv.innerHTML += `<input name="${key}" value="${row[key]??''}" hidden>`;
-  return;
-}
-
-
-
-    
-
-// Organization dropdown
-if (key === "ORG_ID" || key === "ORGANIZATION_ID") {
-  const options = (dropdownData.orgs || []).sort((a, b) => b.ORGANIZATION_ID - a.ORGANIZATION_ID);
-  fieldsDiv.innerHTML += `<div class="mb-3">
-    <label class="form-label">ORGANIZATION</label>
-    <select class="form-select" name="${key}">
-      <option value="">-- Choose Organization --</option>
-      ${options.map(o => `<option value="${o.ORGANIZATION_ID}" ${o.ORGANIZATION_ID == (row[key] ?? "") ? 'selected' : ''}>${o.ORGANIZATION_NAME}</option>`).join("")}
-    </select>
-  </div>`;
-  return;
-}
-
-// Centre dropdown
-if (key === "CENTRE_ID") {
-  const options = (dropdownData.centres || []).sort((a, b) => b.CENTRE_ID - a.CENTRE_ID);
-  fieldsDiv.innerHTML += `<div class="mb-3">
-    <label class="form-label">CENTRE</label>
-    <select class="form-select" name="CENTRE_ID">
-      <option value="">-- Choose Centre --</option>
-      ${options.map(c => `<option value="${c.CENTRE_ID}" ${c.CENTRE_ID == (row["CENTRE_ID"] || "") ? 'selected' : ''}>${c.CENTRE_NAME}</option>`).join('')}
-    </select>
-  </div>`;
-  return;
-}
-
-// UOM dropdown
-if (key === "UOM_ID") {
-  const options = (dropdownData.uoms || []).sort((a, b) => b.UOM_ID - a.UOM_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">UNIT</label>
-      <select class="form-select" name="UOM_ID">
-        <option value="">-- Choose UOM --</option>
-        ${options.map(o => `<option value="${o.UOM_ID}" ${(o.UOM_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.UOM_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-// Device dropdown
-if (key === "DEVICE_ID") {
-  const options = (dropdownData.devices || []).sort((a, b) => b.DEVICE_ID - a.DEVICE_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">DEVICE</label>
-      <select class="form-select" name="DEVICE_ID">
-        <option value="">-- Choose Device --</option>
-        ${options.map(o => `<option value="${o.DEVICE_ID}" ${(o.DEVICE_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.DEVICE_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-if (key === "Device_ID") {
-  const options = (dropdownData.devices || []).sort((a, b) => b.DEVICE_ID - a.DEVICE_ID); // ascending
-  const selectOptions = options.map(o => `
-    <option value="${o.DEVICE_ID}" ${o.DEVICE_ID == (row[key] ?? "") ? 'selected' : ''}>${o.DEVICE_NAME}</option>
-  `).join("");
-
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">DEVICE</label>
-      <select class="form-select" name="Device_ID">
-        <option value="">-- Choose Device --</option>
-        ${selectOptions}
-      </select>
-    </div>`;
-  return;
-}
-
-
-if (key === "Subscription_ID") {
-  const options = (dropdownData.mastersubscriptioninfo || []).sort((a, b) => b.Subscription_ID - a.Subscription_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">Package Name</label>
-      <select class="form-select" name="Subscription_ID">
-        <option value="">-- Choose Package --</option>
-        ${options.map(o => `<option value="${o.Subscription_ID}" ${(o.Subscription_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.Package_Name}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-if (key === "Plan_ID") {
-  const options = (dropdownData.masterplantype || []).sort((a, b) => b.Plan_ID - a.Plan_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">Plan Type</label>
-      <select class="form-select" name="Plan_ID">
-        <option value="">-- Choose Plan --</option>
-        ${options.map(o => `<option value="${o.Plan_ID}" ${(o.Plan_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.Plan_Name}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-// Sensor dropdown
-if (key === "SENSOR_ID") {
-  const options = (dropdownData.sensors || []).sort((a, b) => b.SENSOR_ID - a.SENSOR_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">SENSOR</label>
-      <select class="form-select" name="SENSOR_ID">
-        <option value="">-- Choose Sensor --</option>
-        ${options.map(o => `<option value="${o.SENSOR_ID}" ${(o.SENSOR_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.SENSOR_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-// Parameter dropdown
-if (key === "PARAMETER_ID") {
-  const options = (dropdownData.parameters || []).sort((a, b) => b.PARAMETER_ID - a.PARAMETER_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">PARAMETER</label>
-      <select class="form-select" name="PARAMETER_ID">
-        <option value="">-- Choose Parameter --</option>
-        ${options.map(o => `<option value="${o.PARAMETER_ID}" ${(o.PARAMETER_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.PARAMETER_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-// Role dropdown
-if (key === "ROLE_ID") {
-  const options = (dropdownData.roles || []).sort((a, b) => b.ROLE_ID - a.ROLE_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">ROLE</label>
-      <select class="form-select" name="ROLE_ID">
-        <option value="">-- Choose Role --</option>
-        ${options.map(r => `<option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? "")) ? "selected" : ""}>${r.ROLE_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-// User dropdown
-if (key === "USER_ID") {
-  const options = (dropdownData.user || []).sort((a, b) => b.USER_ID - a.USER_ID);
-  fieldsDiv.innerHTML += `<div class="mb-3">
-    <label class="form-label">USER</label>
-    <select class="form-select" name="USER_ID">
-      <option value="">-- Choose User --</option>
-      ${options.map(u => `<option value="${u.USER_ID}" ${(u.USER_ID == (row[key] ?? "")) ? 'selected' : ''}>${u.USERNAME}</option>`).join("")}
-    </select>
-  </div>`;
-  return;
-}
-
-
-// ================================
-// Hardware Payment Dropdown
-// ================================
-if (
-    currentTable === "masterdevices" &&
-    key === "IS_HARDWARE_PAYMENT_DONE"
-) {
-
-    fieldsDiv.innerHTML += `
-        <div class="mb-3">
-            <label class="form-label">
-                IS HARDWARE PAYMENT DONE
-            </label>
-
-            <select class="form-select"
-                    name="IS_HARDWARE_PAYMENT_DONE">
-
-               <option value="1" selected>
-                  Yes
-              </option>
-
-                <option value="1"
-                    ${row[key] == 1 ? "selected" : ""}>
-                    Yes
-                </option>
-
-                <option value="0"
-                    ${row[key] == 0 ? "selected" : ""}>
-                    No
-                </option>
-
-            </select>
-        </div>
+      <div class="col-12 mt-2 pt-2 border-top"><label class="form-label text-primary">Assign Subscription</label></div>
+      <div class="col-md-6 mb-1"><select class="form-select border-primary" name="Subscription_ID"><option value="">-- Select Package --</option>${(dropdownData.mastersubscriptioninfo||[]).map(p=>`<option value="${p.Subscription_ID}" ${subPkgId==p.Subscription_ID?'selected':''}>${p.Package_Name}</option>`).join('')}</select></div>
+      <div class="col-md-6 mb-1"><select class="form-select border-primary" name="Plan_ID"><option value="">-- Select Plan --</option>${(dropdownData.masterplantype||[]).map(p=>`<option value="${p.Plan_ID}" ${subPlanId==p.Plan_ID?'selected':''}>${p.Plan_Name}</option>`).join('')}</select></div>
+      <div class="col-md-6 mb-1"><input type="date" class="form-control border-primary" name="VALIDITY_START" value="${subStart}"></div>
+      <div class="col-md-6 mb-1"><input type="date" class="form-control border-primary" name="VALIDITY_END" value="${subEnd}"></div>
     `;
 
+    setTimeout(() => {
+      const orgSel = document.getElementById('dev_org_select');
+      const cenSel = document.getElementById('dev_centre_select');
+      if(orgSel && cenSel) {
+        orgSel.addEventListener('change', () => {
+          cenSel.innerHTML = `<option value="">Select Centre</option>` + (dropdownData.centres||[]).filter(c=>c.ORGANIZATION_ID == orgSel.value).map(c=>`<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`).join('');
+        });
+      }
+    }, 100);
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal'), { backdrop: 'static', keyboard: false }).show();
     return;
-}
+  }
 
+  // --- Normal Tables form logic ---
+  if (normalizeKey(currentTable) === "devicesensorlink") {
+    fieldsDiv.innerHTML = `<input type="hidden" name="id" value="${row?.id ?? ''}">
+      <div class="col-12 mb-2"><label class="form-label">DEVICE</label><select class="form-select" name="DEVICE_ID"><option value="">-- Choose Device --</option>${(dropdownData.devices || []).sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID).map(d=>`<option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>${d.DEVICE_NAME}</option>`).join("")}</select></div>
+      <div class="col-12 mb-2"><label class="form-label">SENSOR</label><select class="form-select" name="SENSOR_ID"><option value="">-- Choose Sensor --</option>${(dropdownData.sensors || []).sort((a,b)=>b.SENSOR_ID-a.SENSOR_ID).map(s=>`<option value="${s.SENSOR_ID}" ${row.SENSOR_ID==s.SENSOR_ID?'selected':''}>${s.SENSOR_NAME}</option>`).join("")}</select></div>`;
+  } 
+else if (currentTable === "createuser") {
+    const d = new Date(); const n = new Date(d); n.setFullYear(d.getFullYear() + 1);
+    fieldsDiv.innerHTML = `<input type="hidden" name="USER_ID" value="${row.USER_ID ?? ''}">
+      <div class="col-md-6 mb-1"><label class="form-label">Actual Name</label><input type="text" class="form-control" name="ACTUAL_NAME" value="${row.ACTUAL_NAME ?? ''}" ${autoCapStr}></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Username</label><input type="text" class="form-control" name="USERNAME" value="${row.USERNAME ?? ''}" ${autoCapStr}></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Role</label><select class="form-select" name="ROLE_ID"><option value="">-- Choose Role --</option>${(dropdownData.roles || []).map(r => `<option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? "")) ? "selected" : ""}>${r.ROLE_NAME}</option>`).join("")}</select></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Phone</label><input type="text" class="form-control" name="PHONE" value="${row.PHONE ?? ''}"></div>
+      <div class="col-md-12 mb-1"><label class="form-label">Email</label><input type="email" class="form-control" name="EMAIL" value="${row.EMAIL ?? ''}"></div>
+      <div class="col-12 mb-1 d-flex align-items-center py-1"><div class="form-check me-4"><input class="form-check-input" type="checkbox" name="SEND_SMS" ${row.SEND_SMS ? "checked" : ""}><label class="form-check-label small">Send SMS</label></div><div class="form-check"><input class="form-check-input" type="checkbox" name="SEND_EMAIL" ${row.SEND_EMAIL ? "checked" : ""}><label class="form-check-label small">Send Email</label></div></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Password</label><input type="password" class="form-control" id="PASSWORD" name="PASSWORD" value="${row.PASSWORD ?? ''}"></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Confirm Password</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" value="${row.PASSWORD ?? ''}"></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Validity Start</label><input type="date" class="form-control" name="VALIDITY_START" value="${row.VALIDITY_START ?? d.toISOString().split('T')[0]}"></div>
+      <div class="col-md-6 mb-1"><label class="form-label">Validity End</label><input type="date" class="form-control" name="VALIDITY_END" value="${row.VALIDITY_END ?? n.toISOString().split('T')[0]}"></div>`;
+  }
+  else {
+    const schema = currentData.length ? Object.keys(currentData[0]) : (FIELD_SCHEMAS[currentTable] || []);
+    const pk = PRIMARY_KEYS[currentTable];
+    schema.forEach(key => {
+      if((currentTable === "devicesensorlink" && (key === "ORGANIZATION_ID" || key === "CENTRE_ID")) || key === "CREATED_BY" || key === "created_by" || (currentTable === "mastersensor" && key === "SENSOR_STATUS") || (currentTable === "masterdevices" && key === "DEVICE_STATUS") || (currentTable === "mastersubscriptionhistory" && key === "Status")) return;
+      if(key === pk){ fieldsDiv.innerHTML += `<input name="${key}" value="${row[key]??''}" hidden>`; return; }
 
-// ================================
-// CATEGORY DROPDOWN
-// ================================
-if (key === "CATEGORY_ID") {
-
-  const options = (dropdownData.devicescategory || [])
-    .sort((a, b) => b.CATEGORY_ID - a.CATEGORY_ID);
-
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">CATEGORY</label>
-
-      <select class="form-select" name="CATEGORY_ID">
-
-        <option value="">
-          -- Choose Category --
-        </option>
-
-        ${options.map(dc => `
-          <option value="${dc.CATEGORY_ID}"
-            ${(dc.CATEGORY_ID == (row[key] ?? "")) ? 'selected' : ''}>
-
-            ${dc.CATEGORY_NAME}
-
-          </option>
-        `).join("")}
-
-      </select>
-    </div>`;
-
-  return;
-}
-
-// Category dropdown
-if (key === "CATEGORY_ID") {
-  const options = (dropdownData.devicescategory || []).sort((a, b) => b.CATEGORY_ID - a.CATEGORY_ID);
-  fieldsDiv.innerHTML += `
-    <div class="mb-3">
-      <label class="form-label">CATEGORY</label>
-      <select class="form-select" name="CATEGORY_ID">
-        <option value="">-- Choose Category --</option>
-        ${options.map(dc => `<option value="${dc.CATEGORY_ID}" ${(dc.CATEGORY_ID == (row[key] ?? "")) ? 'selected' : ''}>${dc.CATEGORY_NAME}</option>`).join("")}
-      </select>
-    </div>`;
-  return;
-}
-
-    //  if(key==="ROLE_ID"){
-    //   const options = dropdownData.roles || [];
-    //   fieldsDiv.innerHTML += `
-    //     <div class="mb-3">
-    //       <label class="form-label">ROLE</label>
-    //       <select class="form-select" name="ROLE_ID">
-    //         <option value="">-- Choose Role  --</option>
-    //         ${options.map(r=>`<option value="${r.ROLE_ID}" ${(r.ROLE_ID==(row[key]??""))?'selected':''}>${r.ROLE_NAME}</option>`).join("")}
-    //       </select>
-    //     </div>`;
-    //   return;
-    // }
-
-// SEND_SMS / SEND_EMAIL checkbox
-    if(key === "SEND_SMS" || key === "SEND_EMAIL") {
-      const checked = row[key] === true || row[key] === "true" || row[key] === 1 ? "checked" : "";
-      fieldsDiv.innerHTML += `
-        <div class="form-check mb-3">
-          <input class="form-check-input" type="checkbox" name="${key}" id="${key}" ${checked}>
-          <label class="form-check-label" for="${key}">${key.replace("_"," ")}</label>
-        </div>
-      `;
-      return;
-    }
-
-        if (key === "NOTIFICATION_TIME") {
-  fieldsDiv.innerHTML += `<div class="mb-3">
-    <label class="form-label">Notification Time (in seconds)</label>
-    <input type="number" class="form-control" name="NOTIFICATION_TIME" 
-      value="${row[key] ?? ""}" placeholder="Enter time in seconds" required>
-  </div>`;
-  return;
-}
-
-
-
-    // Default input field
-    let type="text";
-    const k = key.toLowerCase();
-    if(k.includes("email")) type="email";
-    else if(k.includes("password")) type="password";
-    else if(k.includes("validity_start") || k.includes("validity_end")) type="date";
-    else if(k.includes("date"))
-  type = "date";
-else if(k.endsWith("_at") || k.endsWith("_time"))
-  type = "datetime-local";
-
-    else if(k.includes("upper")||k.includes("lower")||k.includes("value")||k.includes("threshold")||k.endsWith("_id")) type="number";
-    let stepAttr = "";
-if (type === "number") {
-    stepAttr = `step="any"`;   // allow decimals like 4.5, 8.75, etc.
-}
-  const isTextType = type === "text";
-
-    fieldsDiv.innerHTML += `
-      <div class="mb-3">
-        <label class="form-label">${key}</label>
-        <input class="form-control" name="${key}" value="${row[key]??''}" type="${type}" ${isTextType ? 'oninput="this.value = formatFirstWord(this.value)"':''}>
-      </div>`;
-  });
-
-  // ===== Dependent dropdown logic (ONLY if NOT userorganizationcentrelink) =====
-if (currentTable === "userorganizationcentrelink" || currentTable === "masterdevices") {
-  const orgDropdown = fieldsDiv.querySelector(
-    'select[name="ORG_ID"], select[name="ORGANIZATION_ID"]'
-  );
-  const centreDropdown = fieldsDiv.querySelector(
-    'select[name="CENTRE_ID"]'
-  );
-
-  if (orgDropdown && centreDropdown) {
-
-    function updateCentres() {
-      const orgId = orgDropdown.value;
-
-      const filteredCentres = (dropdownData.centres || [])
-        .filter(c => String(c.ORGANIZATION_ID) === String(orgId));
-
-      centreDropdown.innerHTML =
-        `<option value="">-- Choose Centre --</option>` +
-        filteredCentres.map(c =>
-          `<option value="${c.CENTRE_ID}">
-            ${c.CENTRE_NAME}
-          </option>`
-        ).join("");
-    }
-
-    // 🔁 On organization change
-    orgDropdown.addEventListener("change", () => {
-      updateCentres();
+      let field = `<div class="col-12 mb-2"><label class="form-label">${key.replace(/_/g, " ")}</label>`;
+      if (key === "ORG_ID" || key === "ORGANIZATION_ID") field += `<select class="form-select" name="${key}"><option value="">Select Organization</option>${(dropdownData.orgs || []).map(o => `<option value="${o.ORGANIZATION_ID}" ${o.ORGANIZATION_ID == (row[key] ?? "") ? 'selected' : ''}>${o.ORGANIZATION_NAME}</option>`).join("")}</select>`;
+      else if (key === "CENTRE_ID") field += `<select class="form-select" name="CENTRE_ID"><option value="">Select Centre</option>${(dropdownData.centres || []).map(c => `<option value="${c.CENTRE_ID}" ${c.CENTRE_ID == (row["CENTRE_ID"] || "") ? 'selected' : ''}>${c.CENTRE_NAME}</option>`).join('')}</select>`;
+      else if (key === "UOM_ID") field += `<select class="form-select" name="UOM_ID"><option value="">Select UOM</option>${(dropdownData.uoms || []).map(o => `<option value="${o.UOM_ID}" ${(o.UOM_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.UOM_NAME}</option>`).join("")}</select>`;
+      else if (key === "DEVICE_ID" || key === "Device_ID") field += `<select class="form-select" name="${key}"><option value="">Select Device</option>${(dropdownData.devices || []).map(o => `<option value="${o.DEVICE_ID}" ${(o.DEVICE_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.DEVICE_NAME}</option>`).join("")}</select>`;
+      else if (key === "Subscription_ID") field += `<select class="form-select" name="Subscription_ID"><option value="">Select Package</option>${(dropdownData.mastersubscriptioninfo || []).map(o => `<option value="${o.Subscription_ID}" ${(o.Subscription_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.Package_Name}</option>`).join("")}</select>`;
+      else if (key === "Plan_ID") field += `<select class="form-select" name="Plan_ID"><option value="">Select Plan</option>${(dropdownData.masterplantype || []).map(o => `<option value="${o.Plan_ID}" ${(o.Plan_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.Plan_Name}</option>`).join("")}</select>`;
+      else if (key === "SENSOR_ID") field += `<select class="form-select" name="SENSOR_ID"><option value="">Select Sensor</option>${(dropdownData.sensors || []).map(o => `<option value="${o.SENSOR_ID}" ${(o.SENSOR_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.SENSOR_NAME}</option>`).join("")}</select>`;
+      else if (key === "PARAMETER_ID") field += `<select class="form-select" name="PARAMETER_ID"><option value="">Select Parameter</option>${(dropdownData.parameters || []).map(o => `<option value="${o.PARAMETER_ID}" ${(o.PARAMETER_ID == (row[key] ?? "")) ? 'selected' : ''}>${o.PARAMETER_NAME}</option>`).join("")}</select>`;
+      else if (key === "ROLE_ID") field += `<select class="form-select" name="ROLE_ID"><option value="">Select Role</option>${(dropdownData.roles || []).map(r => `<option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? "")) ? "selected" : ""}>${r.ROLE_NAME}</option>`).join("")}</select>`;
+      else if (key === "USER_ID") field += `<select class="form-select" name="USER_ID"><option value="">Select User</option>${(dropdownData.user || []).map(u => `<option value="${u.USER_ID}" ${(u.USER_ID == (row[key] ?? "")) ? 'selected' : ''}>${u.USERNAME}</option>`).join("")}</select>`;
+      else if (currentTable === "masterdevices" && key === "IS_HARDWARE_PAYMENT_DONE") field += `<select class="form-select" name="IS_HARDWARE_PAYMENT_DONE"><option value="1" ${row[key] == 1 ? "selected" : ""}>Yes</option><option value="0" ${row[key] == 0 ? "selected" : ""}>No</option></select>`;
+      else if (key === "CATEGORY_ID") field += `<select class="form-select" name="CATEGORY_ID"><option value="">Select Category</option>${(dropdownData.devicescategory || []).map(dc => `<option value="${dc.CATEGORY_ID}" ${(dc.CATEGORY_ID == (row[key] ?? "")) ? 'selected' : ''}>${dc.CATEGORY_NAME}</option>`).join("")}</select>`;
+      else if(key === "SEND_SMS" || key === "SEND_EMAIL") field = `<div class="col-12 mb-2 d-flex align-items-end"><div class="form-check"><input class="form-check-input" type="checkbox" name="${key}" ${row[key] ? "checked" : ""}><label class="form-check-label ms-1">${key.replace("_"," ")}</label></div></div>`;
+      else {
+        let type="text"; const k = key.toLowerCase();
+        if(k.includes("email")) type="email"; else if(k.includes("password")) type="password"; else if(k.includes("validity_start") || k.includes("validity_end")) type="date"; else if(k.includes("date")) type = "date"; else if(k.endsWith("_at") || k.endsWith("_time")) type = "datetime-local"; else if(k.includes("upper")||k.includes("lower")||k.includes("value")||k.includes("threshold")||k.endsWith("_id")) type="number";
+        
+        field += `<input class="form-control" name="${key}" value="${row[key]??''}" type="${type}" ${type==="number"?'step="any"':''} ${type==="text" ? autoCapStr : ''}>`;
+      }
+      if(key !== "SEND_SMS" && key !== "SEND_EMAIL") field += `</div>`;
+      fieldsDiv.innerHTML += field;
     });
+  }
 
-    // 🔁 Initial load (edit mode)
-    if (row.ORGANIZATION_ID) {
-      updateCentres();
-      centreDropdown.value = row.CENTRE_ID || "";
+  if (currentTable === "userorganizationcentrelink") {
+    const orgDropdown = fieldsDiv.querySelector('select[name="ORG_ID"], select[name="ORGANIZATION_ID"]');
+    const centreDropdown = fieldsDiv.querySelector('select[name="CENTRE_ID"]');
+    if (orgDropdown && centreDropdown) {
+      function updateCentres() {
+        centreDropdown.innerHTML = `<option value="">-- Choose Centre --</option>` + (dropdownData.centres || []).filter(c => String(c.ORGANIZATION_ID) === String(orgDropdown.value)).map(c => `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`).join("");
+      }
+      orgDropdown.addEventListener("change", updateCentres);
+      if (row.ORGANIZATION_ID) { updateCentres(); centreDropdown.value = row.CENTRE_ID || ""; }
     }
   }
-}
 
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('crudModal'), { backdrop: 'static', keyboard: false }).show();
 }
-
-function closeModal(){
-  const modalEl = document.getElementById('crudModal');
-  const instance = bootstrap.Modal.getInstance(modalEl);
-  if(instance) instance.hide();
-}
-
 
 /* ============================================================
-   💾 FORM SUBMISSION HANDLER
-   - Add / Edit logic
-   - Checkbox handling
-   - Special table handling
+   💾 MULTI-API SMART SUBMISSION HANDLER
    ============================================================ */
-
-// ===== submit (add / edit) =====
 document.getElementById('crudForm').addEventListener('submit', async function(e){
-
   e.preventDefault();
+  const form = new FormData(this); let payload = {}; form.forEach((v,k)=>payload[k]=v);
 
-  const form = new FormData(this); 
-  let payload = {};
-  form.forEach((v,k)=>payload[k]=v);
-
-
- // 🔥 Mandatory fields check
-if (currentTable === "userorganizationcentrelink") {
-  if (!payload.USER_ID || !payload.ORGANIZATION_ID || !payload.CENTRE_ID) {
-    alert("USER, ORGANIZATION aur CENTRE select karna mandatory hai");
-    return;
-  }
-}
-
-
-
-    // ❌ undefined / empty values backend ko mat bhejo
-Object.keys(payload).forEach(k => {
-  if (payload[k] === "" || payload[k] === undefined) {
-    delete payload[k];
-  }
-});
-
-
-  // Convert checkboxes to boolean
-  ["SEND_SMS","SEND_EMAIL"].forEach(f => {
-    if(payload[f] === "on") payload[f] = true;
-    else payload[f] = false;
-  });
+  Object.keys(payload).forEach(k => { if (payload[k] === "" || payload[k] === undefined) delete payload[k]; });
+  ["SEND_SMS","SEND_EMAIL"].forEach(f => { if(payload[f] !== undefined) payload[f] = payload[f] === "on"; });
   
-  // 👉 Special case: Device-Sensor Link me Org & Centre auto-attach
-if(currentTable === "devicesensorlink"){
-
-  const selectedDevice = payload.DEVICE_ID;
-
-  if(!selectedDevice){
-    alert("Device select karna mandatory hai");
-    return;
-  }
-
-  const device = dropdownData.devices.find(d => 
-      d.DEVICE_ID == selectedDevice
-  );
-
-  if(device){
-    payload.ORGANIZATION_ID = device.ORGANIZATION_ID;
-    payload.CENTRE_ID = device.CENTRE_ID;
-  }
-
-  // ⚠️ No manual fetch here
-}
-
-  // primary key detect
   const pk = PRIMARY_KEYS[currentTable];
   const id = payload[pk];
   const isEdit = id && id.trim() !== "" ? true : false;
-
-  if (currentTable === "createuser" && isEdit) {
-    delete payload.confirm_password;
-
-    if (!payload.PASSWORD) {
-        delete payload.PASSWORD;
-    }
-}
-
-
-  if(!isEdit){
-    delete payload[pk];  // add me PK hata do
-  }
-
-  const url = isEdit ? API[currentTable] + id + "/" : API[currentTable];
-  const method = isEdit ? 'PATCH' : 'POST';
-
-  let res = await fetch(url,{
-    method: method,
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(payload)
-  });
-
-const messageDiv = document.getElementById("crudMessage");
-
-if(isEdit){
-  closeModal();
-} else {
-  // Reset form for next add
-  this.reset();
-  this.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
-  const firstField = this.querySelector('input, select, textarea');
-  if(firstField) firstField.focus();
-
-  // ✅ Show message inside modal
-  messageDiv.innerText = "Saved! Ready for next entry.";
-  messageDiv.classList.remove("d-none");
   
-  // Auto-hide after 3 seconds
-  setTimeout(() => {
-    messageDiv.classList.add("d-none");
-  }, 3000);
-}
-// 🔥 Step 1: Force reload dropdown data first
-dropdownLoaded = false;
-await loadDropdowns();
+  const submitBtn = document.getElementById('submitBtn');
+  const originalText = document.getElementById('submitBtnText').innerText;
+  submitBtn.disabled = true; document.getElementById('submitBtnText').innerText = "Processing...";
 
-// 🔥 Step 2: Reload table with fresh data
-await loadTable(currentTable);
+  try {
+    if (currentTable === "masterdevices") {
+        let devId = id;
+        if(!isEdit) {
+            let dRes = await fetch(API.masterdevices, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE, DEVICE_STATUS: 1 }) });
+            if(!dRes.ok) throw new Error("Failed to create Device");
+            devId = (await dRes.json()).DEVICE_ID;
+        } else {
+            await fetch(API.masterdevices + id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE }) });
+        }
 
-// 🔥 Step 3: Update summary cards
-await updateSummary();
+        let sensorId = payload.EXISTING_SENSOR_ID;
+        if(payload.NEW_SENSOR_NAME) {
+            let sRes = await fetch(API.mastersensor, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ SENSOR_NAME: payload.NEW_SENSOR_NAME.trim(), SENSOR_TYPE: (payload.NEW_SENSOR_TYPE || "").trim(), SENSOR_STATUS: 1 }) });
+            if(sRes.ok) { sensorId = (await sRes.json()).SENSOR_ID; }
+        }
 
+        if(sensorId) {
+            const extDsl = (dropdownData.devicesensorlink||[]).find(l => l.DEVICE_ID == devId);
+            if(extDsl) await fetch(API.devicesensorlink + extDsl.id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({SENSOR_ID: sensorId}) });
+            else await fetch(API.devicesensorlink, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({DEVICE_ID: devId, SENSOR_ID: sensorId}) });
+            
+            if(payload.LINK_PARAMETER_ID) {
+                const extSpl = (dropdownData.sensorparameterlink||[]).find(l => l.SENSOR_ID == sensorId);
+                if(extSpl) await fetch(API.sensorparameterlink + extSpl.id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({PARAMETER_ID: payload.LINK_PARAMETER_ID}) });
+                else await fetch(API.sensorparameterlink, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({SENSOR_ID: sensorId, PARAMETER_ID: payload.LINK_PARAMETER_ID}) });
+            }
+        }
+
+        if(payload.Subscription_ID && payload.Plan_ID) {
+            const extSubs = (dropdownData.mastersubscriptionhistory||[]).filter(s => s.Device_ID == devId).sort((a,b)=>b.id-a.id);
+            if(extSubs.length > 0) {
+                await fetch(API.mastersubscriptionhistory + extSubs[0].id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ Subscription_ID: payload.Subscription_ID, Plan_ID: payload.Plan_ID, Subscription_Start_date: payload.VALIDITY_START, Subcription_End_date: payload.VALIDITY_END }) });
+            } else {
+                await fetch(API.mastersubscriptionhistory, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ Device_ID: devId, Subscription_ID: payload.Subscription_ID, Plan_ID: payload.Plan_ID, Subscription_Start_date: payload.VALIDITY_START, Subcription_End_date: payload.VALIDITY_END, Status: "Active", Payment_Date: new Date().toISOString().split('T')[0] }) });
+            }
+        }
+    } 
+    else {
+        if (currentTable === "userorganizationcentrelink" && (!payload.USER_ID || !payload.ORGANIZATION_ID || !payload.CENTRE_ID)) throw new Error("USER, ORGANIZATION aur CENTRE select karna mandatory hai");
+        if (currentTable === "createuser" && isEdit) { delete payload.confirm_password; if (!payload.PASSWORD) delete payload.PASSWORD; }
+        if(currentTable === "devicesensorlink"){
+            const dev = dropdownData.devices.find(d => d.DEVICE_ID == payload.DEVICE_ID);
+            if(dev){ payload.ORGANIZATION_ID = dev.ORGANIZATION_ID; payload.CENTRE_ID = dev.CENTRE_ID; }
+        }
+        if(!isEdit) delete payload[pk]; 
+
+        const url = isEdit ? API[currentTable] + id + "/" : API[currentTable];
+        let res = await fetch(url,{ method: isEdit ? 'PATCH' : 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+        if(!res.ok) throw new Error("Submission Failed");
+    }
+
+    const messageDiv = document.getElementById("crudMessage");
+    if(!isEdit) this.reset();
+    
+    messageDiv.innerText = "Successfully Saved!"; messageDiv.classList.remove("d-none");
+    setTimeout(() => { messageDiv.classList.add("d-none"); bootstrap.Modal.getInstance(document.getElementById('crudModal')).hide(); }, 1000);
+    
+    dropdownLoaded = false; await loadDropdowns(); await loadTable(currentTable); await updateSummary();
+  } catch(error) { alert(error.message); console.error(error); } 
+  finally { submitBtn.disabled = false; document.getElementById('submitBtnText').innerText = originalText; }
 });
 
 /* ============================================================
    🔁 ACTIVE / INACTIVE TOGGLE
-   - Device status update
-   - Sensor status update
    ============================================================ */
-
-
 function toggleActiveStatus(deviceId, checkbox) {
-  const isActive = checkbox.checked;
-  const tr = checkbox.closest("tr");
-
-  // Update UI
-  tr.classList.toggle("inactive-row", !isActive);
-  checkbox.nextElementSibling.querySelector(".status-text").textContent = isActive ? "Active" : "Inactive";
-
-  // Update backend
-  fetch(`${API.masterdevices}${deviceId}/`, {
-    method: 'PATCH',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ DEVICE_STATUS: isActive ? 1 : 0 })
-  })
-  .then(res => {
-    if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
-    console.log(`✅ DEVICE_STATUS updated`, { DEVICE_ID: deviceId, DEVICE_STATUS: isActive ? 1 : 0 });
-  })
-  .catch(err => console.error("Failed to update DEVICE_STATUS:", err));
+  const isActive = checkbox.checked; const tr = checkbox.closest("tr"); tr.classList.toggle("inactive-row", !isActive); checkbox.nextElementSibling.querySelector(".status-text").textContent = isActive ? "Active" : "Inactive";
+  fetch(`${API.masterdevices}${deviceId}/`, { method: 'PATCH', headers: { "Content-Type": "application/json" }, body: JSON.stringify({ DEVICE_STATUS: isActive ? 1 : 0 }) });
 }
-
 function toggleSensorStatus(sensorId, checkbox) {
-  const isActive = checkbox.checked;
-  const tr = checkbox.closest("tr");
-
-  // Update UI
-  tr.classList.toggle("inactive-row", !isActive);
-  checkbox.nextElementSibling.querySelector(".status-text").textContent = isActive ? "Active" : "Inactive";
-
-  // Update backend
-  fetch(`${API.mastersensor}${sensorId}/`, {
-    method: 'PATCH',
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ SENSOR_STATUS: isActive ? 1 : 0 })
-  })
-  .then(res => {
-    if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
-    console.log(`✅ SENSOR_STATUS updated`, { SENSOR_ID: sensorId, SENSOR_STATUS: isActive ? 1 : 0 });
-  })
-  .catch(err => console.error("Failed to update SENSOR_STATUS:", err));
+  const isActive = checkbox.checked; const tr = checkbox.closest("tr"); tr.classList.toggle("inactive-row", !isActive); checkbox.nextElementSibling.querySelector(".status-text").textContent = isActive ? "Active" : "Inactive";
+  fetch(`${API.mastersensor}${sensorId}/`, { method: 'PATCH', headers: { "Content-Type": "application/json" }, body: JSON.stringify({ SENSOR_STATUS: isActive ? 1 : 0 }) });
 }
 
 /* ============================================================
    🗑 DELETE HANDLER
-   - Delete row API call
    ============================================================ */
-
-   // ===== Delete =====
 async function deleteRow(id){
   if(id==null || id===""){ alert("Invalid ID"); return; }
   if(!confirm("Delete this row?")) return;
-
-  const pk = PRIMARY_KEYS[currentTable];  // use correct PK
-  try{
-    const res = await fetch(API[currentTable] + id + "/", { method:'DELETE' });
-    if(!res.ok){
-      const txt = await res.text();
-      console.error("Delete Error", res.status, txt);
-      alert(`Delete failed ${res.status}: ${txt}`);
-      return;
-    }
-  }catch(err){
-    console.error("Delete failed:", err);
-    alert("Delete request failed.");
-    return;
-  }
-  await loadTable(currentTable);
-  updateSummary();
-}
-
-/* ============================================================
-   📦 SUBSCRIPTION MANAGEMENT MODULE
-   ------------------------------------------------------------
-   - showPopupMessage() → Generic Bootstrap popup
-   - renew() → Validate & trigger subscription scheduling
-   - openScheduleForm() → Future subscription scheduling modal
-   - openRenewForm() → Immediate renewal modal
-   - Handles:
-        • Date validation
-        • Future start restriction
-        • Subscription status logic
-        • API POST request for new record
-        • Table refresh after success
-   ------------------------------------------------------------
-   This module does NOT update old record.
-   It always creates a NEW subscription entry.
-   ============================================================ */
-
-// Function to show a dynamic Bootstrap popup message
-function showPopupMessage(title, message) {
-  // Remove existing popup if any
-  const existingPopup = document.getElementById('dynamicPopupModal');
-  if (existingPopup) existingPopup.remove();
-
-  const popupHtml = `
-    <div class="modal fade" id="dynamicPopupModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">${title}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>${message}</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML('beforeend', popupHtml);
-  const modalEl = document.getElementById('dynamicPopupModal');
-  const bootstrapModal = new bootstrap.Modal(modalEl);
-  bootstrapModal.show();
-
-  // Remove modal from DOM after hiding
-  modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
-}
-// Updated renew function using popup instead of alert — new record insert karega
-async function renew(id) {
-  if (!id) {
-    showPopupMessage("Invalid ID", "Please provide a valid subscription ID.");
-    return;
-  }
-
-  const sub = currentData.find(r => r[PRIMARY_KEYS[currentTable]] == id);
-  if (!sub) {
-    showPopupMessage("Not Found", "Subscription not found!");
-    return;
-  }
-
-  // 🔹 Open schedule form for future subscription
-  openScheduleForm(sub);
-}
-
-
-
-function openScheduleForm(subscription) {
-  const device = dropdownData.devices.find(d => d.DEVICE_ID === subscription.Device_ID);
-  const deviceName = device ? device.DEVICE_NAME : `ID: ${subscription.Device_ID}`;
-
-  const existingModal = document.getElementById('dynamicScheduleModal');
-  if (existingModal) existingModal.remove();
-
-  const modalHtml = `
-    <div class="modal fade" id="dynamicScheduleModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Schedule Subscription</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="dynamicScheduleForm">
-              <div class="mb-3">
-                <label class="form-label">Device Name</label>
-                <input type="text" class="form-control" value="${deviceName}" readonly>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Start Date</label>
-                <input type="date" class="form-control" id="scheduleStartDate" value="${new Date().toISOString().split('T')[0]}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">End Date</label>
-                <input type="date" class="form-control" id="scheduleEndDate" required>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="scheduleSubmit">Schedule</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-  const modalEl = document.getElementById('dynamicScheduleModal');
-  const bootstrapModal = new bootstrap.Modal(modalEl);
-  bootstrapModal.show();
-
-  document.getElementById('scheduleSubmit').onclick = () => {
-    const startDate = document.getElementById('scheduleStartDate').value;
-    const endDate = document.getElementById('scheduleEndDate').value;
-
-    if (!startDate || !endDate) {
-      alert("Please fill all date fields.");
-      return;
-    }
-
-    if (new Date(endDate) < new Date(startDate)) {
-      alert("End date cannot be earlier than Start date.");
-      return;
-    }
-
-    // 🔹 Ensure new subscription starts after current subscription ends
-    const currentEnd = new Date(subscription.Subcription_End_date);
-    if (new Date(startDate) <= currentEnd) {
-      alert(`New subscription must start after current subscription ends (${subscription.Subcription_End_date}).`);
-      return;
-    }
-
-    fetch(API[currentTable], {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        Device_ID: subscription.Device_ID,
-        Subscription_Start_date: startDate,
-        Subcription_End_date: endDate,
-        Subscription_ID: subscription.Subscription_ID,
-        Plan_ID: subscription.Plan_ID,
-        Payment_Date: new Date().toISOString().split('T')[0],
-        Status: "Future"  // initially future
-      })
-    })
-    .then(res => {
-      if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
-      return res.json();
-    })
-    .then(data => {
-      alert("✅ Subscription scheduled successfully!");
-      bootstrapModal.hide();
-      modalEl.remove();
-      loadTable(currentTable); // Refresh table
-    })
-    .catch(err => {
-      console.error("Schedule failed:", err);
-      alert("❌ Failed to schedule subscription: " + err.message);
-    });
-  };
-
-  modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
-}
-
-
-// Modal form for renewing subscription (creates new entry instead of updating)
-function openRenewForm(subscription) {
-  const device = dropdownData.devices.find(d => d.DEVICE_ID === subscription.Device_ID);
-  const deviceName = device ? device.DEVICE_NAME : `ID: ${subscription.Device_ID}`;
-
-  // Remove existing modal if any
-  const existingModal = document.getElementById('dynamicRenewModal');
-  if (existingModal) existingModal.remove();
-
-  // Create modal dynamically
-  const modalHtml = `
-    <div class="modal fade" id="dynamicRenewModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Renew Subscription</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="dynamicRenewForm">
-              <div class="mb-3">
-                <label class="form-label">Device Name</label>
-                <input type="text" class="form-control" value="${deviceName}" readonly>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">New Start Date</label>
-                <input type="date" class="form-control" id="dynamicStartDate" value="${new Date().toISOString().split('T')[0]}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">New End Date</label>
-                <input type="date" class="form-control" id="dynamicEndDate" required>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="dynamicRenewSubmit">Renew</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-  const modalEl = document.getElementById('dynamicRenewModal');
-  const bootstrapModal = new bootstrap.Modal(modalEl);
-  bootstrapModal.show();
-
-  // Handle Renew Submit
-  document.getElementById('dynamicRenewSubmit').onclick = () => {
-    const newStartDate = document.getElementById('dynamicStartDate').value;
-    const newEndDate = document.getElementById('dynamicEndDate').value;
-
-    if (!newStartDate || !newEndDate) {
-      alert("Please fill all date fields.");
-      return;
-    }
-
-      if (new Date(newEndDate) < new Date(newStartDate)) {
-    alert("End date cannot be earlier than Start date.");
-    return;
-  }
-
-    fetch(API[currentTable], {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        Device_ID: subscription.Device_ID,
-        Subscription_Start_date: newStartDate,
-        Subcription_End_date: newEndDate,
-        Subscription_ID: subscription.Subscription_ID,
-        Plan_ID: subscription.Plan_ID,
-        Payment_Date: new Date().toISOString().split('T')[0],
-        Status: "Active"
-      })
-    })
-      .then(res => {
-        if (!res.ok) return res.text().then(txt => { throw new Error(txt); });
-        return res.json();
-      })
-      .then(data => {
-        alert("✅ Subscription renewed successfully!");
-        bootstrapModal.hide();
-        modalEl.remove();
-        loadTable(currentTable); // Refresh the table
-      })
-      .catch(err => {
-        console.error("Renew failed:", err);
-        alert("❌ Failed to renew subscription: " + err.message);
-      });
-  };
-
-  // Clean modal when closed
-  modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
+  try{ const res = await fetch(API[currentTable] + id + "/", { method:'DELETE' }); if(!res.ok){ alert(`Delete failed`); return; } }catch(err){ alert("Delete request failed."); return; }
+  await loadTable(currentTable); updateSummary();
 }
 
 /* ============================================================
    📈 SUMMARY CARDS
-   - updateSummary()
    ============================================================ */
-
-// ===== Summary cards =====
 async function updateSummary(){
-  try{
-    const [d,p,s,o] = await Promise.all([
-      fetchJSON(API.masterdevices),
-      fetchJSON(API.masterparameter),
-      fetchJSON(API.mastersensor),
-      fetchJSON(API.masterorganizations)
-    ]);
-    document.getElementById('totalDevices').innerText=d.length;
-    document.getElementById('totalParameters').innerText=p.length;
-    document.getElementById('totalSensors').innerText=s.length;
-    document.getElementById('totalOrganizations').innerText=o.length;
-  }catch(e){ console.warn("Summary update skipped:", e); }
+  if (!dropdownLoaded) await loadDropdowns();
+  try {
+    document.getElementById('totalDevices').innerText = (dropdownData.devices || []).length;
+    document.getElementById('totalParameters').innerText = (dropdownData.parameters || []).length;
+    document.getElementById('totalSensors').innerText = (dropdownData.sensors || []).length;
+    document.getElementById('totalOrganizations').innerText = (dropdownData.orgs || []).length;
+  }catch(e){}
 }
 
 /* ============================================================
-   📡 POPUP SYSTEM
-   - Device status popup
-   - Organization popup
-   - Sensor link popup
-   - Parameter popup
-   - Filter popup table
+   📡 POPUP SYSTEM & GRAPHS
    ============================================================ */
-
 async function showDeviceStatusPopup() {
-
   try {
-
-      const devices = [...(dropdownData.devices || [])]
-          .sort((a, b) => b.DEVICE_ID - a.DEVICE_ID);
-
-      const readings = dropdownData.devicereadinglog || [];
-      const subscriptions = dropdownData.mastersubscriptionhistory || [];
-      const packages = dropdownData.mastersubscriptioninfo || [];
-      const plans = dropdownData.masterplantype || [];
-
-
-
+    const readings = await fetchJSON(API.devicereadinglog);
+    const devices = [...(dropdownData.devices || [])].sort((a, b) => b.DEVICE_ID - a.DEVICE_ID);
+    const subscriptions = dropdownData.mastersubscriptionhistory || [];
+    const packages = dropdownData.mastersubscriptioninfo || [];
+    const plans = dropdownData.masterplantype || [];
     const now = new Date();
 
     let deviceRows = devices.map(device => {
-
-      // Filter readings of this device
-      const deviceReadings = readings.filter(r =>
-        r.DEVICE_ID == device.DEVICE_ID
-      );
-
-      let status = "Offline";
-      let badgeClass = "bg-danger";
-      let lastReadingDisplay = "No Data";
+      const deviceReadings = readings.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+      let status = "Offline", badgeClass = "bg-danger", lastReadingDisplay = "No Data";
 
       if (deviceReadings.length > 0) {
+        deviceReadings.sort((a, b) => new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]) - new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]));
+        const cleanTime = deviceReadings[0].READING_TIME.split(".")[0];
+        const lastReadingTime = new Date(deviceReadings[0].READING_DATE + "T" + cleanTime);
+        lastReadingDisplay = lastReadingTime.toLocaleString();
+        if ((now - lastReadingTime) / (1000 * 60) <= 10) { status = "Online"; badgeClass = "bg-success"; }
+      }
 
-        // Sort by latest READING_DATE + READING_TIME
-deviceReadings.sort((a, b) => {
-  const aDate = new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]);
-  const bDate = new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]);
-  return bDate - aDate;
-});
-
-// Latest reading
-const cleanTime = deviceReadings[0].READING_TIME.split(".")[0];
-
-const lastReadingTime = new Date(
-  deviceReadings[0].READING_DATE + "T" + cleanTime
-);
-
-lastReadingDisplay = lastReadingTime.toLocaleString();
-
-
-        const diffMinutes = (now - lastReadingTime) / (1000 * 60);
-
-        // 🔥 10 MINUTE RULE
-        if (diffMinutes <= 10) {
-          status = "Online";
-          badgeClass = "bg-success";
+      let subName = "No Subscription", validTill = "-", validClass = "bg-secondary";
+      const deviceSubs = subscriptions.filter(s => s.Device_ID == device.DEVICE_ID).sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
+      if (deviceSubs.length > 0) {
+        const pkg = packages.find(p => p.Subscription_ID == deviceSubs[0].Subscription_ID);
+        const plan = plans.find(pl => pl.Plan_ID == deviceSubs[0].Plan_ID);
+        subName = (pkg ? pkg.Package_Name : "") + (plan ? ` (${plan.Plan_Name})` : "");
+        if (deviceSubs[0].Subcription_End_date) {
+          const endDate = new Date(deviceSubs[0].Subcription_End_date);
+          validTill = endDate.toLocaleDateString("en-GB");
+          validClass = endDate < now ? "bg-danger" : "bg-success";
         }
       }
 
-// ===== Subscription Logic =====
-let subscriptionName = "No Subscription";
-let validTillDisplay = "-";
-let validClass = "bg-secondary";
-
-const deviceSubs = subscriptions
-  .filter(s => s.Device_ID == device.DEVICE_ID)
-  .sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
-
-if (deviceSubs.length > 0) {
-
-  const latestSub = deviceSubs[0];
-
-  const pkg = packages.find(p => p.Subscription_ID == latestSub.Subscription_ID);
-  const plan = plans.find(pl => pl.Plan_ID == latestSub.Plan_ID);
-
-  subscriptionName =
-    (pkg ? pkg.Package_Name : "") +
-    (plan ? ` (${plan.Plan_Name})` : "");
-
-  if (latestSub.Subcription_End_date) {
-
-    const endDate = new Date(latestSub.Subcription_End_date);
-    validTillDisplay = endDate.toLocaleDateString("en-GB");
-
-    const diffDays = (endDate - now) / (1000 * 60 * 60 * 24);
-
-    if (diffDays < 0) {
-      validClass = "bg-danger"; // Expired
-    }
-    else if (diffDays <= 3) {
-      validClass = "bg-warning text-dark"; // 3 days
-    }
-    else if (diffDays <= 15) {
-      validClass = "bg-primary"; // 15 days
-    }
-    else if (diffDays <= 30) {
-      validClass = "bg-orange"; // 1 month
-    }
-    else {
-      validClass = "bg-success"; // Safe
-    }
-  }
-}
-
-
-      return `
-        <tr>
-          <td>${device.DEVICE_NAME}</td>
-          <td>
-            <span class="badge ${badgeClass}">
-              ${status}
-            </span>
-          </td>
-          <td>${lastReadingDisplay}</td>
-           <td>${subscriptionName}</td>
-
-          <td>
-          <span class="badge ${validClass}">
-            ${validTillDisplay}
-          </span>
-        </td>
-
-
-        </tr>
-      `;
+      return `<tr><td>${device.DEVICE_NAME}</td><td><span class="badge ${badgeClass}">${status}</span></td><td>${lastReadingDisplay}</td><td>${subName}</td><td><span class="badge ${validClass}">${validTill}</span></td></tr>`;
     }).join("");
 
-    const modalHtml = `
-      <div class="modal fade" id="deviceStatusModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Live Device Status (10 Min Rule)</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    createSearchablePopup("deviceStatusModal", "Live Device Status (10 Min Rule)", ["Device Name", "Status", "Timestamp", "Subscription", "Valid Till"], deviceRows);
+  } catch (e) { console.error(e); }
+}
+
+async function showParameterPopup() {
+  const sortedParams = [...(dropdownData.parameters || [])].sort((a, b) => b.PARAMETER_ID - a.PARAMETER_ID);
+  const rows = sortedParams.map(p => {
+    const uom = (dropdownData.uoms || []).find(u => u.UOM_ID == p.UOM_ID);
+    return `<tr><td>${p.PARAMETER_NAME} (${p.PARAMETER_ID})</td><td>${uom ? uom.UOM_NAME : "-"}</td><td>${p.LOWER_THRESHOLD ?? "-"}</td><td>${p.UPPER_THRESHOLD ?? "-"}</td><td>${p.THRESHOLD ?? "-"}</td></tr>`;
+  }).join("");
+  createSearchablePopup("parameterPopupModal", "Parameter Details", ["Parameter", "UOM", "Lower Threshold", "Upper Threshold", "Threshold"], rows);
+}
+
+async function showSensorFullLinkPopup() {
+  const sortedLinks = [...(dropdownData.devicesensorlink || [])].sort((a, b) => b.id - a.id);
+  const rows = sortedLinks.map(link => {
+    const dev = (dropdownData.devices || []).find(d => d.DEVICE_ID == link.DEVICE_ID);
+    const sens = (dropdownData.sensors || []).find(s => s.SENSOR_ID == link.SENSOR_ID);
+    const paramLink = (dropdownData.sensorparameterlink || []).find(pl => pl.SENSOR_ID == link.SENSOR_ID);
+    const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == paramLink?.PARAMETER_ID);
+    const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == dev?.ORGANIZATION_ID);
+    const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == dev?.CENTRE_ID);
+
+    return `<tr><td>${dev?.DEVICE_NAME || "-"} (${link.DEVICE_ID})</td><td>${sens?.SENSOR_NAME || "-"} (${link.SENSOR_ID})</td><td>${param ? param.PARAMETER_NAME : "-"}</td><td>${org?.ORGANIZATION_NAME || "-"}</td><td>${centre?.CENTRE_NAME || "-"}</td></tr>`;
+  }).join("");
+  createSearchablePopup("sensorLinkModal", "Device-Sensor-Parameter Link View", ["Device", "Sensor", "Parameter", "Organization", "Centre"], rows);
+}
+
+async function showOrganizationPopup() {
+  const sortedOrgs = [...(dropdownData.orgs || [])].sort((a, b) => b.ORGANIZATION_ID - a.ORGANIZATION_ID);
+  const rows = sortedOrgs.map(org => {
+    const centres = (dropdownData.centres || []).filter(c => c.ORGANIZATION_ID == org.ORGANIZATION_ID);
+    const centreNames = centres.map(c => c.CENTRE_NAME).join(", ") || "No Centres";
+    return `<tr><td>${org.ORGANIZATION_NAME}</td><td>${centreNames}</td><td>${centres.length}</td></tr>`;
+  }).join("");
+  createSearchablePopup("orgStatusModal", "Organization & Centres", ["Organization", "Centre Names", "Total Centres"], rows);
+}
+
+function createSearchablePopup(modalId, title, headers, bodyRows) {
+  const old = document.getElementById(modalId); if (old) old.remove();
+  const html = `
+    <div class="modal fade" id="${modalId}" tabindex="-1">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-light py-3 px-4">
+            <h5 class="modal-title fw-bold text-primary">${title}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="this.blur()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="input-group mb-3">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+              <input type="text" class="form-control border-start-0 shadow-none" placeholder="Search records..." onkeyup="filterPopupTable(this)">
             </div>
-            <div class="modal-body">
-              <!-- 🔍 SEARCH BAR ADD HERE -->
-  <div class="input-group mb-3">
-    <span class="input-group-text">
-      <i class="bi bi-search"></i>
-    </span>
-    <input type="text"
-           class="form-control"
-           placeholder="Search..."
-           onkeyup="filterPopupTable(this)">
-  </div> 
             <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-            <thead class="table-light">
-                  <tr>
-                    <th>Device Name</th>
-                    <th>Status</th>
-                    <th>TimeStamp For Last Reading</th>
-                     <th>Subscription</th>
-                     <th>Valid Till</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${deviceRows}
-                </tbody>
+              <table class="table custom-table">
+                <thead class="table-light"><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+                <tbody>${bodyRows || "<tr><td colspan='100' class='text-center text-muted'>No data available</td></tr>"}</tbody>
               </table>
             </div>
           </div>
         </div>
       </div>
-    `;
-
-    const old = document.getElementById("deviceStatusModal");
-    if (old) old.remove();
-
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-    const modal = new bootstrap.Modal(document.getElementById("deviceStatusModal"));
-    modal.show();
-
-  } catch (error) {
-    console.error("Device popup error:", error);
-  }
+    </div>`;
+  document.body.insertAdjacentHTML("beforeend", html);
+  new bootstrap.Modal(document.getElementById(modalId), { backdrop: 'static', keyboard: false }).show();
 }
-
-
-async function showOrganizationPopup() {
-
-  try {
-
-    const organizations = [...(dropdownData.orgs || [])]
-            .sort((a, b) => b.ORGANIZATION_ID - a.ORGANIZATION_ID);
-
-    const centres = dropdownData.centres || [];
-
-
-    let rows = organizations.map(org => {
-
-      const linkedCentres = centres
-        .filter(c => c.ORGANIZATION_ID == org.ORGANIZATION_ID);
-
-      const centreNames = linkedCentres.map(c => c.CENTRE_NAME);
-
-      const centreList = centreNames.length > 0
-        ? centreNames.join(", ")
-        : "No Centres";
-
-          return `
-            <tr>
-              <td>${org.ORGANIZATION_NAME}</td>
-              <td>${centreList}</td>
-              <td>${linkedCentres.length}</td>
-            </tr>
-          `;
-
-    }).join("");
-
-    const modalHtml = `
-      <div class="modal fade" id="orgStatusModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Organization & Centres</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-             <!-- 🔍 SEARCH BAR ADD HERE -->
-  <div class="input-group mb-3">
-    <span class="input-group-text">
-      <i class="bi bi-search"></i>
-    </span>
-    <input type="text"
-           class="form-control"
-           placeholder="Search..."
-           onkeyup="filterPopupTable(this)">
-  </div>
-
-              <div class="table-responsive">
-                <table class="table table-bordered table-sm">
-                  <thead class="table-light">
-                 <tr>
-                    <th>Organization</th>
-                    <th>Centre Names</th>
-                    <th>Total Centres</th>
-                  </tr>
-
-                  </thead>
-                  <tbody>
-                    ${rows}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const old = document.getElementById("orgStatusModal");
-    if (old) old.remove();
-
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-    const modal = new bootstrap.Modal(document.getElementById("orgStatusModal"));
-    modal.show();
-
-  } catch (error) {
-    console.error("Organization popup error:", error);
-  }
-}
-
-async function showSensorFullLinkPopup() {
-
-  try {
-
-    const devices = dropdownData.devices || [];
-    const sensors = dropdownData.sensors || [];
-    const parameters = dropdownData.parameters || [];
-    const orgs = dropdownData.orgs || [];
-    const centres = dropdownData.centres || [];
-    const deviceSensorLinks = [...(dropdownData.devicesensorlink || [])]
-         .sort((a, b) => b.id - a.id);
-
-    const sensorParamLinks = dropdownData.sensorparameterlink || [];
-
-let rows = [];
-
-deviceSensorLinks.forEach(link => {
-
-  const device = devices.find(d => d.DEVICE_ID == link.DEVICE_ID);
-  if (!device) return;
-
-  const sensor = sensors.find(s => s.SENSOR_ID == link.SENSOR_ID);
-  if (!sensor) return;
-
-  // Multiple parameters support
-  const relatedParams = sensorParamLinks
-      .filter(sp => sp.SENSOR_ID == sensor.SENSOR_ID);
-
-  if (relatedParams.length === 0) {
-    rows.push(generateRow(device, sensor, null));
-  } else {
-    relatedParams.forEach(sp => {
-      const parameter = parameters.find(p => p.PARAMETER_ID == sp.PARAMETER_ID);
-      rows.push(generateRow(device, sensor, parameter));
-    });
-  }
-
-});
-
-function generateRow(device, sensor, parameter) {
-
-  const org = orgs.find(o => o.ORGANIZATION_ID == device.ORGANIZATION_ID);
-  const centre = centres.find(c => c.CENTRE_ID == device.CENTRE_ID);
-
-  return `
-    <tr>
-      <td>${device.DEVICE_NAME} (${device.DEVICE_ID})</td>
-      <td>${sensor.SENSOR_NAME} (${sensor.SENSOR_ID})</td>
-      <td>${parameter ? parameter.PARAMETER_NAME + " (" + parameter.PARAMETER_ID + ")" : "-"}</td>
-      <td>${org ? org.ORGANIZATION_NAME + " (" + org.ORGANIZATION_ID + ")" : "-"}</td>
-      <td>${centre ? centre.CENTRE_NAME + " (" + centre.CENTRE_ID + ")" : "-"}</td>
-    </tr>
-  `;
-}
-
-rows = rows.join("");
-
-
-    const modalHtml = `
-      <div class="modal fade" id="sensorLinkModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Device-Sensor-Parameter Link View</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-
-               <!-- 🔍 SEARCH BAR ADD HERE -->
-  <div class="input-group mb-3">
-    <span class="input-group-text">
-      <i class="bi bi-search"></i>
-    </span>
-    <input type="text"
-           class="form-control"
-           placeholder="Search..."
-           onkeyup="filterPopupTable(this)">
-  </div>
-              <div class="table-responsive">
-                <table class="table table-bordered table-sm">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Device</th>
-                      <th>Sensor</th>
-                      <th>Parameter</th>
-                      <th>Organization</th>
-                      <th>Centre</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows || "<tr><td colspan='5' class='text-center'>No Links Found</td></tr>"}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const old = document.getElementById("sensorLinkModal");
-    if (old) old.remove();
-
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-    const modal = new bootstrap.Modal(document.getElementById("sensorLinkModal"));
-    modal.show();
-
-  } catch (error) {
-    console.error("Sensor link popup error:", error);
-  }
-}
-
-async function showParameterPopup(){
-
-  try{
-
-    const parameters = [...(dropdownData.parameters || [])]
-      .sort((a,b)=>b.PARAMETER_ID - a.PARAMETER_ID);
-
-    const uoms = dropdownData.uoms || [];
-
-    let rows = parameters.map(p=>{
-
-      const uom = uoms.find(u=>u.UOM_ID == p.UOM_ID);
-
-      return `
-        <tr>
-          <td>${p.PARAMETER_NAME} (${p.PARAMETER_ID})</td>
-          <td>${uom ? uom.UOM_NAME : "-"}</td>
-          <td>${p.LOWER_THRESHOLD ?? "-"}</td>
-          <td>${p.UPPER_THRESHOLD ?? "-"}</td>
-          <td>${p.THRESHOLD ?? "-"}</td>
-        </tr>
-      `;
-    }).join("");
-
-    const modalHtml = `
-      <div class="modal fade" id="parameterPopupModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Parameter Details</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-
-              <div class="input-group mb-3">
-                <span class="input-group-text">
-                  <i class="bi bi-search"></i>
-                </span>
-                <input type="text"
-                       class="form-control"
-                       placeholder="Search Parameter..."
-                       onkeyup="filterPopupTable(this)">
-              </div>
-
-              <div class="table-responsive">
-                <table class="table table-bordered table-sm">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Parameter</th>
-                      <th>UOM</th>
-                      <th>Lower Threshold</th>
-                      <th>Upper Threshold</th>
-                      <th>Threshold</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows || "<tr><td colspan='6' class='text-center'>No Parameters Found</td></tr>"}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const old = document.getElementById("parameterPopupModal");
-    if(old) old.remove();
-
-    document.body.insertAdjacentHTML("beforeend", modalHtml);
-
-    const modal = new bootstrap.Modal(document.getElementById("parameterPopupModal"));
-    modal.show();
-
-  }catch(error){
-    console.error("Parameter popup error:", error);
-  }
-}
-
 
 function filterPopupTable(input) {
-
   const filter = input.value.toLowerCase();
-  const table = input.closest(".modal-body").querySelector("table");
-  const rows = table.querySelectorAll("tbody tr");
-
-  rows.forEach(row => {
-    const text = row.innerText.toLowerCase();
-    row.style.display = text.includes(filter) ? "" : "none";
+  input.closest(".modal-body").querySelectorAll("table tbody tr").forEach(row => {
+    row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
   });
-
 }
 
-// ======================================================
-// 📊 Render Graph inside Device Reading Log
-// ======================================================
-
 function renderDeviceReadingGraphSection(){
-
-  const graphSection = document.getElementById("graphSection");
-  const table = document.getElementById("mainTable");
-  const addBtn = document.getElementById("addBtn");
-  const title = document.getElementById("tableTitle");
-
-  // 🔹 Hide table + add button
-  table.style.display = "none";
-  addBtn.style.display = "none";
-
-  // 🔹 Change title
-  title.innerText = "User Device Graph";
-
-  // 🔹 Show graph section
-  graphSection.style.display = "block";
-
-  graphSection.innerHTML = `
-    <div class="row mb-3">
-
-      <div class="col-md-4">
-        <label>Select User</label>
-        <select id="userSelect"
-                class="form-select"
-                onchange="handleUserChange()">
-          <option value="">-- Select User --</option>
-        </select>
-      </div>
-
-      <div class="col-md-4">
-        <label>Select Device</label>
-        <select id="deviceSelect"
-                class="form-select"
-                onchange="loadUserGraph()">
-          <option value="">-- Select Device --</option>
-        </select>
-      </div>
-
-      <div class="col-md-4" id="parameterDropdownContainer" style="display:none;">
-        <label>Select Parameter</label>
-        <select id="parameterSelect"
-                class="form-select"
-                onchange="loadUserGraph()">
-          <option value="">-- Select Parameter --</option>
-        </select>
-      </div>
-
-      <div class="col-md-4">
-        <label>Time Filter</label>
-        <select id="timeFilter"
-                class="form-select"
-                onchange="loadUserGraph()">
-          <option value="10">Last 10 Minutes</option>
-          <option value="60">Last 1 Hour</option>
-          <option value="1440">Last 1 Day</option>
-        </select>
-      </div>
-
-    </div>
-
-    <div class="graph-container">
-      <canvas id="userChart"></canvas>
-    </div>
-  `;
-
+  const graphSection = document.getElementById("graphSection"); document.getElementById("mainTable").style.display = "none"; document.getElementById("tableTitle").innerText = "User Device Graph"; graphSection.style.display = "block";
+  graphSection.innerHTML = `<div class="row mb-3 g-3"><div class="col-md-3"><label class="form-label">Select User</label><select id="userSelect" class="form-select" onchange="handleUserChange()"><option value="">-- Select User --</option></select></div><div class="col-md-3"><label class="form-label">Select Device</label><select id="deviceSelect" class="form-select" onchange="loadUserGraph()"><option value="">-- Select Device --</option></select></div><div class="col-md-3" id="parameterDropdownContainer" style="display:none;"><label class="form-label">Select Parameter</label><select id="parameterSelect" class="form-select" onchange="loadUserGraph()"><option value="">-- Select Parameter --</option></select></div><div class="col-md-3"><label class="form-label">Time Filter</label><select id="timeFilter" class="form-select" onchange="loadUserGraph()"><option value="10">Last 10 Minutes</option><option value="60">Last 1 Hour</option><option value="1440">Last 1 Day</option></select></div></div><div class="graph-container"><canvas id="userChart"></canvas></div>`;
   populateUserDropdown();
 }
 
 function handleUserChange(){
-
   const userId = document.getElementById("userSelect").value;
-  const deviceDropdown = document.getElementById("deviceSelect");
+  const deviceSelect = document.getElementById("deviceSelect");
+  deviceSelect.innerHTML = `<option value="">-- Select Device --</option>`;
+  if (!userId) return;
+  
+  const userLinks = (dropdownData.userorganizationcentrelink || []).filter(l => l.USER_ID == userId);
+  let matchedDevices = [];
 
-  deviceDropdown.innerHTML = `<option value="">-- Select Device --</option>`;
-
-  if(!userId) return;
-
-  const userLinks = (dropdownData.userorganizationcentrelink || [])
-    .filter(link => link.USER_ID == userId);
-
-  const orgIds = userLinks.map(l => l.ORGANIZATION_ID);
-  const centreIds = userLinks.map(l => l.CENTRE_ID);
-
-  const userDevices = (dropdownData.devices || [])
-    .filter(d =>
-      orgIds.includes(d.ORGANIZATION_ID) &&
-      centreIds.includes(d.CENTRE_ID)
+  if (userLinks.length > 0) {
+    matchedDevices = (dropdownData.devices || []).filter(d => 
+      userLinks.some(l => l.ORGANIZATION_ID == d.ORGANIZATION_ID && (l.CENTRE_ID == d.CENTRE_ID || !l.CENTRE_ID))
     );
-
-  userDevices.forEach(device => {
-    deviceDropdown.innerHTML += `
-      <option value="${device.DEVICE_ID}">
-        ${device.DEVICE_NAME}
-      </option>
-    `;
-  });
-
-  if(userChartInstance){
-    userChartInstance.destroy();
+  } else {
+    matchedDevices = dropdownData.devices || [];
   }
-}
 
-// ======================================================
-// 📊 USER DEVICE GRAPH LOGIC
-// ======================================================
+  matchedDevices.forEach(d => {
+    deviceSelect.innerHTML += `<option value="${d.DEVICE_ID}">${d.DEVICE_NAME}</option>`;
+  });
+}
 
 let userChartInstance = null;
-
-function loadUserGraph(){
-
+async function loadUserGraph(){
   const deviceId = document.getElementById("deviceSelect").value;
-  const minutes = parseInt(document.getElementById("timeFilter").value);
+  const timeFilter = parseInt(document.getElementById("timeFilter").value);
+  const paramContainer = document.getElementById("parameterDropdownContainer");
+  const paramSelect = document.getElementById("parameterSelect");
 
-  if(!deviceId) return;
+  if (!deviceId) return;
 
-  const now = new Date();
+  try {
+    const readings = await fetchJSON(API.devicereadinglog);
+    const deviceReadings = readings.filter(r => r.DEVICE_ID == deviceId);
+    
+    const sensorLinks = (dropdownData.devicesensorlink || []).filter(l => l.DEVICE_ID == deviceId);
+    const sensorIds = sensorLinks.map(l => l.SENSOR_ID);
+    const paramLinks = (dropdownData.sensorparameterlink || []).filter(l => sensorIds.includes(l.SENSOR_ID));
+    const paramIds = [...new Set(paramLinks.map(l => l.PARAMETER_ID))];
 
-  // ✅ PEHLE readings nikaalo
-  let deviceReadings = (currentData || [])
-    .filter(r => r.DEVICE_ID == deviceId);
+    const validParams = (dropdownData.parameters || []).filter(p => paramIds.includes(p.PARAMETER_ID));
 
-  // ✅ Time filter
-  deviceReadings = deviceReadings.filter(r => {
-    const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]);
-    const diffMinutes = (now - readingTime) / (1000 * 60);
-    return diffMinutes <= minutes;
-  });
-
-  if(deviceReadings.length === 0){
-    alert("No readings found");
-    return;
-  }
-
-  // ✅ Ab parameter count detect karo
-  const uniqueParams = [...new Set(
-    deviceReadings.map(r => r.PARAMETER_ID)
-  )];
-
-// ============================================
-// 🔥 Multi Parameter Handling
-// ============================================
-
-const parameterDropdown = document.getElementById("parameterSelect");
-const parameterContainer = document.getElementById("parameterDropdownContainer");
-
-if(uniqueParams.length > 1){
-
-    parameterContainer.style.display = "block";
-
-    parameterDropdown.innerHTML = `<option value="">-- Select Parameter --</option>`;
-
-    uniqueParams.forEach(paramId => {
-
-        const paramObj = dropdownData.parameters.find(p =>
-            p.PARAMETER_ID == paramId
-        );
-
-        if(paramObj){
-           const uomObj = dropdownData.uoms?.find(u =>
-    u.UOM_ID == paramObj.UOM_ID
-);
-
-const unit = uomObj ? uomObj.UOM_NAME : "";
-
-parameterDropdown.innerHTML += `
-    <option value="${paramId}">
-        ${paramObj.PARAMETER_NAME} (${unit})
-    </option>
-`;
-
-        }
-    });
-
-    const selectedParam = parameterDropdown.value;
-    if(!selectedParam) return;
-
-    deviceReadings = deviceReadings.filter(r =>
-        r.PARAMETER_ID == selectedParam
-    );
-
-} else {
-
-    parameterContainer.style.display = "none";
-
-}
-
-
-  // ✅ Sort for single parameter
-  deviceReadings.sort((a,b)=>{
-    return new Date(a.READING_DATE + "T" + a.READING_TIME) -
-           new Date(b.READING_DATE + "T" + b.READING_TIME);
-  });
-
-  const chartData = deviceReadings.map(d => {
-
-    const readingValue = Number(d.READING);
-
-    const param = dropdownData.parameters.find(p => 
-      p.PARAMETER_ID == d.PARAMETER_ID
-    );
-
-    let isAlarm = false;
-
-    if(param){
-      const lower = Number(param.LOWER_THRESHOLD);
-      const upper = Number(param.UPPER_THRESHOLD);
-
-      if(!isNaN(lower) && readingValue < lower) isAlarm = true;
-      if(!isNaN(upper) && readingValue > upper) isAlarm = true;
+    if (validParams.length > 1) {
+      paramContainer.style.display = "block";
+      if (paramSelect.options.length <= 1) {
+        paramSelect.innerHTML = `<option value="">-- Select Parameter --</option>` + validParams.map(p => `<option value="${p.PARAMETER_ID}">${p.PARAMETER_NAME}</option>`).join("");
+      }
+    } else {
+      paramContainer.style.display = "none";
     }
 
-    return {
-      x: new Date(d.READING_DATE + "T" + d.READING_TIME.split(".")[0]),
-      y: readingValue,
-      isAlarm: isAlarm
-    };
-  });
+    const selectedParamId = paramSelect.value || (validParams.length > 0 ? validParams[0].PARAMETER_ID : null);
 
-  // ✅ Online / Offline check
-  const latest = deviceReadings[deviceReadings.length - 1];
-  const latestTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME.split(".")[0]);
-  const diff = (now - latestTime) / (1000 * 60);
-  const isOnline = diff <= 10;
+    const targetParam = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == selectedParamId);
+    const upperLimit = targetParam ? parseFloat(targetParam.UPPER_THRESHOLD) : null;
+    const lowerLimit = targetParam ? parseFloat(targetParam.LOWER_THRESHOLD) : null;
 
-  drawSingleDeviceGraph(chartData, deviceId, isOnline);
-}
-
-
-/* ======================================================
-   📊 MULTI PARAMETER GRAPH LOADER
-   - Supports devices with multiple parameters
-   - Each parameter gets its own line
-   - Alarm detection per parameter
-====================================================== */
-
-function loadMultiParameterGraph(){
-
-  const deviceId = document.getElementById("deviceSelect").value;
-  const minutes = parseInt(document.getElementById("timeFilter").value);
-
-  if(!deviceId) return;
-
-  const now = new Date();
-
-  let deviceReadings = (currentData || [])
-    .filter(r => r.DEVICE_ID == deviceId);
-
-  // 🔥 Time filter apply
-  deviceReadings = deviceReadings.filter(r => {
-    const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]);
-    const diffMinutes = (now - readingTime) / (1000 * 60);
-    return diffMinutes <= minutes;
-  });
-
-  if(deviceReadings.length === 0){
-    alert("No readings found");
-    return;
-  }
-
-  // 🔥 Group readings by parameter
-  const grouped = {};
-
-  deviceReadings.forEach(r => {
-
-    if(!grouped[r.PARAMETER_ID]){
-      grouped[r.PARAMETER_ID] = [];
+    const now = new Date();
+    let isOnline = false;
+    if (deviceReadings.length > 0) {
+      deviceReadings.sort((a, b) => new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]) - new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]));
+      const lastTime = new Date(deviceReadings[0].READING_DATE + "T" + deviceReadings[0].READING_TIME.split(".")[0]);
+      if ((now - lastTime) / (1000 * 60) <= 10) isOnline = true;
     }
 
-    const readingValue = Number(r.READING);
+    const filteredReadings = deviceReadings.filter(r => {
+      if (selectedParamId && r.PARAMETER_ID != selectedParamId) return false;
+      const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME);
+      const diffMins = (now - readingTime) / (1000 * 60);
+      return diffMins <= timeFilter;
+    }).sort((a, b) => new Date(a.READING_DATE + "T" + a.READING_TIME) - new Date(b.READING_DATE + "T" + b.READING_TIME));
 
-    const param = dropdownData.parameters.find(p =>
-      p.PARAMETER_ID == r.PARAMETER_ID
-    );
+    // 🔥 Clean time format (HH:MM:SS) ignoring milliseconds
+    const labels = filteredReadings.map(r => {
+      let t = r.READING_TIME || "";
+      return t.split(".")[0]; 
+    });
+    const dataValues = filteredReadings.map(r => parseFloat(r.READING));
 
-    let isAlarm = false;
-
-    if(param){
-      const lower = Number(param.LOWER_THRESHOLD);
-      const upper = Number(param.UPPER_THRESHOLD);
-
-      if(!isNaN(lower) && readingValue < lower) isAlarm = true;
-      if(!isNaN(upper) && readingValue > upper) isAlarm = true;
-    }
-
-    grouped[r.PARAMETER_ID].push({
-      x: new Date(r.READING_DATE + "T" + r.READING_TIME.split(".")[0]),
-      y: readingValue,
-      isAlarm: isAlarm
+    const pointColors = dataValues.map(val => {
+      if ((upperLimit !== null && val > upperLimit) || (lowerLimit !== null && val < lowerLimit)) {
+        return '#EE5D50'; 
+      }
+      return isOnline ? '#05CD99' : '#A3AED1'; 
     });
 
-  });
+    const ctx = document.getElementById("userChart").getContext("2d");
+    if (userChartInstance) userChartInstance.destroy();
 
-  drawMultiParameterGraph(deviceId, grouped);
-}
-
-/* ======================================================
-   📊 MULTI PARAMETER GRAPH DRAWER
-   - Creates multiple datasets dynamically
-====================================================== */
-
-function drawMultiParameterGraph(deviceId, groupedData){
-
-  const ctx = document.getElementById("userChart");
-
-  if(userChartInstance){
-    userChartInstance.destroy();
-  }
-
-  const datasets = [];
-
-  Object.keys(groupedData).forEach(paramId => {
-
-    const param = dropdownData.parameters.find(p =>
-      p.PARAMETER_ID == paramId
-    );
-
-    const uom = dropdownData.uoms.find(u =>
-      u.UOM_ID == param?.UOM_ID
-    );
-
-    const unit = uom ? (uom.SYMBOL || uom.UOM_NAME) : "";
-
-    // 🔵 Normal Line
-    datasets.push({
-      label: param ? param.PARAMETER_NAME + " (" + unit + ")" : "Parameter",
-      data: groupedData[paramId],
-      borderWidth: 2,
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0
-    });
-
-    // 🔴 Alarm Red Dots
-    datasets.push({
-      label: param ? param.PARAMETER_NAME + " Alarm" : "Alarm",
-      data: groupedData[paramId].filter(d => d.isAlarm),
-      showLine: false,
-      pointRadius: 6,
-      pointBackgroundColor: "red",
-      pointBorderColor: "white",
-      pointBorderWidth: 2
-    });
-
-  });
-
-  userChartInstance = new Chart(ctx, {
-    type: "line",
-    data: { datasets: datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: 'nearest',
-        intersect: false
+    userChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Reading Value',
+          data: dataValues,
+          borderColor: isOnline ? '#05CD99' : '#A3AED1',
+          backgroundColor: isOnline ? 'rgba(5, 205, 153, 0.1)' : 'rgba(163, 174, 209, 0.1)',
+          borderWidth: 2,
+          pointBackgroundColor: pointColors,
+          pointRadius: 4,
+          fill: true,
+          tension: 0.3
+        }]
       },
-      scales: {
-        x: {
-          type: 'time',
-          time: {
-            unit: getTimeUnit()
-          }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            precision: 0
-          }
-        }
-      }
-    }
-  });
-}
-
-
-
-function drawSingleDeviceGraph(chartData, deviceId, isOnline){
-
-  const device = dropdownData.devices.find(d => d.DEVICE_ID == deviceId);
-  const deviceName = device ? device.DEVICE_NAME : "Device";
-
-  const ctx = document.getElementById("userChart");
-
-  if(userChartInstance){
-    userChartInstance.destroy();
-  }
-
-  userChartInstance = new Chart(ctx, {
-    type: "line",
-    data: {
-  datasets: [
-
-{
-  label: deviceName + (isOnline ? " (Online)" : " (Offline)"),
-  data: chartData,
-  borderWidth: 2,
-  fill: false,
-  tension: 0.3,
-  borderColor: isOnline ? "green" : "red",
-  pointRadius: 0,
-  pointHitRadius: 20,
-  pointHoverRadius: 6,
-  unit: getDeviceUnit(deviceId)   // 🔥 ADD THIS LINE
-},
-
-// 🔥 Alarm Red Dots Dataset
-{
-  label: "Alarm",
-  data: chartData.filter(d => d.isAlarm),
-  showLine: false,
-  pointRadius: 6,
-  pointBackgroundColor: "red",
-  pointBorderColor: "white",
-  pointBorderWidth: 2
-}
-
-]
-
-    },
-    options: {
-  responsive: true,
-  maintainAspectRatio: false,
-
-  interaction: {
-    mode: 'nearest',
-    intersect: false
-  },
-
-  plugins: {
-    tooltip: {
-      enabled: true,
-      mode: 'nearest',
-      intersect: false,
-      backgroundColor: '#000',   // 🔥 black box
-      titleColor: '#fff',
-      bodyColor: '#fff',
-      callbacks: {
-        title: function(context) {
-          const date = new Date(context[0].parsed.x);
-          return date.toLocaleString();  // date + time
-        },
-
- label: function(context) {
-
-  const value = Math.round(context.parsed.y);
-
-  // 🔹 Alarm dataset ke liye
-  if(context.dataset.label === "Alarm"){
-    return "🚨 Alarm: " + value + " " + (context.dataset.unit || "");
-  }
-
-  // 🔹 Normal reading ke liye
-  return "Reading: " + value + " " + (context.dataset.unit || "");
-}
-
-
-
-      }
-    }
-  },
-      scales: {
-        x: {
-          type: 'time',
-          time: {
-            unit: getTimeUnit(),
-             tooltipFormat: 'dd MMM yyyy hh:mm a',
-            displayFormats: {
-              minute: 'hh:mm a',
-              hour: 'hh:mm a'
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let val = context.raw;
+                let alertText = "";
+                if ((upperLimit !== null && val > upperLimit) || (lowerLimit !== null && val < lowerLimit)) {
+                  alertText = " ⚠️ [ALERT: Threshold Violated!]";
+                }
+                return `Reading: ${val}${alertText}`;
+              }
             }
           }
         },
-        y: {
-            beginAtZero: true,
-            ticks: {
-        precision: 0
-      }
-      }}
-    }
-  });
-}
-
-// 🔥 Device ka unit nikalne ke liye
-function getDeviceUnit(deviceId){
-
-  const reading = (currentData || []).find(r => 
-      r.DEVICE_ID == deviceId
-  );
-
-  if(!reading) return "";
-
-  const param = dropdownData.parameters.find(p =>
-      p.PARAMETER_ID == reading.PARAMETER_ID
-  );
-
-  if(!param) return "";
-
-  const uom = dropdownData.uoms.find(u =>
-      u.UOM_ID == param.UOM_ID
-  );
-
-  return uom ? (uom.SYMBOL || uom.UOM_NAME) : "";
-}
-
-
-function getSelectedUserDeviceName(){
-
-  const userId = document.getElementById("userSelect").value;
-
-  const userLinks = (dropdownData.userorganizationcentrelink || [])
-    .filter(link => link.USER_ID == userId);
-
-  const orgIds = userLinks.map(l => l.ORGANIZATION_ID);
-  const centreIds = userLinks.map(l => l.CENTRE_ID);
-
-  const userDevices = (dropdownData.devices || [])
-    .filter(d =>
-      orgIds.includes(d.ORGANIZATION_ID) &&
-      centreIds.includes(d.CENTRE_ID)
-    );
-
-  if(userDevices.length > 0){
-    return userDevices[0].DEVICE_NAME;
-  }
-
-  return "Unknown Device";
-}
-
-function getTimeUnit(){
-
-  const minutes = parseInt(document.getElementById("timeFilter").value);
-
-  if(minutes === 1440){
-    return 'hour';     // 🔥 Last 1 Day → 1 hour gap
-  }
-
-  if(minutes === 60){
-    return 'minute';   // 1 hour → minute ticks
-  }
-
-  return 'minute';     // 10 min → minute ticks
-}
-
-
-function drawUserGraph(data){
-
-  const sorted = data.sort((a,b)=>{
-    return new Date(a.READING_DATE + "T" + a.READING_TIME) -
-           new Date(b.READING_DATE + "T" + b.READING_TIME);
-  });
-
-const chartData = sorted.map(d => ({
-  x: new Date(d.READING_DATE + "T" + d.READING_TIME.split(".")[0]),
-  y: Number(d.READING)
-}));
-
-
-
-
-  const values = sorted.map(d => d.READING);
-
-  const ctx = document.getElementById("userChart");
-
-  if(userChartInstance){
-    userChartInstance.destroy();
-  }
-
-userChartInstance = new Chart(ctx, {
-  type: "line",
-  data: {
-    datasets: [{
-      label: getSelectedUserDeviceName(),
-      data: chartData,
-      borderWidth: 2,
-      fill: false,
-      tension: 0.3,
-      pointRadius: 0,          // ❌ Remove dots
-      pointHoverRadius: 6      // Hover pe point dikhega
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-
-    interaction: {
-      mode: 'nearest',
-      intersect: false
-    },
-
-    scales: {
-      x: {
-        type: 'time',
-      time: {
-    unit: getTimeUnit(),          // 🔥 dynamic unit
-    stepSize: 1,
-    tooltipFormat: 'hh:mm a',
-    displayFormats: {
-      minute: 'hh:mm a',
-      hour: 'hh:mm a'
-    }
-        },
-        ticks: {
-          maxRotation: 0,
-          autoSkip: true
-        }
-      },
-      y: {
-        beginAtZero: true,
-        ticks: {
-          precision: 0   // ❌ No decimals
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true }
         }
       }
-    },
+    });
 
-   plugins: {
-  tooltip: {
-    enabled: true,
-    mode: 'nearest',
-    intersect: false,
-    backgroundColor: '#000',
-    titleColor: '#fff',
-    bodyColor: '#fff',
-    callbacks: {
-      title: function(context) {
-        const date = new Date(context[0].parsed.x);
-        return date.toLocaleString();
-      },
-      label: function(context) {
-        return "Reading: " + parseInt(context.parsed.y);
-      }
-        }
-      }
-    }
-  }
-});
-
+  } catch (err) { console.error("Graph load error:", err); }
 }
 
-function drawMultiDeviceGraph(datasets){
-
-  const ctx = document.getElementById("userChart");
-
-  if(userChartInstance){
-    userChartInstance.destroy();
-  }
-
-  userChartInstance = new Chart(ctx, {
-    type: "line",
-    data: {
-      datasets: datasets
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-
-      interaction: {
-        mode: 'nearest',
-        intersect: false
-      },
-
-      scales: {
-        x: {
-          type: 'time',
-          time: {
-            unit: getTimeUnit(),
-            stepSize: 1,
-            tooltipFormat: 'hh:mm a',
-            displayFormats: {
-              minute: 'hh:mm a',
-              hour: 'hh:mm a'
-            }
-          }
-        },
-        y: {
-          beginAtZero: true
-        }
-      }
-    }
-  });
-}
-
-
-
-
-function loadDeviceSensorParameterMaster() {
-
-  currentTable = "devicesensorparameterlink";
-
-  const devices = dropdownData.devices || [];
-  const sensors = dropdownData.sensors || [];
-  const parameters = dropdownData.parameters || [];
-  const orgs = dropdownData.orgs || [];
-  const centres = dropdownData.centres || [];
-  const deviceSensorLinks = [...(dropdownData.devicesensorlink || [])]
-    .sort((a, b) => b.id - a.id);
-
-  const sensorParamLinks = dropdownData.sensorparameterlink || [];
-
-  const tableEl = document.getElementById("mainTable");
-  const thead = tableEl.querySelector("thead");
-  const tbody = tableEl.querySelector("tbody");
-
-  document.getElementById("tableTitle").innerText =
-    "Device Sensor Parameter Link";
-
-  thead.innerHTML = `
-    <tr>
-      <th>S_NO</th>
-      <th>Device</th>
-      <th>Sensor</th>
-      <th>Parameter</th>
-      <th>Organization</th>
-      <th>Centre</th>
-      <th>Actions</th>
-    </tr>
-  `;
-
-  const rows = deviceSensorLinks.map((link, index) => {
-
-  const device = devices.find(d => d.DEVICE_ID == link.DEVICE_ID);
-  const sensor = sensors.find(s => s.SENSOR_ID == link.SENSOR_ID);
-
-  const relatedParams = sensorParamLinks
-    .filter(sp => sp.SENSOR_ID == link.SENSOR_ID);
-
-  let paramDisplay = "-";
-  let firstParamId = "";
-
-  if (relatedParams.length > 0) {
-    paramDisplay = relatedParams.map(sp => {
-      const p = parameters.find(pp => pp.PARAMETER_ID == sp.PARAMETER_ID);
-      return p ? `${p.PARAMETER_NAME} (${p.PARAMETER_ID})` : "";
-    }).join(", ");
-
-    // 🔥 IMPORTANT: edit ke liye first parameter store karo
-    firstParamId = relatedParams[0].PARAMETER_ID;
-  }
-
-  const org = orgs.find(o =>
-    o.ORGANIZATION_ID == device?.ORGANIZATION_ID
-  );
-
-  const centre = centres.find(c =>
-    c.CENTRE_ID == device?.CENTRE_ID
-  );
-
-  return `
-    <tr>
-      <td>${index + 1}</td>
-      <td>${device ? device.DEVICE_NAME + " (" + device.DEVICE_ID + ")" : "-"}</td>
-      <td>${sensor ? sensor.SENSOR_NAME + " (" + sensor.SENSOR_ID + ")" : "-"}</td>
-      <td>${paramDisplay}</td>
-      <td>${org ? org.ORGANIZATION_NAME + " (" + org.ORGANIZATION_ID + ")" : "-"}</td>
-      <td>${centre ? centre.CENTRE_NAME + " (" + centre.CENTRE_ID + ")" : "-"}</td>
-
-      <td>
-        <button class="btn btn-sm btn-warning"
-          onclick='editRow(${JSON.stringify({
-            id: link.id,
-            DEVICE_ID: link.DEVICE_ID,
-            SENSOR_ID: link.SENSOR_ID,
-            PARAMETER_ID: firstParamId
-          })})'>
-          <i class="bi bi-pencil"></i>
-        </button>
-
-        <button class="btn btn-sm btn-danger"
-          onclick="deleteRow(${link.id})">
-          <i class="bi bi-trash"></i>
-        </button>
-      </td>
-    </tr>
-  `;
-}).join("");
-
-
-  tbody.innerHTML = rows;
-
-  document.getElementById("addBtn").style.display = "inline-block";
-}
+function getDeviceUnit(deviceId){ return ''; }
+function getTimeUnit(){ return 'minute'; }
 
 /* ============================================================
-   🚀 INITIALIZATION
-   - DOMContentLoaded
-   - Initial dropdown load
-   - Initial summary load
-   - 🔥 Handle direct URL hash & back button
+   📱 RESPONSIVE SIDEBAR TOGGLE
    ============================================================ */
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
+document.querySelectorAll('.sidebar .nav-link:not(.collapsed)').forEach(link => { link.addEventListener('click', () => { if(window.innerWidth < 992) { document.querySelector('.sidebar').classList.remove('active'); document.querySelector('.sidebar-overlay').classList.remove('active'); } }); });
 
-// ===== init =====
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadDropdowns();
-  populateUserDropdown();
-  updateSummary();
-});
-
-// 🔥 Handle direct URL hash & back button
-window.addEventListener("hashchange", function() {
-  const table = location.hash.replace("#", "");
-  if (table) loadTable(table);
-});
-
+document.addEventListener("DOMContentLoaded", async () => { await loadDropdowns(); populateUserDropdown(); updateSummary(); });
+window.addEventListener("hashchange", function() { const table = location.hash.replace("#", ""); if (table) loadTable(table); });
