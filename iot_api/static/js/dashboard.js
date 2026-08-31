@@ -1,8 +1,8 @@
 /* ============================================================
    🌍 BASE CONFIGURATION
    ============================================================ */
-const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-// const BASE_URL = "https://fertisense-iot-production.up.railway.app"; 
+// const BASE_URL = "http://127.0.0.1:8000"; // direct IP
+const BASE_URL = "https://fertisense-iot-production.up.railway.app"; 
 
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
