@@ -4,7 +4,6 @@
 // const BASE_URL = "http://127.0.0.1:8000"; // direct IP
 const BASE_URL = "https://fertisense-iot-production.up.railway.app";  
 
-
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
   mastercentre:        BASE_URL + "/api/mastercentre/",
@@ -225,7 +224,6 @@ async function openModal(row ={}){
 
   const fieldsDiv = document.getElementById('modalFields'); fieldsDiv.innerHTML = "";
 
-  // 🔥 MASTER DEVICES MODAL (Ab category wapas included hai)
   if (currentTable === "masterdevices") {
     fieldsDiv.innerHTML = `
       <input type="hidden" name="DEVICE_ID" value="${row.DEVICE_ID ?? ''}">
@@ -251,7 +249,6 @@ async function openModal(row ={}){
     return;
   }
 
-  // --- Normal Tables form logic ---
   if (normalizeKey(currentTable) === "devicesensorlink") {
     fieldsDiv.innerHTML = `<input type="hidden" name="id" value="${row?.id ?? ''}">
       <div class="col-12 mb-2"><label class="form-label">DEVICE</label><select class="form-select" name="DEVICE_ID"><option value="">-- Choose Device --</option>${(dropdownData.devices || []).sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID).map(d=>`<option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>${d.DEVICE_NAME} (${d.DEVICE_ID})</option>`).join("")}</select></div>
@@ -372,15 +369,287 @@ async function deleteRow(id){
   await loadTable(currentTable); updateSummary();
 }
 
+/* ============================================================
+   📈 SUMMARY CARDS & POPUPS (RESTORED)
+   ============================================================ */
 async function updateSummary(){
   if (!dropdownLoaded) await loadDropdowns();
   try {
-    document.getElementById('totalDevices').innerText = (dropdownData.devices || []).length;
-    document.getElementById('totalParameters').innerText = (dropdownData.parameters || []).length;
-    document.getElementById('totalSensors').innerText = (dropdownData.sensors || []).length;
-    document.getElementById('totalOrganizations').innerText = (dropdownData.orgs || []).length;
-  }catch(e){}
+    const devCount = (dropdownData.devices || []).length;
+    const paramCount = (dropdownData.parameters || []).length;
+    const sensorCount = (dropdownData.sensors || []).length;
+    const orgCount = (dropdownData.orgs || []).length;
+
+    const devEl = document.getElementById('totalDevices');
+    const paramEl = document.getElementById('totalParameters');
+    const sensorEl = document.getElementById('totalSensors');
+    const orgEl = document.getElementById('totalOrganizations');
+
+    if(devEl) devEl.innerText = devCount;
+    if(paramEl) paramEl.innerText = paramCount;
+    if(sensorEl) sensorEl.innerText = sensorCount;
+    if(orgEl) orgEl.innerText = orgCount;
+  } catch(e) {
+    console.error("Summary update error:", e);
+  }
 }
+
+async function showDeviceStatusPopup() {
+  try {
+    const readings = await fetchJSON(API.devicereadinglog);
+    const devices = [...(dropdownData.devices || [])].sort((a, b) => b.DEVICE_ID - a.DEVICE_ID);
+    const subscriptions = dropdownData.mastersubscriptionhistory || [];
+    const packages = dropdownData.mastersubscriptioninfo || [];
+    const plans = dropdownData.masterplantype || [];
+    const now = new Date();
+
+    let deviceRows = devices.map(device => {
+      const deviceReadings = readings.filter(r => r.DEVICE_ID == device.DEVICE_ID);
+      let status = "Offline", badgeClass = "bg-danger", lastReadingDisplay = "No Data";
+
+      if (deviceReadings.length > 0) {
+        deviceReadings.sort((a, b) => new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]) - new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]));
+        const cleanTime = deviceReadings[0].READING_TIME.split(".")[0];
+        const lastReadingTime = new Date(deviceReadings[0].READING_DATE + "T" + cleanTime);
+        lastReadingDisplay = lastReadingTime.toLocaleString();
+        if ((now - lastReadingTime) / (1000 * 60) <= 10) { status = "Online"; badgeClass = "bg-success"; }
+      }
+
+      let subName = "No Subscription", validTill = "-", validClass = "bg-secondary";
+      const deviceSubs = subscriptions.filter(s => s.Device_ID == device.DEVICE_ID).sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
+      if (deviceSubs.length > 0) {
+        const pkg = packages.find(p => p.Subscription_ID == deviceSubs[0].Subscription_ID);
+        const plan = plans.find(pl => pl.Plan_ID == deviceSubs[0].Plan_ID);
+        subName = (pkg ? pkg.Package_Name : "") + (plan ? ` (${plan.Plan_Name})` : "");
+        if (deviceSubs[0].Subcription_End_date) {
+          const endDate = new Date(deviceSubs[0].Subcription_End_date);
+          validTill = endDate.toLocaleDateString("en-GB");
+          validClass = endDate < now ? "bg-danger" : "bg-success";
+        }
+      }
+
+      return `<tr><td>${device.DEVICE_NAME} (${device.DEVICE_ID})</td><td><span class="badge ${badgeClass}">${status}</span></td><td>${lastReadingDisplay}</td><td>${subName}</td><td><span class="badge ${validClass}">${validTill}</span></td></tr>`;
+    }).join("");
+
+    createSearchablePopup("deviceStatusModal", "Live Device Status (10 Min Rule)", ["Device Name", "Status", "Timestamp", "Subscription", "Valid Till"], deviceRows);
+  } catch (e) { console.error(e); }
+}
+
+async function showParameterPopup() {
+  const sortedParams = [...(dropdownData.parameters || [])].sort((a, b) => b.PARAMETER_ID - a.PARAMETER_ID);
+  const rows = sortedParams.map(p => {
+    const uom = (dropdownData.uoms || []).find(u => u.UOM_ID == p.UOM_ID);
+    return `<tr><td>${p.PARAMETER_NAME} (${p.PARAMETER_ID})</td><td>${uom ? `${uom.UOM_NAME} (${uom.UOM_ID})` : "-"}</td><td>${p.LOWER_THRESHOLD ?? "-"}</td><td>${p.UPPER_THRESHOLD ?? "-"}</td><td>${p.THRESHOLD ?? "-"}</td></tr>`;
+  }).join("");
+  createSearchablePopup("parameterPopupModal", "Parameter Details", ["Parameter", "UOM", "Lower Threshold", "Upper Threshold", "Threshold"], rows);
+}
+
+async function showSensorFullLinkPopup() {
+  const sortedLinks = [...(dropdownData.devicesensorlink || [])].sort((a, b) => b.id - a.id);
+  const rows = sortedLinks.map(link => {
+    const dev = (dropdownData.devices || []).find(d => d.DEVICE_ID == link.DEVICE_ID);
+    const sens = (dropdownData.sensors || []).find(s => s.SENSOR_ID == link.SENSOR_ID);
+    const paramLink = (dropdownData.sensorparameterlink || []).find(pl => pl.SENSOR_ID == link.SENSOR_ID);
+    const param = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == paramLink?.PARAMETER_ID);
+    const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == dev?.ORGANIZATION_ID);
+    const centre = (dropdownData.centres || []).find(c => c.CENTRE_ID == dev?.CENTRE_ID);
+
+    return `<tr><td>${dev?.DEVICE_NAME || "-"} (${link.DEVICE_ID})</td><td>${sens?.SENSOR_NAME || "-"} (${link.SENSOR_ID})</td><td>${param ? `${param.PARAMETER_NAME} (${param.PARAMETER_ID})` : "-"}</td><td>${org?.ORGANIZATION_NAME || "-"} (${org?.ORGANIZATION_ID || '-'})</td><td>${centre?.CENTRE_NAME || "-"} (${centre?.CENTRE_ID || '-'})</td></tr>`;
+  }).join("");
+  createSearchablePopup("sensorLinkModal", "Device-Sensor-Parameter Link View", ["Device", "Sensor", "Parameter", "Organization", "Centre"], rows);
+}
+
+async function showOrganizationPopup() {
+  const sortedOrgs = [...(dropdownData.orgs || [])].sort((a, b) => b.ORGANIZATION_ID - a.ORGANIZATION_ID);
+  const rows = sortedOrgs.map(org => {
+    const centres = (dropdownData.centres || []).filter(c => c.ORGANIZATION_ID == org.ORGANIZATION_ID);
+    const centreNames = centres.map(c => `${c.CENTRE_NAME} (${c.CENTRE_ID})`).join(", ") || "No Centres";
+    return `<tr><td>${org.ORGANIZATION_NAME} (${org.ORGANIZATION_ID})</td><td>${centreNames}</td><td>${centres.length}</td></tr>`;
+  }).join("");
+  createSearchablePopup("orgStatusModal", "Organization & Centres", ["Organization", "Centre Names", "Total Centres"], rows);
+}
+
+function createSearchablePopup(modalId, title, headers, bodyRows) {
+  const old = document.getElementById(modalId); if (old) old.remove();
+  const html = `
+    <div class="modal fade" id="${modalId}" tabindex="-1">
+      <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-light py-3 px-4">
+            <h5 class="modal-title fw-bold text-primary">${title}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="this.blur()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="input-group mb-3">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+              <input type="text" class="form-control border-start-0 shadow-none" placeholder="Search records..." onkeyup="filterPopupTable(this)">
+            </div>
+            <div class="table-responsive">
+              <table class="table custom-table">
+                <thead class="table-light"><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+                <tbody>${bodyRows || "<tr><td colspan='100' class='text-center text-muted'>No data available</td></tr>"}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML("beforeend", html);
+  new bootstrap.Modal(document.getElementById(modalId), { backdrop: 'static', keyboard: false }).show();
+}
+
+function filterPopupTable(input) {
+  const filter = input.value.toLowerCase();
+  input.closest(".modal-body").querySelectorAll("table tbody tr").forEach(row => {
+    row.style.display = row.innerText.toLowerCase().includes(filter) ? "" : "none";
+  });
+}
+
+function renderDeviceReadingGraphSection(){
+  const graphSection = document.getElementById("graphSection"); document.getElementById("mainTable").style.display = "none"; document.getElementById("tableTitle").innerText = "User Device Graph"; graphSection.style.display = "block";
+  graphSection.innerHTML = `<div class="row mb-3 g-3"><div class="col-md-3"><label class="form-label">Select User</label><select id="userSelect" class="form-select" onchange="handleUserChange()"><option value="">-- Select User --</option></select></div><div class="col-md-3"><label class="form-label">Select Device</label><select id="deviceSelect" class="form-select" onchange="loadUserGraph()"><option value="">-- Select Device --</option></select></div><div class="col-md-3" id="parameterDropdownContainer" style="display:none;"><label class="form-label">Select Parameter</label><select id="parameterSelect" class="form-select" onchange="loadUserGraph()"><option value="">-- Select Parameter --</option></select></div><div class="col-md-3"><label class="form-label">Time Filter</label><select id="timeFilter" class="form-select" onchange="loadUserGraph()"><option value="10">Last 10 Minutes</option><option value="60">Last 1 Hour</option><option value="1440">Last 1 Day</option></select></div></div><div class="graph-container"><canvas id="userChart"></canvas></div>`;
+  populateUserDropdown();
+}
+
+function handleUserChange(){
+  const userId = document.getElementById("userSelect").value;
+  const deviceSelect = document.getElementById("deviceSelect");
+  deviceSelect.innerHTML = `<option value="">-- Select Device --</option>`;
+  if (!userId) return;
+  
+  const userLinks = (dropdownData.userorganizationcentrelink || []).filter(l => l.USER_ID == userId);
+  let matchedDevices = [];
+
+  if (userLinks.length > 0) {
+    matchedDevices = (dropdownData.devices || []).filter(d => 
+      userLinks.some(l => l.ORGANIZATION_ID == d.ORGANIZATION_ID && (l.CENTRE_ID == d.CENTRE_ID || !l.CENTRE_ID))
+    );
+  } else {
+    matchedDevices = dropdownData.devices || [];
+  }
+
+  matchedDevices.forEach(d => {
+    deviceSelect.innerHTML += `<option value="${d.DEVICE_ID}">${d.DEVICE_NAME} (${d.DEVICE_ID})</option>`;
+  });
+}
+
+let userChartInstance = null;
+async function loadUserGraph(){
+  const deviceId = document.getElementById("deviceSelect").value;
+  const timeFilter = parseInt(document.getElementById("timeFilter").value);
+  const paramContainer = document.getElementById("parameterDropdownContainer");
+  const paramSelect = document.getElementById("parameterSelect");
+
+  if (!deviceId) return;
+
+  try {
+    const readings = await fetchJSON(API.devicereadinglog);
+    const deviceReadings = readings.filter(r => r.DEVICE_ID == deviceId);
+    
+    const sensorLinks = (dropdownData.devicesensorlink || []).filter(l => l.DEVICE_ID == deviceId);
+    const sensorIds = sensorLinks.map(l => l.SENSOR_ID);
+    const paramLinks = (dropdownData.sensorparameterlink || []).filter(l => sensorIds.includes(l.SENSOR_ID));
+    const paramIds = [...new Set(paramLinks.map(l => l.PARAMETER_ID))];
+
+    const validParams = (dropdownData.parameters || []).filter(p => paramIds.includes(p.PARAMETER_ID));
+
+    if (validParams.length > 1) {
+      paramContainer.style.display = "block";
+      if (paramSelect.options.length <= 1) {
+        paramSelect.innerHTML = `<option value="">-- Select Parameter --</option>` + validParams.map(p => `<option value="${p.PARAMETER_ID}">${p.PARAMETER_NAME} (${p.PARAMETER_ID})</option>`).join("");
+      }
+    } else {
+      paramContainer.style.display = "none";
+    }
+
+    const selectedParamId = paramSelect.value || (validParams.length > 0 ? validParams[0].PARAMETER_ID : null);
+
+    const targetParam = (dropdownData.parameters || []).find(p => p.PARAMETER_ID == selectedParamId);
+    const upperLimit = targetParam ? parseFloat(targetParam.UPPER_THRESHOLD) : null;
+    const lowerLimit = targetParam ? parseFloat(targetParam.LOWER_THRESHOLD) : null;
+
+    const now = new Date();
+    let isOnline = false;
+    if (deviceReadings.length > 0) {
+      deviceReadings.sort((a, b) => new Date(b.READING_DATE + "T" + b.READING_TIME.split(".")[0]) - new Date(a.READING_DATE + "T" + a.READING_TIME.split(".")[0]));
+      const lastTime = new Date(deviceReadings[0].READING_DATE + "T" + deviceReadings[0].READING_TIME.split(".")[0]);
+      if ((now - lastTime) / (1000 * 60) <= 10) isOnline = true;
+    }
+
+    const filteredReadings = deviceReadings.filter(r => {
+      if (selectedParamId && r.PARAMETER_ID != selectedParamId) return false;
+      const readingTime = new Date(r.READING_DATE + "T" + r.READING_TIME);
+      const diffMins = (now - readingTime) / (1000 * 60);
+      return diffMins <= timeFilter;
+    }).sort((a, b) => new Date(a.READING_DATE + "T" + a.READING_TIME) - new Date(b.READING_DATE + "T" + b.READING_TIME));
+
+    const labels = filteredReadings.map(r => {
+      let t = r.READING_TIME || "";
+      return t.split(".")[0]; 
+    });
+    const dataValues = filteredReadings.map(r => parseFloat(r.READING));
+
+    const pointColors = dataValues.map(val => {
+      if ((upperLimit !== null && val > upperLimit) || (lowerLimit !== null && val < lowerLimit)) {
+        return '#EE5D50'; 
+      }
+      return isOnline ? '#05CD99' : '#A3AED1'; 
+    });
+
+    const ctx = document.getElementById("userChart").getContext("2d");
+    if (userChartInstance) userChartInstance.destroy();
+
+    userChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Reading Value',
+          data: dataValues,
+          borderColor: isOnline ? '#05CD99' : '#A3AED1',
+          backgroundColor: isOnline ? 'rgba(5, 205, 153, 0.1)' : 'rgba(163, 174, 209, 0.1)',
+          borderWidth: 2,
+          pointBackgroundColor: pointColors,
+          pointRadius: 4,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                let val = context.raw;
+                let alertText = "";
+                if ((upperLimit !== null && val > upperLimit) || (lowerLimit !== null && val < lowerLimit)) {
+                  alertText = " ⚠️ [ALERT: Threshold Violated!]";
+                }
+                return `Reading: ${val}${alertText}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+  } catch (err) { console.error("Graph load error:", err); }
+}
+
+function getDeviceUnit(deviceId){ return ''; }
+function getTimeUnit(){ return 'minute'; }
+
+/* ============================================================
+   📱 RESPONSIVE SIDEBAR TOGGLE
+   ============================================================ */
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
+document.querySelectorAll('.sidebar .nav-link:not(.collapsed)').forEach(link => { link.addEventListener('click', () => { if(window.innerWidth < 992) { document.querySelector('.sidebar').classList.remove('active'); document.querySelector('.sidebar-overlay').classList.remove('active'); } }); });
 
 document.addEventListener("DOMContentLoaded", async () => { await loadDropdowns(); populateUserDropdown(); updateSummary(); });
 window.addEventListener("hashchange", function() { const table = location.hash.replace("#", ""); if (table) loadTable(table); });
