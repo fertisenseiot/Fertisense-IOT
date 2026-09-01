@@ -2,7 +2,7 @@
    🌍 BASE CONFIGURATION
    ============================================================ */
 // const BASE_URL = "http://127.0.0.1:8000"; // direct IP
-const BASE_URL = "https://fertisense-iot-production.up.railway.app"; 
+const BASE_URL = "https://fertisense-iot-production.up.railway.app";  
 
 const API = {
   masterorganizations: BASE_URL + "/api/masterorganization/",
@@ -126,7 +126,6 @@ async function loadTable(table) {
   if (!API[currentTable]) return;
   document.getElementById('tableTitle').innerText = formatTitle(table) + " Directory";
 
-  // 🔥 Completely hide "Add New" button for device reading logs and restricted tables
   const restrictedAddTables = ["devicealarmlog", "devicealarmcalllog", "compassdates", "mastersensor", "devicesensorlink", "sensorparameterlink", "devicereadinglog"];
   document.getElementById("addBtn").style.display = restrictedAddTables.includes(currentTable) ? "none" : "inline-block";
 
@@ -225,55 +224,15 @@ async function openModal(row ={}){
 
   const fieldsDiv = document.getElementById('modalFields'); fieldsDiv.innerHTML = "";
 
+  // 🔥 CLEAN MASTER DEVICES MODAL (Only Device Name, Org, Centre, HW Payment)
   if (currentTable === "masterdevices") {
-    const today = new Date(); const nextYear = new Date(); nextYear.setFullYear(today.getFullYear() + 1);
-    const startStr = today.toISOString().split('T')[0]; const endStr = nextYear.toISOString().split('T')[0];
-
-    let linkedSensorId = "", linkedParamId = "", subPkgId = "", subPlanId = "", subStart = startStr, subEnd = endStr;
-
-    if(isEdit) {
-      const dsl = (dropdownData.devicesensorlink || []).find(l => l.DEVICE_ID == row.DEVICE_ID);
-      if(dsl) {
-        linkedSensorId = dsl.SENSOR_ID;
-        const spl = (dropdownData.sensorparameterlink || []).find(l => l.SENSOR_ID == dsl.SENSOR_ID);
-        if(spl) linkedParamId = spl.PARAMETER_ID;
-      }
-      const subs = (dropdownData.mastersubscriptionhistory || []).filter(s => s.Device_ID == row.DEVICE_ID).sort((a,b)=>b.id-a.id);
-      if(subs.length > 0) {
-        subPkgId = subs[0].Subscription_ID; subPlanId = subs[0].Plan_ID;
-        subStart = subs[0].Subscription_Start_date ? subs[0].Subscription_Start_date.split('T')[0] : startStr;
-        subEnd = subs[0].Subcription_End_date ? subs[0].Subcription_End_date.split('T')[0] : endStr;
-      }
-    }
-
     fieldsDiv.innerHTML = `
       <input type="hidden" name="DEVICE_ID" value="${row.DEVICE_ID ?? ''}">
       
-      <div class="col-md-6 mb-1"><label class="form-label">Device Name</label><input type="text" class="form-control" name="DEVICE_NAME" value="${row.DEVICE_NAME ?? ''}" ${autoCapStr} required></div>
-      <div class="col-md-6 mb-1"><label class="form-label">Category</label><select class="form-select" name="CATEGORY_ID" required><option value="">Select Category</option>${(dropdownData.devicescategory||[]).map(c=>`<option value="${c.CATEGORY_ID}" ${row.CATEGORY_ID==c.CATEGORY_ID?'selected':''}>${c.CATEGORY_NAME}</option>`).join('')}</select></div>
-      <div class="col-md-6 mb-1"><label class="form-label">Organization</label><select class="form-select" name="ORGANIZATION_ID" id="dev_org_select" required><option value="">Select Org</option>${(dropdownData.orgs||[]).map(o=>`<option value="${o.ORGANIZATION_ID}" ${row.ORGANIZATION_ID==o.ORGANIZATION_ID?'selected':''}>${o.ORGANIZATION_NAME}</option>`).join('')}</select></div>
-      <div class="col-md-6 mb-1"><label class="form-label">Centre</label><select class="form-select" name="CENTRE_ID" id="dev_centre_select" required><option value="">Select Centre</option>${(dropdownData.centres||[]).filter(c => c.ORGANIZATION_ID == row.ORGANIZATION_ID).map(c=>`<option value="${c.CENTRE_ID}" ${row.CENTRE_ID==c.CENTRE_ID?'selected':''}>${c.CENTRE_NAME}</option>`).join('')}</select></div>
-      <div class="col-md-12 mb-1"><label class="form-label">HW Payment Done</label><select class="form-select" name="IS_HARDWARE_PAYMENT_DONE"><option value="1" ${row.IS_HARDWARE_PAYMENT_DONE==1?'selected':''}>Yes</option><option value="0" ${row.IS_HARDWARE_PAYMENT_DONE==0?'selected':''}>No</option></select></div>
-      
-      <div class="col-12 mt-2 pt-2 border-top"><label class="form-label text-success">Sensor & Parameter Linking</label></div>
-      <div class="col-md-6 mb-1">
-        <label class="form-label text-muted">Create New Sensor</label>
-        <input type="text" class="form-control border-success mb-1" name="NEW_SENSOR_NAME" placeholder="Sensor Name" ${autoCapStr}>
-        <input type="text" class="form-control border-success" name="NEW_SENSOR_TYPE" placeholder="Sensor Type (e.g. DHT11)" ${autoCapStr}>
-      </div>
-      <div class="col-md-6 mb-1">
-        <label class="form-label text-muted">OR Pick Existing Sensor</label>
-        <select class="form-select border-success mb-2" name="EXISTING_SENSOR_ID"><option value="">-- Choose Existing Sensor --</option>${(dropdownData.sensors||[]).map(s=>`<option value="${s.SENSOR_ID}" ${linkedSensorId==s.SENSOR_ID?'selected':''}>${s.SENSOR_NAME}</option>`).join('')}</select>
-        
-        <label class="form-label text-success">Link Parameter</label>
-        <select class="form-select border-success" name="LINK_PARAMETER_ID"><option value="">-- Select Parameter --</option>${(dropdownData.parameters||[]).map(p=>`<option value="${p.PARAMETER_ID}" ${linkedParamId==p.PARAMETER_ID?'selected':''}>${p.PARAMETER_NAME}</option>`).join('')}</select>
-      </div>
-
-      <div class="col-12 mt-2 pt-2 border-top"><label class="form-label text-primary">Assign Subscription</label></div>
-      <div class="col-md-6 mb-1"><select class="form-select border-primary" name="Subscription_ID"><option value="">-- Select Package --</option>${(dropdownData.mastersubscriptioninfo||[]).map(p=>`<option value="${p.Subscription_ID}" ${subPkgId==p.Subscription_ID?'selected':''}>${p.Package_Name}</option>`).join('')}</select></div>
-      <div class="col-md-6 mb-1"><select class="form-select border-primary" name="Plan_ID"><option value="">-- Select Plan --</option>${(dropdownData.masterplantype||[]).map(p=>`<option value="${p.Plan_ID}" ${subPlanId==p.Plan_ID?'selected':''}>${p.Plan_Name}</option>`).join('')}</select></div>
-      <div class="col-md-6 mb-1"><input type="date" class="form-control border-primary" name="VALIDITY_START" value="${subStart}"></div>
-      <div class="col-md-6 mb-1"><input type="date" class="form-control border-primary" name="VALIDITY_END" value="${subEnd}"></div>
+      <div class="col-md-12 mb-2"><label class="form-label">Device Name</label><input type="text" class="form-control" name="DEVICE_NAME" value="${row.DEVICE_NAME ?? ''}" ${autoCapStr} required></div>
+      <div class="col-md-6 mb-2"><label class="form-label">Organization</label><select class="form-select" name="ORGANIZATION_ID" id="dev_org_select" required><option value="">Select Org</option>${(dropdownData.orgs||[]).map(o=>`<option value="${o.ORGANIZATION_ID}" ${row.ORGANIZATION_ID==o.ORGANIZATION_ID?'selected':''}>${o.ORGANIZATION_NAME}</option>`).join('')}</select></div>
+      <div class="col-md-6 mb-2"><label class="form-label">Centre</label><select class="form-select" name="CENTRE_ID" id="dev_centre_select" required><option value="">Select Centre</option>${(dropdownData.centres||[]).filter(c => c.ORGANIZATION_ID == row.ORGANIZATION_ID).map(c=>`<option value="${c.CENTRE_ID}" ${row.CENTRE_ID==c.CENTRE_ID?'selected':''}>${c.CENTRE_NAME}</option>`).join('')}</select></div>
+      <div class="col-md-12 mb-2"><label class="form-label">HW Payment Done</label><select class="form-select" name="IS_HARDWARE_PAYMENT_DONE"><option value="1" ${row.IS_HARDWARE_PAYMENT_DONE==1?'selected':''}>Yes</option><option value="0" ${row.IS_HARDWARE_PAYMENT_DONE==0?'selected':''}>No</option></select></div>
     `;
 
     setTimeout(() => {
@@ -296,7 +255,7 @@ async function openModal(row ={}){
       <div class="col-12 mb-2"><label class="form-label">DEVICE</label><select class="form-select" name="DEVICE_ID"><option value="">-- Choose Device --</option>${(dropdownData.devices || []).sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID).map(d=>`<option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>${d.DEVICE_NAME}</option>`).join("")}</select></div>
       <div class="col-12 mb-2"><label class="form-label">SENSOR</label><select class="form-select" name="SENSOR_ID"><option value="">-- Choose Sensor --</option>${(dropdownData.sensors || []).sort((a,b)=>b.SENSOR_ID-a.SENSOR_ID).map(s=>`<option value="${s.SENSOR_ID}" ${row.SENSOR_ID==s.SENSOR_ID?'selected':''}>${s.SENSOR_NAME}</option>`).join("")}</select></div>`;
   } 
-else if (currentTable === "createuser") {
+  else if (currentTable === "createuser") {
     const d = new Date(); const n = new Date(d); n.setFullYear(d.getFullYear() + 1);
     fieldsDiv.innerHTML = `<input type="hidden" name="USER_ID" value="${row.USER_ID ?? ''}">
       <div class="col-md-6 mb-1"><label class="form-label">Actual Name</label><input type="text" class="form-control" name="ACTUAL_NAME" value="${row.ACTUAL_NAME ?? ''}" ${autoCapStr}></div>
@@ -377,40 +336,12 @@ document.getElementById('crudForm').addEventListener('submit', async function(e)
 
   try {
     if (currentTable === "masterdevices") {
-        let devId = id;
         if(!isEdit) {
-            let dRes = await fetch(API.masterdevices, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE, DEVICE_STATUS: 1 }) });
+            let dRes = await fetch(API.masterdevices, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE, DEVICE_STATUS: 1 }) });
             if(!dRes.ok) throw new Error("Failed to create Device");
-            devId = (await dRes.json()).DEVICE_ID;
         } else {
-            await fetch(API.masterdevices + id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE }) });
-        }
-
-        let sensorId = payload.EXISTING_SENSOR_ID;
-        if(payload.NEW_SENSOR_NAME) {
-            let sRes = await fetch(API.mastersensor, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ SENSOR_NAME: payload.NEW_SENSOR_NAME.trim(), SENSOR_TYPE: (payload.NEW_SENSOR_TYPE || "").trim(), SENSOR_STATUS: 1 }) });
-            if(sRes.ok) { sensorId = (await sRes.json()).SENSOR_ID; }
-        }
-
-        if(sensorId) {
-            const extDsl = (dropdownData.devicesensorlink||[]).find(l => l.DEVICE_ID == devId);
-            if(extDsl) await fetch(API.devicesensorlink + extDsl.id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({SENSOR_ID: sensorId}) });
-            else await fetch(API.devicesensorlink, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({DEVICE_ID: devId, SENSOR_ID: sensorId}) });
-            
-            if(payload.LINK_PARAMETER_ID) {
-                const extSpl = (dropdownData.sensorparameterlink||[]).find(l => l.SENSOR_ID == sensorId);
-                if(extSpl) await fetch(API.sensorparameterlink + extSpl.id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({PARAMETER_ID: payload.LINK_PARAMETER_ID}) });
-                else await fetch(API.sensorparameterlink, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({SENSOR_ID: sensorId, PARAMETER_ID: payload.LINK_PARAMETER_ID}) });
-            }
-        }
-
-        if(payload.Subscription_ID && payload.Plan_ID) {
-            const extSubs = (dropdownData.mastersubscriptionhistory||[]).filter(s => s.Device_ID == devId).sort((a,b)=>b.id-a.id);
-            if(extSubs.length > 0) {
-                await fetch(API.mastersubscriptionhistory + extSubs[0].id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ Subscription_ID: payload.Subscription_ID, Plan_ID: payload.Plan_ID, Subscription_Start_date: payload.VALIDITY_START, Subcription_End_date: payload.VALIDITY_END }) });
-            } else {
-                await fetch(API.mastersubscriptionhistory, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ Device_ID: devId, Subscription_ID: payload.Subscription_ID, Plan_ID: payload.Plan_ID, Subscription_Start_date: payload.VALIDITY_START, Subcription_End_date: payload.VALIDITY_END, Status: "Active", Payment_Date: new Date().toISOString().split('T')[0] }) });
-            }
+            let dRes = await fetch(API.masterdevices + id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE }) });
+            if(!dRes.ok) throw new Error("Failed to update Device");
         }
     } 
     else {
@@ -665,7 +596,6 @@ async function loadUserGraph(){
       return diffMins <= timeFilter;
     }).sort((a, b) => new Date(a.READING_DATE + "T" + a.READING_TIME) - new Date(b.READING_DATE + "T" + b.READING_TIME));
 
-    // 🔥 Clean time format (HH:MM:SS) ignoring milliseconds
     const labels = filteredReadings.map(r => {
       let t = r.READING_TIME || "";
       return t.split(".")[0]; 
