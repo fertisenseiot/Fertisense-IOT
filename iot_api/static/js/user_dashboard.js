@@ -249,42 +249,33 @@ setNavbarOrgCentre(orgText, centreText);
 //   window.cache.centreReadings[centreId] = data || [];
 // }
 
-// 🔹 Check if device has active subscription from dropdown/cached history
-function isDeviceSubscribed(deviceId) {
-    const subscriptions = dropdownData.mastersubscriptionhistory || [];
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    const deviceSubs = subscriptions
-        .filter(s => s.Device_ID == deviceId)
-        .sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date));
-
-    if (deviceSubs.length === 0) return false;
-
-    const latestSub = deviceSubs[0];
-    const start = new Date(latestSub.Subscription_Start_date); start.setHours(0,0,0,0);
-    const end = latestSub.Subcription_End_date ? new Date(latestSub.Subcription_End_date) : null;
-    if (end) end.setHours(0,0,0,0);
-
-    return start <= today && (!end || end >= today);
-}
-
 async function loadDevices(centreId){
- currentCentreId = centreId;
 
- try{
+  currentCentreId = centreId;
+
+  // reset cache
+ // window.cache.centreReadings = {};
+
+ // await preloadCentreData(centreId);
+
+   // 🔥 clear device alarm cache on centre change
+  //window.cache.deviceAlarms = {};
+ // window.cache.deviceStatusAlarms = {};
+
+  try{
+
     const [devices, categories] = await Promise.all([
       fetch(API.masterDevices).then(r=>r.json()),
       fetch(API.devicecategory).then(r=>r.json())
     ]);
 
-    // 🔥 Centre match ke sath-sath active subscription ka filter
-    allDevices = devices.filter(d => d.CENTRE_ID == centreId && isDeviceSubscribed(d.DEVICE_ID));
+    allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
     allCategories = categories;
 
     showCategoryCards();
     setTimeout(updateSummaryLive, 0);
 
- }catch(err){console.error(err);}
+  }catch(err){console.error(err);}
 }
 
 
@@ -944,7 +935,7 @@ const latestReading = filteredReadings[filteredReadings.length - 1]
 
 
     const readingTime = new Date(latestReading.READING_DATE + 'T' + latestReading.READING_TIME);
-    if (now - readingTime <= 20 * 60 * 1000) {
+    if (now - readingTime <= 10 * 60 * 1000) {
         status = "active";
 
         const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(latestReading.PARAMETER_ID));
@@ -1201,7 +1192,7 @@ const readingTime = new Date(
 );
 
 // 🔴 10 min se purani reading → OFFLINE
-if (Date.now() - readingTime.getTime() > 20 * 60 * 1000) {
+if (Date.now() - readingTime.getTime() > 10 * 60 * 1000) {
 
     p1.innerText = "Offline";
     p2.innerText = "";
