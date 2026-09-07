@@ -31,7 +31,8 @@ const HEADER_LABELS = {
   ORGANIZATION_ID: "ORGANIZATION NAME", DEVICE_ID: "DEVICE NAME", Device_ID: "DEVICE NAME",
   CENTRE_ID: "CENTRE NAME", SENSOR_ID: "SENSOR NAME", PARAMETER_ID: "PARAMETER NAME",
   ROLE_ID: "ROLE NAME", UOM_ID: "UNIT", USER_ID: "USER NAME", CATEGORY_ID: "CATEGORY NAME",
-  Subscription_ID:"Subscription_Name", Plan_ID:"Plan_Name", IS_HARDWARE_PAYMENT_DONE: "HW PAYMENT"
+  Subscription_ID:"Subscription_Name", Plan_ID:"Plan_Name", IS_HARDWARE_PAYMENT_DONE: "HW PAYMENT",
+  CREATED_BY: "CREATED BY", created_by: "CREATED BY" // 🔥 Yahan add karna hai
 };
 
 const PRIMARY_KEYS = {
@@ -73,6 +74,7 @@ function formatTitle(table) {
 }
 
 let currentTable="", currentData=[], dropdownData={}, dropdownLoaded = false; 
+let currentUser = null; // 🔥 Yahan add karo
 
 async function loadDropdowns(){
   if (dropdownLoaded) return; 
@@ -164,6 +166,16 @@ async function loadTable(table) {
 
         if (h === "ORG_ID" || h === "ORGANIZATION_ID") { const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]); cellVal = org ? `${org.ORGANIZATION_NAME} (${org.ORGANIZATION_ID})` : row[h]; }
         if (h === "CENTRE_ID") { const c = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]); cellVal = c ? `${c.CENTRE_NAME} (${c.CENTRE_ID})` : row[h]; }
+        if (h === "CREATED_BY" || h === "created_by") {
+            let creatorId = row[h] ?? row["CREATED_BY"] ?? row["created_by"];
+            // Agar object ki tarah aa raha hai ya ID hai
+            if (typeof creatorId === 'object' && creatorId !== null) {
+                creatorId = creatorId.USER_ID || creatorId.id;
+            }
+            const creator = (dropdownData.user || []).find(u => u.USER_ID == creatorId);
+            cellVal = creator ? `${creator.ACTUAL_NAME} (${creator.USER_ID})` : (creatorId !== null && creatorId !== undefined ? creatorId : "-");
+        }
+
         if (h === "CATEGORY_ID") { const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]); cellVal = cat ? `${cat.CATEGORY_NAME} (${cat.CATEGORY_ID})` : (row[h] !== null ? row[h] : "-"); }
         if (h === "DEVICE_ID" && currentTable !== "masterdevices") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
         if (h === "Device_ID") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
@@ -320,6 +332,13 @@ document.getElementById('crudForm').addEventListener('submit', async function(e)
   const form = new FormData(this); let payload = {}; form.forEach((v,k)=>payload[k]=v);
 
   Object.keys(payload).forEach(k => { if (payload[k] === "" || payload[k] === undefined) delete payload[k]; });
+  
+  // 🔥 YAHAN ADD KARNA HAI: Role ID aur Created By fix karne ke liye
+  if(payload["ROLE_ID"]) payload["ROLE_ID"] = parseInt(payload["ROLE_ID"]);
+  if(!payload["CREATED_BY"] && currentUser) {
+      payload["CREATED_BY"] = currentUser.USER_ID; 
+  }
+
   ["SEND_SMS","SEND_EMAIL"].forEach(f => { if(payload[f] !== undefined) payload[f] = payload[f] === "on"; });
   
   const pk = PRIMARY_KEYS[currentTable];
@@ -673,6 +692,15 @@ function togglePassword() {
    ============================================================ */
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('active'); document.querySelector('.sidebar-overlay').classList.toggle('active'); }
 document.querySelectorAll('.sidebar .nav-link:not(.collapsed)').forEach(link => { link.addEventListener('click', () => { if(window.innerWidth < 992) { document.querySelector('.sidebar').classList.remove('active'); document.querySelector('.sidebar-overlay').classList.remove('active'); } }); });
-
-document.addEventListener("DOMContentLoaded", async () => { await loadDropdowns(); populateUserDropdown(); updateSummary(); });
+document.addEventListener("DOMContentLoaded", async () => { 
+    try {
+        const userRes = await fetch(BASE_URL + "/api/currentuser/", { credentials: "include" });
+        currentUser = await userRes.json();
+    } catch(e) {
+        console.error("Failed to load current user", e);
+    }
+    await loadDropdowns(); 
+    populateUserDropdown(); 
+    updateSummary(); 
+});
 window.addEventListener("hashchange", function() { const table = location.hash.replace("#", ""); if (table) loadTable(table); });
