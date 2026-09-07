@@ -43,6 +43,22 @@ def extract_unique_emails(email_list):
 
 
 # ================== SMS Function ==================
+
+from datetime import date
+def has_active_subscription(device_id):
+    from .models import SubscriptionHistory
+
+    today = date.today()
+
+    sub = SubscriptionHistory.objects.filter(
+        Device_ID=device_id,
+        Subscription_Start_date__lte=today
+    ).order_by('-Subscription_Start_date').first()
+
+    if not sub:
+        return False
+
+    return sub.computed_status == "Active"
 def send_sms(phone, message):
     params = {
         "user_name": SMS_USER,
@@ -123,6 +139,9 @@ IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
 
 # ================== Alarm Normalized Alert ==================
 def send_normalized_alert(active_alarm):
+    if not has_active_subscription(active_alarm.DEVICE_ID):
+        print("⛔ Subscription expired → Normalized alert skipped")
+        return
     from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
 
     device = MasterDevice.objects.filter(DEVICE_ID=active_alarm.DEVICE_ID).first()
@@ -259,7 +278,7 @@ class DeviceReadingLog(models.Model):
             return
         
 
-        breached = (self.READING >= param.UPPER_THRESHOLD or self.READING <= param.LOWER_THRESHOLD)
+        breached = (self.READING > param.UPPER_THRESHOLD or self.READING < param.LOWER_THRESHOLD)
         
         # 🔹 Step 4: Check for active alarm
         active_alarm = (
@@ -298,48 +317,60 @@ class DeviceReadingLog(models.Model):
                 )
                 print(f"🚨 New Alarm created for device {self.DEVICE_ID}")
         else:
-           # 🔹 Step 6: Handle normalized alarm
+            # 🔹 Step 6: Handle normalized alarm
+            active_alarm = (
+                DeviceAlarmLog.objects
+                .filter(
+                    DEVICE_ID=self.DEVICE_ID,
+                    SENSOR_ID=self.SENSOR_ID,
+                    PARAMETER_ID=self.PARAMETER_ID,
+                    IS_ACTIVE=1
+                )
+                .order_by('-id')
+                .first()
+            )
 
-                    # Always fetch latest active alarm
-                    active_alarm = (
-                        DeviceAlarmLog.objects
-                        .filter(
-                            DEVICE_ID=self.DEVICE_ID,
-                            SENSOR_ID=self.SENSOR_ID,
-                            PARAMETER_ID=self.PARAMETER_ID,
-                            IS_ACTIVE=1
-                        )
-                        .order_by('-id')
-                        .first()
-                    )
+            # ❌ No active alarm → nothing to do
+            if not active_alarm:
+                return
 
-                    # ❌ No active alarm → nothing to do
-                    if not active_alarm:
-                        return
+            # 🔥 SUBSCRIPTION CHECK: Sirf Subscription_ID == 1 ke liye hi normalized alert bhejo
+            from datetime import date
+            today = date.today()
+            has_sub_1 = SubscriptionHistory.objects.filter(
+                Device_ID=self.DEVICE_ID,
+                Subscription_ID=1,
+                Subscription_Start_date__lte=today
+            ).filter(
+                models.Q(Subcription_End_date__isnull=True) | models.Q(Subcription_End_date__gte=today)
+            ).exists()
 
-                    # 🔔 CASE-1: Breach SMS was sent → send normalized SMS
-                    if active_alarm.SMS_DATE and active_alarm.SMS_TIME:
-                        print("✅ Alarm normalized after breach, sending normalized SMS")
-                        send_normalized_alert(active_alarm)
+            if has_sub_1:
+                # 🔔 CASE-1: Breach SMS was sent → send normalized SMS
+                if active_alarm.SMS_DATE and active_alarm.SMS_TIME:
+                    print("✅ Alarm normalized after breach, sending normalized SMS")
+                    send_normalized_alert(active_alarm)
 
-                              # 🔥 Save normalized SMS date/time
-                        active_alarm.NORMALIZED_SMS_DATE = norm_date
-                        active_alarm.NORMALIZED_SMS_TIME = norm_time
-                        active_alarm.NORMALIZED_EMAIL_DATE = norm_date
-                        active_alarm.NORMALIZED_EMAIL_TIME = norm_time
-                    else:
-                        # 🟡 CASE-2: Fast normalize → no SMS
-                        print("ℹ Alarm normalized quickly, no breach SMS was sent")
+                    # 🔥 Save normalized SMS date/time
+                    active_alarm.NORMALIZED_SMS_DATE = norm_date
+                    active_alarm.NORMALIZED_SMS_TIME = norm_time
+                    active_alarm.NORMALIZED_EMAIL_DATE = norm_date
+                    active_alarm.NORMALIZED_EMAIL_TIME = norm_time
+                else:
+                    # 🟡 CASE-2: Fast normalize → no SMS
+                    print("ℹ Alarm normalized quickly, no breach SMS was sent")
+            else:
+                print(f"ℹ Device {self.DEVICE_ID} has subscription ID != 1. Normalized alerts skipped.")
 
-                    # 🔒 ALWAYS close the alarm
-                    active_alarm.IS_ACTIVE = 0
-                    active_alarm.LST_UPD_DT = norm_date
-                    active_alarm.NORMALIZED_DATE = norm_date
-                    active_alarm.NORMALIZED_TIME = norm_time
+            # 🔒 ALWAYS close the alarm
+            active_alarm.IS_ACTIVE = 0
+            active_alarm.LST_UPD_DT = norm_date
+            active_alarm.NORMALIZED_DATE = norm_date
+            active_alarm.NORMALIZED_TIME = norm_time
 
-                    active_alarm.save()
+            active_alarm.save()
 
-                    print(f"✅ Alarm closed for device {self.DEVICE_ID}")
+            print(f"✅ Alarm closed for device {self.DEVICE_ID}")
 
 
 
@@ -362,10 +393,10 @@ class MasterDevice(models.Model):
     DEVICE_IP = models.CharField(max_length=30, null=True, blank=True) 
     DEVICE_STATUS = models.IntegerField(default=1) 
     DEVICE_STATUS_CD = models.IntegerField(default=1) 
-
-     # 👇 NEW FIELD
+ 
+    # 👇 NEW FIELD
     IS_HARDWARE_PAYMENT_DONE = models.IntegerField(default=1)
-    
+
     ORGANIZATION_ID = models.IntegerField() 
     CENTRE_ID = models.IntegerField() 
     CRT_DT = models.DateField(null=True, blank=True) 
@@ -848,6 +879,9 @@ class DeviceStatusAlarmLog(models.Model):
 
 
 def send_online_only_sms(device_id):
+    if not has_active_subscription(device_id):
+        print("⛔ Subscription expired → Online alert skipped")
+        return
     from .models import DeviceStatusAlarmLog
 
     now_dt = timezone.now().astimezone(IST)
@@ -942,6 +976,7 @@ class EmailReportLog(models.Model):
         db_table = "email_report_log"
         unique_together = ("USER_ID", "RECORD_SELECTION_DATE")
         #
+
 class FailedEmailQueue(models.Model):
     USER_ID = models.IntegerField()
     email = models.EmailField()
