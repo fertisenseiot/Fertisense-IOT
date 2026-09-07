@@ -254,7 +254,7 @@ async function openModal(row ={}){
       <div class="col-12 mb-2"><label class="form-label">DEVICE</label><select class="form-select" name="DEVICE_ID"><option value="">-- Choose Device --</option>${(dropdownData.devices || []).sort((a,b)=>b.DEVICE_ID-a.DEVICE_ID).map(d=>`<option value="${d.DEVICE_ID}" ${row.DEVICE_ID==d.DEVICE_ID?'selected':''}>${d.DEVICE_NAME} (${d.DEVICE_ID})</option>`).join("")}</select></div>
       <div class="col-12 mb-2"><label class="form-label">SENSOR</label><select class="form-select" name="SENSOR_ID"><option value="">-- Choose Sensor --</option>${(dropdownData.sensors || []).sort((a,b)=>b.SENSOR_ID-a.SENSOR_ID).map(s=>`<option value="${s.SENSOR_ID}" ${row.SENSOR_ID==s.SENSOR_ID?'selected':''}>${s.SENSOR_NAME} (${s.SENSOR_ID})</option>`).join("")}</select></div>`;
   } 
-  else if (currentTable === "createuser") {
+else if (currentTable === "createuser") {
     const d = new Date(); const n = new Date(d); n.setFullYear(d.getFullYear() + 1);
     fieldsDiv.innerHTML = `<input type="hidden" name="USER_ID" value="${row.USER_ID ?? ''}">
       <div class="col-md-6 mb-1"><label class="form-label">Actual Name</label><input type="text" class="form-control" name="ACTUAL_NAME" value="${row.ACTUAL_NAME ?? ''}" ${autoCapStr}></div>
@@ -262,9 +262,18 @@ async function openModal(row ={}){
       <div class="col-md-6 mb-1"><label class="form-label">Role</label><select class="form-select" name="ROLE_ID"><option value="">-- Choose Role --</option>${(dropdownData.roles || []).map(r => `<option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? "")) ? "selected" : ""}>${r.ROLE_NAME} (${r.ROLE_ID})</option>`).join("")}</select></div>
       <div class="col-md-6 mb-1"><label class="form-label">Phone</label><input type="text" class="form-control" name="PHONE" value="${row.PHONE ?? ''}"></div>
       <div class="col-md-12 mb-1"><label class="form-label">Email</label><input type="email" class="form-control" name="EMAIL" value="${row.EMAIL ?? ''}"></div>
-      <div class="col-12 mb-1 d-flex align-items-center py-1"><div class="form-check me-4"><input class="form-check-input" type="checkbox" name="SEND_SMS" ${row.SEND_SMS ? "checked" : ""}><label class="form-check-label small">Send SMS</label></div><div class="form-check"><input class="form-check-input" type="checkbox" name="SEND_EMAIL" ${row.SEND_EMAIL ? "checked" : ""}><label class="form-check-label small">Send Email</label></div></div>
+      <div class="col-12 mb-1 d-flex align-items-center py-1">
+        <div class="form-check me-4"><input class="form-check-input" type="checkbox" name="SEND_SMS" ${row.SEND_SMS ? "checked" : ""}><label class="form-check-label small">Send SMS</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" name="SEND_EMAIL" ${row.SEND_EMAIL ? "checked" : ""}><label class="form-check-label small">Send Email</label></div>
+      </div>
       <div class="col-md-6 mb-1"><label class="form-label">Password</label><input type="password" class="form-control" id="PASSWORD" name="PASSWORD" value="${row.PASSWORD ?? ''}"></div>
       <div class="col-md-6 mb-1"><label class="form-label">Confirm Password</label><input type="password" class="form-control" id="confirm_password" name="confirm_password" value="${row.PASSWORD ?? ''}"></div>
+      <div class="col-12 mb-2">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="showPassword" onchange="togglePassword()">
+          <label class="form-check-label small" for="showPassword">Show Password</label>
+        </div>
+      </div>
       <div class="col-md-6 mb-1"><label class="form-label">Validity Start</label><input type="date" class="form-control" name="VALIDITY_START" value="${row.VALIDITY_START ?? d.toISOString().split('T')[0]}"></div>
       <div class="col-md-6 mb-1"><label class="form-label">Validity End</label><input type="date" class="form-control" name="VALIDITY_END" value="${row.VALIDITY_END ?? n.toISOString().split('T')[0]}"></div>`;
   }
@@ -644,6 +653,20 @@ async function loadUserGraph(){
 
 function getDeviceUnit(deviceId){ return ''; }
 function getTimeUnit(){ return 'minute'; }
+
+function togglePassword() {
+  const passwordField = document.getElementById("PASSWORD");
+  const confirmField = document.getElementById("confirm_password");
+  const checkbox = document.getElementById("showPassword");
+
+  if (checkbox.checked) {
+    if(passwordField) passwordField.type = "text";
+    if(confirmField) confirmField.type = "text";
+  } else {
+    if(passwordField) passwordField.type = "password";
+    if(confirmField) confirmField.type = "password";
+  }
+}
 
 /* ============================================================
    📱 RESPONSIVE SIDEBAR TOGGLE
