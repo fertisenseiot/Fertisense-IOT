@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny
 # from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from django.db import connection, transaction  # 👈 transaction add karein
 
 
 from .models import (
@@ -26,6 +27,8 @@ from .serializers import (
 from django.contrib import messages
 from django.db import connection
 
+
+from datetime import date
 
 # -------------------------
 # Login View
@@ -45,6 +48,28 @@ def login_view(request):
 
         if row:
             user_id, username, role = row
+
+            # 🛑 Non-admin users ke liye Subscription ID check (Sirf ID 1 aur 2 allow honge, ID 3 restricted)
+            if role != 1:
+                today = date.today()
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT COUNT(*) 
+                        FROM userorganizationcentrelink uoc
+                        JOIN iot_api_masterdevice md ON md.ORGANIZATION_ID = uoc.ORGANIZATION_ID_id AND md.CENTRE_ID = uoc.CENTRE_ID_id
+                        JOIN Subcription_History sh ON sh.Device_ID = md.DEVICE_ID
+                        WHERE uoc.USER_ID_id = %s
+                          AND sh.Subscription_ID IN (1, 2)
+                          AND sh.Subscription_Start_date <= %s
+                          AND (sh.Subcription_End_date IS NULL OR sh.Subcription_End_date >= %s)
+                    """, [user_id, today, today])
+                    
+                    sub_check = cursor.fetchone()
+                    allowed_count = sub_check[0] if sub_check else 0
+
+                if allowed_count == 0:
+                    messages.error(request, "Access Denied: Your device subscription plan (Device Only / ID 3) does not allow dashboard login.")
+                    return render(request, "login.html")
 
             # ✅ Store all details in session
             request.session["user_id"] = user_id
@@ -456,6 +481,14 @@ def twilio_call_status(request):
 
     return HttpResponse("OK")
 
+# ================================
+# HARDWARE PAYMENT STATUS API
+# ================================
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import MasterDevice
+
 
 @api_view(['GET'])
 def hardware_payment_status_api(request):
@@ -493,4 +526,3 @@ def hardware_payment_status_api(request):
             "status": 0
 
         })
-
