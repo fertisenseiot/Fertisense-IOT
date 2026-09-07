@@ -16,8 +16,8 @@
    BASE URL CONFIGURATION
    =============================== */
   
-const BASE_URL = "https://fertisense-iot-production.up.railway.app";
-// const BASE_URL ="http://127.0.0.1:8000";
+//const BASE_URL = "https://fertisense-iot-production.up.railway.app";
+ const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
  const API = {
@@ -250,40 +250,35 @@ setNavbarOrgCentre(orgText, centreText);
 // }
 
 async function loadDevices(centreId){
- currentCentreId = centreId;
 
- try{
-    const [devices, categories, subsHistory] = await Promise.all([
+  currentCentreId = centreId;
+
+  // reset cache
+ // window.cache.centreReadings = {};
+
+ // await preloadCentreData(centreId);
+
+   // 🔥 clear device alarm cache on centre change
+  //window.cache.deviceAlarms = {};
+ // window.cache.deviceStatusAlarms = {};
+
+  try{
+
+    const [devices, categories] = await Promise.all([
       fetch(API.masterDevices).then(r=>r.json()),
-      fetch(API.devicecategory).then(r=>r.json()),
-      fetch(BASE_URL + "/api/subscriptionhistory/").catch(() => [])
+      fetch(API.devicecategory).then(r=>r.json())
     ]);
 
-    dropdownData.mastersubscriptionhistory = subsHistory;
-    const today = new Date(); today.setHours(0,0,0,0);
-
-    // 🔥 Agar subscription history nahi hai ya API fail ho jaye, toh saare devices dikhao (Zero nahi honge)
-    allDevices = devices.filter(d => {
-        if (d.CENTRE_ID != centreId) return false;
-        
-        const deviceSubs = subsHistory.filter(s => s.Device_ID == d.DEVICE_ID);
-        if (deviceSubs.length === 0) return true; // Default allow agar entry nahi hai
-
-        const latestSub = deviceSubs.sort((a, b) => new Date(b.Subscription_Start_date) - new Date(a.Subscription_Start_date))[0];
-        const start = new Date(latestSub.Subscription_Start_date); start.setHours(0,0,0,0);
-        const end = latestSub.Subcription_End_date ? new Date(latestSub.Subcription_End_date) : null;
-        if (end) end.setHours(0,0,0,0);
-
-        return start <= today && (!end || end >= today);
-    });
-
+    allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
     allCategories = categories;
 
     showCategoryCards();
     setTimeout(updateSummaryLive, 0);
 
- }catch(err){console.error(err);}
+  }catch(err){console.error(err);}
 }
+
+
 
 // ------------- DASHBOARD UI -------------
 function clearFilters(){
