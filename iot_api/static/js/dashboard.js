@@ -168,14 +168,18 @@ async function loadTable(table) {
         if (h === "CENTRE_ID") { const c = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]); cellVal = c ? `${c.CENTRE_NAME} (${c.CENTRE_ID})` : row[h]; }
         if (h === "CREATED_BY" || h === "created_by") {
             let creatorId = row[h] ?? row["CREATED_BY"] ?? row["created_by"];
-            // Agar object ki tarah aa raha hai ya ID hai
             if (typeof creatorId === 'object' && creatorId !== null) {
                 creatorId = creatorId.USER_ID || creatorId.id;
             }
             const creator = (dropdownData.user || []).find(u => u.USER_ID == creatorId);
-            cellVal = creator ? `${creator.ACTUAL_NAME} (${creator.USER_ID})` : (creatorId !== null && creatorId !== undefined ? creatorId : "-");
+            
+            if (creator) {
+                const roleObj = (dropdownData.roles || []).find(r => r.ROLE_ID == creator.ROLE_ID);
+                cellVal = roleObj ? roleObj.ROLE_NAME : "-";
+            } else {
+                cellVal = "-";
+            }
         }
-
         if (h === "CATEGORY_ID") { const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]); cellVal = cat ? `${cat.CATEGORY_NAME} (${cat.CATEGORY_ID})` : (row[h] !== null ? row[h] : "-"); }
         if (h === "DEVICE_ID" && currentTable !== "masterdevices") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
         if (h === "Device_ID") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
