@@ -45,7 +45,7 @@ def extract_unique_emails(email_list):
 # ================== SMS Function ==================
 
 from datetime import date
-def has_active_subcription(device_id):
+def has_active_subscription(device_id):
     from .models import SubcriptionHistory
 
     today = date.today()
