@@ -45,12 +45,12 @@ def extract_unique_emails(email_list):
 # ================== SMS Function ==================
 
 from datetime import date
-def has_active_subscription(device_id):
-    from .models import SubscriptionHistory
+def has_active_subcription(device_id):
+    from .models import SubcriptionHistory
 
     today = date.today()
 
-    sub = SubscriptionHistory.objects.filter(
+    sub = SubcriptionHistory.objects.filter(
         Device_ID=device_id,
         Subscription_Start_date__lte=today
     ).order_by('-Subscription_Start_date').first()
