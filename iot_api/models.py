@@ -45,7 +45,7 @@ def extract_unique_emails(email_list):
 # ================== SMS Function ==================
 
 from datetime import date
-def has_active_subscription(device_id):
+def has_active_subcription(device_id):
     from .models import SubcriptionHistory
 
     today = date.today()
@@ -139,7 +139,7 @@ IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
 
 # ================== Alarm Normalized Alert ==================
 def send_normalized_alert(active_alarm):
-    if not has_active_subscription(active_alarm.DEVICE_ID):
+    if not has_active_subcription(active_alarm.DEVICE_ID):
         print("⛔ Subscription expired → Normalized alert skipped")
         return
     from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
@@ -337,7 +337,7 @@ class DeviceReadingLog(models.Model):
             # 🔥 SUBSCRIPTION CHECK: Sirf Subscription_ID == 1 ke liye hi normalized alert bhejo
             from datetime import date
             today = date.today()
-            has_sub_1 = SubscriptionHistory.objects.filter(
+            has_sub_1 = SubcriptionHistory.objects.filter(
                 Device_ID=self.DEVICE_ID,
                 Subscription_ID=1,
                 Subscription_Start_date__lte=today
