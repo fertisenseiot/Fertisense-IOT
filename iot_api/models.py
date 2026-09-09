@@ -45,12 +45,11 @@ def extract_unique_emails(email_list):
 # ================== SMS Function ==================
 
 from datetime import date
-def has_active_subcription(device_id):
-    from .models import SubcriptionHistory
-
+def has_active_subscription(device_id):  # 👈 Spelling theek ki (subscription)
     today = date.today()
 
-    sub = SubcriptionHistory.objects.filter(
+    # 👈 Yahan se 'from .models import...' wali line hata di
+    sub = SubscriptionHistory.objects.filter(
         Device_ID=device_id,
         Subscription_Start_date__lte=today
     ).order_by('-Subscription_Start_date').first()
@@ -337,7 +336,8 @@ class DeviceReadingLog(models.Model):
             # 🔥 SUBSCRIPTION CHECK: Sirf Subscription_ID == 1 ke liye hi normalized alert bhejo
             from datetime import date
             today = date.today()
-            has_sub_1 = SubcriptionHistory.objects.filter(
+            # 🔥 Yahan class ki spelling mein 's' add karna hai
+            has_sub_1 = SubscriptionHistory.objects.filter(
                 Device_ID=self.DEVICE_ID,
                 Subscription_ID=1,
                 Subscription_Start_date__lte=today
@@ -836,8 +836,8 @@ class SubscriptionHistory(models.Model):
         db_table = 'Subcription_History'
         unique_together = ('Device_ID', 'Subscription_Start_date')
 
-@property
-def computed_status(self):
+    @property
+    def computed_status(self):
         today = date.today()
 
         if today < self.Subscription_Start_date:
