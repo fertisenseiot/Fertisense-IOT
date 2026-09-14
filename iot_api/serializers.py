@@ -270,3 +270,14 @@ class EmailReportLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailReportLog
         fields = '__all__'
+
+# =========================================================
+# NEW: Manual Entry & Mass Production Serializer for MAC ID
+# =========================================================
+class MacIdReadingSerializer(serializers.Serializer):
+    DEVICE_MACID = serializers.CharField(max_length=100, help_text="Enter Device MAC ID")
+    PARAMETER_ID = serializers.IntegerField(help_text="Enter Fixed Parameter ID (e.g., 10 for Temp, 12 for VOC)")
+    READING = serializers.FloatField(help_text="Enter Reading Value")
+    READING_DATE = serializers.DateField(required=False, help_text="Optional (YYYY-MM-DD)")
+    READING_TIME = serializers.TimeField(required=False, help_text="Optional (HH:MM:SS)")
+
