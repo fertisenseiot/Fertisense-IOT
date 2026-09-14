@@ -528,46 +528,4 @@ def hardware_payment_status_api(request):
         })
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_device_by_macid_api(request):
-    # API URL me aise pass karna hoga: /api/device-by-mac/?mac_id=TUMHARA_MAC_ID
-    mac_id = request.GET.get("mac_id")
-    
-    if not mac_id:
-        return Response({
-            "status": 0, 
-            "message": "mac_id parameter is missing."
-        }, status=400)
-        
-    # 1. Device fetch karo MAC ID ke base pe
-    device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
-    
-    if not device:
-        return Response({
-            "status": 0, 
-            "message": "Device not found for this MAC ID."
-        }, status=404)
-        
-    # 2. Latest reading fetch karo is device ki
-    latest_reading = DeviceReadingLog.objects.filter(
-        DEVICE_ID=device
-    ).order_by('-READING_DATE', '-READING_TIME').first()
-    
-    # Agar reading mili toh usko serialize kar lo
-    reading_data = DeviceReadingLogSerializer(latest_reading).data if latest_reading else None
 
-    # Category ID fetch karna
-    category_id = getattr(device.CATEGORY_ID, 'id', device.CATEGORY_ID) if device.CATEGORY_ID else None
-
-    # 3. Final Response
-    return Response({
-        "status": 1,
-        "device_details": {
-            "DEVICE_ID": device.DEVICE_ID,
-            "DEVICE_MACID": device.DEVICE_MACID,
-            "DEVICE_NAME": device.DEVICE_NAME,
-            "CATEGORY_ID": category_id,
-        },
-        "latest_reading": reading_data
-    })
