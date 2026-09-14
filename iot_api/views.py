@@ -21,7 +21,7 @@ from .serializers import (
     MasterDeviceSerializer, DeviceReadingLogSerializer, DeviceAlarmLogSerializer,
     MasterOrganizationSerializer, MasterParameterSerializer, MasterSensorSerializer,
     CompassDatesSerializer, SeUserSerializer, SensorParameterLinkSerializer,
-    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer ,EmailReportLogSerializer
+    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer ,EmailReportLogSerializer,
 )
 
 from django.contrib import messages
@@ -526,6 +526,73 @@ def hardware_payment_status_api(request):
             "status": 0
 
         })
+
+# =========================================================
+# NEW API: Add Reading by MAC ID (Mass Production Ready)
+# =========================================================
+from rest_framework.views import APIView
+from rest_framework import status
+from datetime import datetime
+from .serializers import MacIdReadingSerializer 
+# Models already upar imported hain (MasterDevice, DeviceSensorLink, SensorParameterLink, DeviceReadingLog)
+
+class AddReadingByMacIdView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = MacIdReadingSerializer  # 👈 Ye DRF me HTML Form (5 boxes) laayega
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        
+        if serializer.is_valid():
+            mac_id = serializer.validated_data.get('DEVICE_MACID')
+            param_id = serializer.validated_data.get('PARAMETER_ID')
+            reading_val = serializer.validated_data.get('READING')
+            reading_date = serializer.validated_data.get('READING_DATE', date.today())
+            reading_time = serializer.validated_data.get('READING_TIME', datetime.now().time())
+
+            # Step 1: MAC ID se DEVICE_ID nikaalo
+            device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
+            if not device:
+                return Response({"status": 0, "error": "Device not found for this MAC ID"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Step 2: Is DEVICE_ID se jude huye SAARE SENSOR_IDs nikaalo
+            device_sensors = DeviceSensorLink.objects.filter(DEVICE_ID=device.DEVICE_ID).values_list('SENSOR_ID', flat=True)
+            if not device_sensors:
+                return Response({"status": 0, "error": "No Sensors linked to this Device"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Step 3: Un sensors mein se wo SENSOR_ID dhundo jo bheje gaye PARAMETER_ID se link hai
+            sensor_param = SensorParameterLink.objects.filter(SENSOR_ID__in=device_sensors, PARAMETER_ID=param_id).first()
+            if not sensor_param:
+                return Response({
+                    "status": 0, 
+                    "error": f"Parameter ID {param_id} is not linked to any sensor on this device."
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Step 4: Sab automatically mil gaya! Ab Reading save karo
+            DeviceReadingLog.objects.create(
+                DEVICE_ID=device.DEVICE_ID, 
+                SENSOR_ID=sensor_param.SENSOR_ID, 
+                PARAMETER_ID=param_id, 
+                READING=reading_val,
+                READING_DATE=reading_date,
+                READING_TIME=reading_time,
+                ORGANIZATION_ID=device.ORGANIZATION_ID,
+                CENTRE_ID=device.CENTRE_ID
+            )
+
+            return Response({
+                "status": 1,
+                "message": "Reading saved successfully!",
+                "derived_data": {
+                    "MAC_ID": mac_id,
+                    "AUTOMATIC_DEVICE_ID": device.DEVICE_ID,
+                    "AUTOMATIC_SENSOR_ID": sensor_param.SENSOR_ID,
+                    "PARAMETER_ID": param_id,
+                    "READING": reading_val
+                }
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
