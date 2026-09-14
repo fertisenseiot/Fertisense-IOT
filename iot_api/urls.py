@@ -13,7 +13,7 @@ from .views import (
     DeviceReadingLogViewSet, MasterDeviceViewSet, CompassDatesViewSet,
     MasterOrganizationViewSet, MasterParameterViewSet, MasterSensorViewSet,
     SeUserViewSet, SensorParameterLinkViewSet, DeviceSensorLinkViewSet,
-    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet)
+    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet,get_device_by_macid_api)
 
 # Router setup
 router = routers.DefaultRouter()
@@ -63,5 +63,6 @@ urlpatterns = [
     hardware_payment_status_api,
     name='hardware_payment_status_api'
 ),
+    path('api/device-by-mac/', get_device_by_macid_api, name='device_by_macid'),
     
 ]
