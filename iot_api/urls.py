@@ -13,7 +13,7 @@ from .views import (
     DeviceReadingLogViewSet, MasterDeviceViewSet, CompassDatesViewSet,
     MasterOrganizationViewSet, MasterParameterViewSet, MasterSensorViewSet,
     SeUserViewSet, SensorParameterLinkViewSet, DeviceSensorLinkViewSet,
-    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet,AddReadingByMacIdView)
+    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet,AddReadingByMacIdView,hardware_payment_status_mac_api,devicecheck_mac)
 
 # Router setup
 router = routers.DefaultRouter()
@@ -65,6 +65,10 @@ urlpatterns = [
 ),
 
     path('api/add-reading-mac/', AddReadingByMacIdView.as_view(), name='add_reading_mac'),
+
+    # Nayi MAC ID wali checking APIs
+    path('api/hardware-payment-mac/', hardware_payment_status_mac_api, name='hardware_payment_mac'),
+    path('api/device-check-mac/', devicecheck_mac, name='device_check_mac'),
    
     
 ]
