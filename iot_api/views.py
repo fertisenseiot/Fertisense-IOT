@@ -534,11 +534,15 @@ from rest_framework.views import APIView
 from rest_framework import status
 from datetime import datetime
 from .serializers import MacIdReadingSerializer 
-# Models already upar imported hain (MasterDevice, DeviceSensorLink, SensorParameterLink, DeviceReadingLog)
+# Models already upar imported hain 
 
 class AddReadingByMacIdView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = MacIdReadingSerializer  # 👈 Ye DRF me HTML Form (5 boxes) laayega
+    serializer_class = MacIdReadingSerializer  
+
+    # Ye GET request ko handle karega (Taaki browser mein 405 error na aaye)
+    def get(self, request, *args, **kwargs):
+        return Response({"message": "Form is ready. Please enter data and click POST."})
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
@@ -552,8 +556,57 @@ class AddReadingByMacIdView(APIView):
 
             # Step 1: MAC ID se DEVICE_ID nikaalo
             device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
+            
+            # ----------------------------------------------------
+            # SMART AUTO-REGISTRATION (Bina kisi hardcode ke)
+            # ----------------------------------------------------
             if not device:
-                return Response({"status": 0, "error": "Device not found for this MAC ID"}, status=status.HTTP_404_NOT_FOUND)
+                # 1. Default Org aur Centre ID set karo (Apne database ke hisaab se check kar lena)
+                default_org_id = 2
+                default_centre_id = 3
+                
+                # 2. Organization ka naam nikalo (Spaces hata kar)
+                org = MasterOrganization.objects.filter(ORGANIZATION_ID=default_org_id).first()
+                org_name = org.ORGANIZATION_NAME.strip().replace(" ", "") if org else "Org"
+
+                # 3. Is organization mein ab tak kitne devices hain, uska count nikaal kar +1 karo
+                current_count = MasterDevice.objects.filter(ORGANIZATION_ID=default_org_id).count()
+                next_count = current_count + 1
+                
+                # 4. API me aayi param_id se us parameter ka asali naam dhundo
+                parameter_obj = MasterParameter.objects.filter(PARAMETER_ID=param_id).first()
+                param_name = parameter_obj.PARAMETER_NAME.lower() if parameter_obj else ""
+
+                # 5. Parameter ke naam se Device Keyword (Signal ke liye) aur Category guess karo
+                if 'voc' in param_name or 'room' in param_name or 'humidity' in param_name:
+                    device_keyword = "voc_2.0"
+                    category_id = 1
+                elif 'fridge' in param_name or 'refri' in param_name:
+                    device_keyword = "refri"
+                    category_id = 2  
+                elif 'cryo' in param_name:
+                    device_keyword = "cryo"
+                    category_id = 3  
+                elif 'inc' in param_name or 'o2' in param_name or 'co2' in param_name:
+                    device_keyword = "incubator"
+                    category_id = 4  
+                else:
+                    device_keyword = "voc_2.0" # Default fallback
+                    category_id = 1
+
+                # 6. Final Naya Naam (Jaise: RedOrangesConsulting15_voc_2.0)
+                auto_name = f"{org_name}{next_count}_{device_keyword}"
+                
+                # 7. Device create karo (Ye karte hi tumhara signals.py chal jayega!)
+                device = MasterDevice.objects.create(
+                    DEVICE_MACID=mac_id,
+                    DEVICE_NAME=auto_name,
+                    DEVICE_STATUS=1,
+                    CATEGORY_ID_id=category_id,
+                    ORGANIZATION_ID_id=default_org_id,
+                    CENTRE_ID_id=default_centre_id
+                )
+            # ----------------------------------------------------
             
             # Step 2: Is DEVICE_ID se jude huye SAARE SENSOR_IDs nikaalo
             device_sensors = DeviceSensorLink.objects.filter(DEVICE_ID=device.DEVICE_ID).values_list('SENSOR_ID', flat=True)
@@ -582,9 +635,10 @@ class AddReadingByMacIdView(APIView):
 
             return Response({
                 "status": 1,
-                "message": "Reading saved successfully!",
+                "message": "Reading saved successfully! Device auto-registered if it was new.",
                 "derived_data": {
                     "MAC_ID": mac_id,
+                    "AUTOMATIC_DEVICE_NAME": device.DEVICE_NAME,
                     "AUTOMATIC_DEVICE_ID": device.DEVICE_ID,
                     "AUTOMATIC_SENSOR_ID": sensor_param.SENSOR_ID,
                     "PARAMETER_ID": param_id,
