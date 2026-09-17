@@ -1,5 +1,5 @@
 /* ============================================================
-   USER DASHBOARD MAIN SCRIPT - OPTIMIZED
+   USER DASHBOARD MAIN SCRIPT - OPTIMIZED & UI FIXED
    ------------------------------------------------------------
    Handles:
    - API configuration
@@ -588,7 +588,7 @@ async function updateDashboardLive(categoryId){
             .filter(r => r.DEVICE_ID === device.DEVICE_ID)
             .sort((a,b)=> a.timeMs - b.timeMs);
 
-        let status = "offline", displayVal = "Offline";
+        let status = "offline";
 
         if (deviceReadings.length > 0) {
             const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
@@ -606,22 +606,25 @@ async function updateDashboardLive(categoryId){
 
             if (nowMs - latestReading.timeMs <= 10 * 60 * 1000) {
                 status = "active";
-                const param = globalParams.find(p => String(p.PARAMETER_ID) === String(latestReading.PARAMETER_ID));
-                const uom = (param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null)?.UOM_NAME || '';
-                displayVal = Math.round(parseFloat(latestReading.READING)) + ' ' + uom;
             }
         }
 
         device.status = status;
+        
+        // ✅ UI OFFLINE FIX
         const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
         if(el) {
-            const latest = deviceReadings[deviceReadings.length - 1];
-            if(!latest){
-                el.innerText = "Offline";
+            if (status === "offline") {
+                el.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`;
             } else {
-                const param = globalParams.find(p => String(p.PARAMETER_ID) === String(latest.PARAMETER_ID));
-                const uom = (param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null)?.UOM_NAME || "";
-                el.innerHTML = `<div style="font-size:10px;">${param?.PARAMETER_NAME || "Reading"}</div><div style="font-size:16px;font-weight:600;">${Math.round(parseFloat(latest.READING))} ${uom}</div>`;
+                const latest = deviceReadings[deviceReadings.length - 1];
+                if (!latest) {
+                    el.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`;
+                } else {
+                    const param = globalParams.find(p => String(p.PARAMETER_ID) === String(latest.PARAMETER_ID));
+                    const uom = (param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null)?.UOM_NAME || "";
+                    el.innerHTML = `<div style="font-size:10px;">${param?.PARAMETER_NAME || "Reading"}</div><div style="font-size:16px; font-weight:600;">${Math.round(parseFloat(latest.READING))} ${uom}</div>`;
+                }
             }
         }
         
@@ -756,12 +759,14 @@ async function loadCardReadingFast(device, readingsDataRaw){
     try {
         const ownReadings = readingsDataRaw.filter(r => r.DEVICE_ID == device.DEVICE_ID).sort((a,b)=> a.timeMs - b.timeMs);
         if (!ownReadings.length) {
-            valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary"; return;
+            valueEl.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`; 
+            cardEl.className = "device-card bg-secondary"; return;
         }
 
         const last = ownReadings[ownReadings.length - 1];
         if (Date.now() - last.timeMs > 10 * 60 * 1000) {
-            valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary"; return;
+            valueEl.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`; 
+            cardEl.className = "device-card bg-secondary"; return;
         }
 
         const param = globalParams.find(p => p.PARAMETER_ID == last.PARAMETER_ID);
@@ -769,7 +774,8 @@ async function loadCardReadingFast(device, readingsDataRaw){
         valueEl.innerText = Math.round(last.READING) + " " + uom;
         cardEl.className = "device-card bg-success";
     } catch (err) {
-        valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary";
+        valueEl.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`; 
+        cardEl.className = "device-card bg-secondary";
     }
 }
 
@@ -904,15 +910,23 @@ async function loadDeviceReadings(device){
             if (param?.UPPER_THRESHOLD && readingVal > param.UPPER_THRESHOLD) colorClass = "bg-danger";
             else if (param?.LOWER_THRESHOLD && readingVal < param.LOWER_THRESHOLD) colorClass = "bg-warning";
         }
+
+        // ✅ UI OFFLINE FIX FOR LOAD DEVICE GRAPH
         if (!isIncubator) {
             const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
             if (el) {
-                if(window.currentDeviceGraphDeviceId === device.DEVICE_ID){
-                    el.innerHTML = `<span class="device-reading">${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}</span>`;
+                const isOfflineNow = (Date.now() - latest.x.getTime()) > 10 * 60 * 1000;
+                if (isOfflineNow) {
+                    el.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`;
+                    el.parentElement.className = `device-card bg-secondary`;
                 } else {
-                    el.innerHTML = `${Math.round(readingVal)} ${uom}`;
+                    if(window.currentDeviceGraphDeviceId === device.DEVICE_ID){
+                        el.innerHTML = `<span class="device-reading">${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}</span>`;
+                    } else {
+                        el.innerHTML = `${Math.round(readingVal)} ${uom}`;
+                    }
+                    el.parentElement.className = `device-card ${colorClass}`;
                 }
-                el.parentElement.className = `device-card ${colorClass}`;
             }
         }
     }
@@ -1106,15 +1120,20 @@ async function updateSummaryLive(){
             const latest = readingsDataRaw.filter(r => r.DEVICE_ID === device.DEVICE_ID)
                 .sort((a,b)=> new Date(a.READING_DATE+'T'+a.READING_TIME).getTime() - new Date(b.READING_DATE+'T'+b.READING_TIME).getTime()).pop();
             
-            let status = "offline", displayVal = "Offline";
+            let status = "offline";
             if(latest && (nowMs - new Date(latest.READING_DATE + "T" + latest.READING_TIME).getTime() <= 10*60*1000)){
-                status = "active"; displayVal = Math.round(latest.READING);
+                status = "active"; 
             }
             device.status = status;
             
+            // ✅ UI OFFLINE FIX FOR SUMMARY LIVE UPDATE
             const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
             if(el) {
-                el.innerText = displayVal;
+                if(status === "active") {
+                    el.innerText = Math.round(latest.READING);
+                } else {
+                    el.innerHTML = `<div style="font-size:16px; font-weight:600; margin-top:10px;">Offline</div>`;
+                }
                 const card = document.getElementById(`card_${device.DEVICE_ID}`);
                 if(card) card.className = status === "active" ? "device-card bg-success" : "device-card bg-secondary";
             }
