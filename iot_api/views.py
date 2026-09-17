@@ -602,9 +602,22 @@ class AddReadingByMacIdView(APIView):
                     DEVICE_MACID=mac_id,
                     DEVICE_NAME=auto_name,
                     DEVICE_STATUS=1,
+                    IS_HARDWARE_PAYMENT_DONE=1,  # 👈 YAHAN PAYMENT DONE (1) SET KAR DIYA
                     CATEGORY_ID_id=category_id,
                     ORGANIZATION_ID_id=default_org_id,
                     CENTRE_ID_id=default_centre_id
+                )
+                # 8. 🚀 Naye device ko 1-Saal ka Auto-Subscription de do
+                from datetime import timedelta
+                today = date.today()
+                
+                SubscriptionHistory.objects.create(
+                    Device_ID=device,
+                    Subscription_ID_id=1, # 👈 Yahan apne Database ki kisi valid Package ID ko daalna (e.g. 1)
+                    Plan_ID_id=1,         # 👈 Yahan apne Database ki kisi valid Plan ID ko daalna (e.g. 1)
+                    Subscription_Start_date=today,
+                    Subcription_End_date=today + timedelta(days=365), # 1 Saal ki validity
+                    Status="Active"
                 )
             # ----------------------------------------------------
             
