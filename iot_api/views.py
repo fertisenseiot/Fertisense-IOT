@@ -655,24 +655,24 @@ class AddReadingByMacIdView(APIView):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def hardware_payment_status_mac_api(request):
-    """
-    Check Hardware Payment Status using DEVICE_MACID
-    """
     mac_id = request.GET.get("mac_id")
-
     if not mac_id:
         return Response({"status": 0, "message": "mac_id parameter is missing"})
 
     device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
 
     if not device:
-        return Response({"status": 0, "message": "Device not found for this MAC ID"})
+        # 🚀 VIP PASS: Agar device naya hai, toh hardware ko block mat karo, use '1' bhej do!
+        return Response({
+            "status": 1,
+            "mac_id": mac_id,
+            "hardware_payment_done": 1
+        })
 
     return Response({
         "status": 1,
         "mac_id": device.DEVICE_MACID,
         "device_id": device.DEVICE_ID,
-        # 0 = payment pending, 1 = payment done
         "hardware_payment_done": device.IS_HARDWARE_PAYMENT_DONE 
     })
 
@@ -680,24 +680,23 @@ def hardware_payment_status_mac_api(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def devicecheck_mac(request):
-    """
-    Check Subscription Status using DEVICE_MACID
-    """
     mac_id = request.GET.get("mac_id")
-
     if not mac_id:
         return Response({"status": 0, "message": "mac_id parameter is missing"})
 
     device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
 
     if not device:
+        # 🚀 VIP PASS: Hardware ko bol do ki sab "Active" hai, taaki wo reading bhej sake!
         return Response({
             "mac_id": mac_id,
-            "exists": False,
-            "plan_type": None,
-            "valid_till": None,
-            "status": "Device Not Found"
+            "exists": True, # Yahan True bhej rahe hain bypass ke liye
+            "plan_type": "Auto-Trial",
+            "valid_till": "2099-12-31",
+            "status": "Active"
         }, status=200)
+
+    # ... Baaki neeche ka poora purana code waisa hi rahega (Active/Future/Expired check)
 
     # Agar device mil gaya toh uski ID nikaal lo
     device_id = device.DEVICE_ID
