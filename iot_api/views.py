@@ -602,10 +602,10 @@ class AddReadingByMacIdView(APIView):
                     DEVICE_MACID=mac_id,
                     DEVICE_NAME=auto_name,
                     DEVICE_STATUS=1,
-                    IS_HARDWARE_PAYMENT_DONE=1,  # 👈 YAHAN PAYMENT DONE (1) SET KAR DIYA
-                    CATEGORY_ID_id=category_id,
-                    ORGANIZATION_ID_id=default_org_id,
-                    CENTRE_ID_id=default_centre_id
+                    IS_HARDWARE_PAYMENT_DONE=1,
+                    CATEGORY_ID=category_id,         # 👈 Yahan se _id hata diya
+                    ORGANIZATION_ID=default_org_id,  # 👈 Yahan se _id hata diya
+                    CENTRE_ID=default_centre_id      # 👈 Yahan se _id hata diya
                 )
                 # 8. 🚀 Naye device ko 1-Saal ka Auto-Subscription de do
                 from datetime import timedelta
