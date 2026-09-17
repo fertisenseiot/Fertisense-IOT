@@ -613,8 +613,8 @@ class AddReadingByMacIdView(APIView):
                 
                 SubscriptionHistory.objects.create(
                     Device_ID=device,
-                    Subscription_ID_id=1, # 👈 Yahan apne Database ki kisi valid Package ID ko daalna (e.g. 1)
-                    Plan_ID_id=1,         # 👈 Yahan apne Database ki kisi valid Plan ID ko daalna (e.g. 1)
+                    Subscription_ID=1, # 👈 Yahan apne Database ki kisi valid Package ID ko daalna (e.g. 1)
+                    Plan_ID=1,         # 👈 Yahan apne Database ki kisi valid Plan ID ko daalna (e.g. 1)
                     Subscription_Start_date=today,
                     Subcription_End_date=today + timedelta(days=365), # 1 Saal ki validity
                     Status="Active"
