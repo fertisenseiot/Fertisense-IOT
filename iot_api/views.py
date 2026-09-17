@@ -597,28 +597,31 @@ class AddReadingByMacIdView(APIView):
                 # 6. Final Naya Naam (Jaise: RedOrangesConsulting15_voc_2.0)
                 auto_name = f"{org_name}{next_count}_{device_keyword}"
                 
-                # 7. Device create karo (Ye karte hi tumhara signals.py chal jayega!)
+                # 7. Device create karo (Sath mein Payment = 1 kar do)
                 device = MasterDevice.objects.create(
                     DEVICE_MACID=mac_id,
                     DEVICE_NAME=auto_name,
                     DEVICE_STATUS=1,
                     IS_HARDWARE_PAYMENT_DONE=1,
-                    CATEGORY_ID=category_id,         # 👈 Yahan se _id hata diya
-                    ORGANIZATION_ID=default_org_id,  # 👈 Yahan se _id hata diya
-                    CENTRE_ID=default_centre_id      # 👈 Yahan se _id hata diya
+                    CATEGORY_ID=category_id,
+                    ORGANIZATION_ID=default_org_id,
+                    CENTRE_ID=default_centre_id
                 )
-                # 8. 🚀 Naye device ko 1-Saal ka Auto-Subscription de do
+                
+                # 8. 🚀 Naye device ko hamesha "Device + Data Logging" (ID: 2) ka Auto-Subscription de do
                 from datetime import timedelta
                 today = date.today()
                 
                 SubscriptionHistory.objects.create(
-                    Device_ID=device,
-                    Subscription_ID=1, # 👈 Yahan apne Database ki kisi valid Package ID ko daalna (e.g. 1)
-                    Plan_ID=1,         # 👈 Yahan apne Database ki kisi valid Plan ID ko daalna (e.g. 1)
+                    Device_ID=device.DEVICE_ID,      # 👈 Naye bane huye device ki ID
+                    Subscription_ID=2,               # 👈 2 = "Device + Data Logging"
+                    Plan_ID=1,                       # 👈 1 = "Subscription"
                     Subscription_Start_date=today,
                     Subcription_End_date=today + timedelta(days=365), # 1 Saal ki validity
+                    Payment_Date=today,              # 👈 DB me ye column bhi tha
                     Status="Active"
                 )
+                # ----------------------------------------------------
             # ----------------------------------------------------
             
             # Step 2: Is DEVICE_ID se jude huye SAARE SENSOR_IDs nikaalo
