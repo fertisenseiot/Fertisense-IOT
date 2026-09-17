@@ -1,5 +1,5 @@
 /* ============================================================
-   USER DASHBOARD MAIN SCRIPT
+   USER DASHBOARD MAIN SCRIPT - OPTIMIZED
    ------------------------------------------------------------
    Handles:
    - API configuration
@@ -11,339 +11,228 @@
    - Role-based UI control
    ============================================================ */
 
-
- /* ===============================
+/* ===============================
    BASE URL CONFIGURATION
    =============================== */
   
 const BASE_URL = "https://fertisense-iot-production.up.railway.app";
- // const BASE_URL ="http://127.0.0.1:8000";
+// const BASE_URL ="http://127.0.0.1:8000";
 
 // API Endpoints Mapping
- const API = {
-  masterorganizations: BASE_URL + "/api/masterorganization/",
-  mastercentre: BASE_URL + "/api/mastercentre/",
-  devicecategory: BASE_URL + "/api/devicecategory/",
-  masterDevices: BASE_URL + "/api/masterdevice/",
-  devicereadinglog: BASE_URL + "/api/devicereadinglog/",
-  devicealarmlog: BASE_URL + "/api/devicealarmlog/",
-  userorganizationcentrelinks: BASE_URL + "/api/userorganizationcentrelink/",
-  userorganizationcentrelink: BASE_URL + "/api/userorgcentre/",
-  masteruom: BASE_URL + "/api/masteruom/",
-  createuser: BASE_URL+"/api/masteruser/",
-  masterparameter: BASE_URL + "/api/masterparameter/",
-  devicestatusalarmlog: BASE_URL + "/api/devicestatusalarmlog"
+const API = {
+    masterorganizations: BASE_URL + "/api/masterorganization/",
+    mastercentre: BASE_URL + "/api/mastercentre/",
+    devicecategory: BASE_URL + "/api/devicecategory/",
+    masterDevices: BASE_URL + "/api/masterdevice/",
+    devicereadinglog: BASE_URL + "/api/devicereadinglog/",
+    devicealarmlog: BASE_URL + "/api/devicealarmlog/",
+    userorganizationcentrelinks: BASE_URL + "/api/userorganizationcentrelink/",
+    userorganizationcentrelink: BASE_URL + "/api/userorgcentre/",
+    masteruom: BASE_URL + "/api/masteruom/",
+    createuser: BASE_URL+"/api/masteruser/",
+    masterparameter: BASE_URL + "/api/masterparameter/",
+    devicestatusalarmlog: BASE_URL + "/api/devicestatusalarmlog"
 };
 
 /* ===============================
    GLOBAL STATE VARIABLES
    =============================== */
-
-// 🔥 Hide navbar labels until correct user loads
-document.addEventListener("DOMContentLoaded", function () {
-
-    const orgLabel = document.getElementById("navbarOrgLabel");
-    const centreLabel = document.getElementById("navbarCentreLabel");
-
-    if (orgLabel) orgLabel.style.display = "none";
-    if (centreLabel) centreLabel.style.display = "none";
-
-});
-
 let centreData=[], allDevices=[], allCategories=[], currentCentreId=null, currentUser=null;
 let editingUserId = null;
-let currentCategoryId=null, liveUpdateInterval=null;
+let currentCategoryId=null, liveUpdateTimer=null;
 window.currentDeviceGraphDeviceId = null;
-let graphRangeMinutes = 1440;   // default = 1 day
-window.currentGraphParameterId = null;   // incubator ke liye active parameter
+let graphRangeMinutes = 1440;   
+window.currentGraphParameterId = null;   
+
+// 🚀 GLOBAL CACHE FOR STATIC DATA
+let globalParams = [];
+let globalUOMs = [];
+
+document.addEventListener("DOMContentLoaded", function () {
+    const orgLabel = document.getElementById("navbarOrgLabel");
+    const centreLabel = document.getElementById("navbarCentreLabel");
+    if (orgLabel) orgLabel.style.display = "none";
+    if (centreLabel) centreLabel.style.display = "none";
+});
 
 /* ============================================================
-   LOAD ORGANIZATIONS FOR CURRENT USER
-   - Fetch logged-in user
-   - Fetch allowed org-centre links
-   - Populate organization dropdown
-   - Auto-load first allowed centre
-   - Update navbar labels
+   INITIALIZATION
    ============================================================ */
-// ------------- LOAD DATA -------------
+(async function(){ 
+    await preloadMasterData();
+    await loadOrganizations();
+    await checkSubscriptionStatus(); 
+    handleRoleDisable();
+})();
+
+// 🚀 PRELOAD MASTER DATA ONCE
+async function preloadMasterData() {
+    try {
+        const [params, uoms] = await Promise.all([
+            fetch(API.masterparameter).then(r=>r.json()),
+            fetch(API.masteruom).then(r=>r.json())
+        ]);
+        globalParams = params || [];
+        globalUOMs = uoms || [];
+    } catch (err) {
+        console.error("Failed to preload master data:", err);
+    }
+}
 
 function getDeviceType(device){
-
-    const category = allCategories.find(
-        c => c.CATEGORY_ID === device.CATEGORY_ID
-    );
-
+    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
     const name = category?.CATEGORY_NAME?.toLowerCase() || "";
-
-    if(name.includes("incubator") || name.includes("voc")){
-        return "MULTI";
-    }
-
-    if(name.includes("refricheck") || name.includes("cryo")){
-        return "SINGLE";
-    }
-
+    if(name.includes("incubator") || name.includes("voc")) return "MULTI";
+    if(name.includes("refricheck") || name.includes("cryo")) return "SINGLE";
     return "UNKNOWN";
 }
 
-async function loadOrganizations(){
-  try{
-const userRes = await fetch(BASE_URL + "/api/currentuser/", {
-  credentials: "include"
-});
-currentUser = await userRes.json();
-
-   
-    if (!currentUser || !currentUser.USER_ID) {
-    console.error("❌ currentUser not ready", currentUser);
-    return;
-} // added on saturday
-
-    const linkRes = await fetch(API.userorganizationcentrelink, {
-    credentials: "include"
-});
-
-    const userLinks = await linkRes.json();
-    if (!Array.isArray(userLinks)) {
-  console.error("❌ userorgcentre API failed", userLinks);
-  return;   // ⛔ yahin function stop
-}
-    const allowedOrgIds = userLinks.map(l => l.ORGANIZATION_ID);
-
-    const res = await fetch(API.masterorganizations);
-    const orgs = await res.json();
-    const orgSelect = document.getElementById("organizationSelect");
-    orgSelect.innerHTML = '<option value="">Select Organization</option>';
-    orgs.filter(o => allowedOrgIds.includes(o.ORGANIZATION_ID))
-        .forEach(o => orgSelect.innerHTML += `<option value="${o.ORGANIZATION_ID}">${o.ORGANIZATION_NAME}</option>`);
-    
-    if(userLinks.length>0){
-      orgSelect.value = userLinks[0].ORGANIZATION_ID;
-      await loadCentres(orgSelect.value, true, userLinks[0].CENTRE_ID);
-    }
-
-    // ⭐ NAVBAR ORGANIZATION LABEL UPDATE
-try {
-    const orgLabel = document.getElementById("navbarOrgName");
-    const orgWrapper = document.getElementById("navbarOrgLabel");
-
-    if (orgWrapper) orgWrapper.style.display = "block";
-
-    const selectedOrg = orgs.find(o => o.ORGANIZATION_ID == orgSelect.value);
-
-    if (selectedOrg && orgLabel) {
-        orgLabel.innerText = "Organization: " + selectedOrg.ORGANIZATION_NAME;
-    }
-} catch(e){console.log(e);}
-
-// ⭐ set navbar org + centre finally
-if (userLinks.length > 0) {
-
-    const orgName =
-        orgs.find(o => o.ORGANIZATION_ID == userLinks[0].ORGANIZATION_ID)?.ORGANIZATION_NAME || "";
-
-    const centreName =
-        centreData.find(c => c.CENTRE_ID == userLinks[0].CENTRE_ID)?.CENTRE_NAME || "";
-
-    setNavbarOrgCentre(orgName, centreName);
-
-    // 🔥 ROLE BASED CENTRE UI APPLY
-    applyCentreRoleUI(currentUser, centreData);
-}
-
-  }catch(err){ console.error(err);}
-}
-
 /* ============================================================
-   LOAD CENTRES BASED ON SELECTED ORGANIZATION
-   - Filters centre list
-   - Auto-select user default centre
-   - Updates navbar centre name
+   LOAD ORGANIZATIONS & CENTRES
    ============================================================ */
+async function loadOrganizations(){
+    try{
+        const userRes = await fetch(BASE_URL + "/api/currentuser/", { credentials: "include" });
+        currentUser = await userRes.json();
+        
+        if (!currentUser || !currentUser.USER_ID) {
+            console.error("❌ currentUser not ready", currentUser);
+            return;
+        } 
+
+        const linkRes = await fetch(API.userorganizationcentrelink, { credentials: "include" });
+        const userLinks = await linkRes.json();
+        
+        if (!Array.isArray(userLinks)) {
+            console.error("❌ userorgcentre API failed", userLinks);
+            return;  
+        }
+        
+        const allowedOrgIds = userLinks.map(l => l.ORGANIZATION_ID);
+        const res = await fetch(API.masterorganizations);
+        const orgs = await res.json();
+        
+        const orgSelect = document.getElementById("organizationSelect");
+        
+        // 🚀 DOM BUFFERING
+        let orgHtml = '<option value="">Select Organization</option>';
+        orgs.filter(o => allowedOrgIds.includes(o.ORGANIZATION_ID))
+            .forEach(o => orgHtml += `<option value="${o.ORGANIZATION_ID}">${o.ORGANIZATION_NAME}</option>`);
+        orgSelect.innerHTML = orgHtml;
+        
+        if(userLinks.length>0){
+            orgSelect.value = userLinks[0].ORGANIZATION_ID;
+            await loadCentres(orgSelect.value, true, userLinks[0].CENTRE_ID);
+        }
+
+        try {
+            const orgLabel = document.getElementById("navbarOrgName");
+            const orgWrapper = document.getElementById("navbarOrgLabel");
+            if (orgWrapper) orgWrapper.style.display = "block";
+            const selectedOrg = orgs.find(o => o.ORGANIZATION_ID == orgSelect.value);
+            if (selectedOrg && orgLabel) {
+                orgLabel.innerText = "Organization: " + selectedOrg.ORGANIZATION_NAME;
+            }
+        } catch(e){}
+
+        if (userLinks.length > 0) {
+            const orgName = orgs.find(o => o.ORGANIZATION_ID == userLinks[0].ORGANIZATION_ID)?.ORGANIZATION_NAME || "";
+            const centreName = centreData.find(c => c.CENTRE_ID == userLinks[0].CENTRE_ID)?.CENTRE_NAME || "";
+            setNavbarOrgCentre(orgName, centreName);
+            applyCentreRoleUI(currentUser, centreData);
+        }
+    }catch(err){ console.error(err);}
+}
 
 async function loadCentres(orgId, auto = false, userCentreId = null) {
-  const centreSelect = document.getElementById("centreSelect");
-  centreSelect.innerHTML = '<option value="">Select Centre</option>';
-  if (!orgId) return;
+    const centreSelect = document.getElementById("centreSelect");
+    if (!orgId) return;
 
-  try {
-    if (!centreData.length) {
-      const res = await fetch(API.mastercentre);
-      centreData = await res.json();
-    }
-
-    let filtered = centreData.filter(c => c.ORGANIZATION_ID == orgId);
-
-    filtered.forEach(c => {
-      centreSelect.innerHTML += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`;
-    });
-
-    if (auto && userCentreId) {
-      centreSelect.value = userCentreId;
-      currentCentreId = userCentreId;
-      loadDevices(userCentreId);
-    }
-
-    /* ⭐⭐⭐ NAVBAR CENTRE NAME UPDATE ⭐⭐⭐ */
     try {
-      const label = document.getElementById("navbarCentreName");
-      const labelWrapper = document.getElementById("navbarCentreLabel");
-
-      // 👉 navbar centre label dikhao
-      if (labelWrapper) labelWrapper.style.display = "block";
-
-      if (label) {
-
-        let centreObj = centreData.find(c => c.CENTRE_ID == currentCentreId);
-
-        if (!centreObj && centreSelect.value) {
-          centreObj = centreData.find(c => c.CENTRE_ID == centreSelect.value);
+        if (!centreData.length) {
+            const res = await fetch(API.mastercentre);
+            centreData = await res.json();
         }
 
-        if (centreObj) {
-          label.innerHTML = " Centre: " + centreObj.CENTRE_NAME;
+        let filtered = centreData.filter(c => c.ORGANIZATION_ID == orgId);
+        
+        // 🚀 DOM BUFFERING
+        let centreHtml = '<option value="">Select Centre</option>';
+        filtered.forEach(c => {
+            centreHtml += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`;
+        });
+        centreSelect.innerHTML = centreHtml;
+
+        if (auto && userCentreId) {
+            centreSelect.value = userCentreId;
+            currentCentreId = userCentreId;
+            loadDevices(userCentreId);
         }
-      }
-    } catch (e) {
-      console.log(e);
+
+        try {
+            const label = document.getElementById("navbarCentreName");
+            const labelWrapper = document.getElementById("navbarCentreLabel");
+            if (labelWrapper) labelWrapper.style.display = "block";
+
+            if (label) {
+                let centreObj = centreData.find(c => c.CENTRE_ID == currentCentreId) || centreData.find(c => c.CENTRE_ID == centreSelect.value);
+                if (centreObj) label.innerHTML = " Centre: " + centreObj.CENTRE_NAME;
+            }
+        } catch (e) {}
+
+        const orgText = document.getElementById("organizationSelect").selectedOptions[0]?.textContent || "";
+        let centreText = centreSelect.value ? centreSelect.selectedOptions[0]?.textContent : (centreData.find(c => c.CENTRE_ID == userCentreId)?.CENTRE_NAME || "");
+
+        setNavbarOrgCentre(orgText, centreText);
+    } catch (err) {
+        console.error(err);
     }
-
-   const orgText =
-    document.getElementById("organizationSelect").selectedOptions[0]?.textContent || "";
-
-let centreText = "";
-
-if (centreSelect.value) {
-    centreText =
-        centreSelect.selectedOptions[0]?.textContent || "";
-} 
-else if (userCentreId) {
-    const c = centreData.find(c => c.CENTRE_ID == userCentreId);
-    centreText = c?.CENTRE_NAME || "";
 }
-
-setNavbarOrgCentre(orgText, centreText);
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-
-/* ============================================================
-   LOAD DEVICES FOR SELECTED CENTRE
-   - Fetch devices
-   - Fetch categories
-   - Show category cards
-   - Trigger live summary update
-   ============================================================ */
-
-// async function preloadCentreData(centreId){
-
-//   console.log("Fetching centre readings for centre:", centreId);
-
-//   const data = await fetch(
-//       API.devicereadinglog + `?centre=${centreId}`
-//   ).then(r => r.json());
-
-//   window.cache.centreReadings[centreId] = data || [];
-// }
 
 async function loadDevices(centreId){
+    currentCentreId = centreId;
+    try{
+        const [devices, categories] = await Promise.all([
+            fetch(API.masterDevices).then(r=>r.json()),
+            fetch(API.devicecategory).then(r=>r.json())
+        ]);
 
-  currentCentreId = centreId;
+        allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
+        allCategories = categories;
 
-  // reset cache
- // window.cache.centreReadings = {};
-
- // await preloadCentreData(centreId);
-
-   // 🔥 clear device alarm cache on centre change
-  //window.cache.deviceAlarms = {};
- // window.cache.deviceStatusAlarms = {};
-
-  try{
-
-    const [devices, categories] = await Promise.all([
-      fetch(API.masterDevices).then(r=>r.json()),
-      fetch(API.devicecategory).then(r=>r.json())
-    ]);
-
-    allDevices = devices.filter(d=>d.CENTRE_ID==centreId);
-    allCategories = categories;
-
-    showCategoryCards();
-    setTimeout(updateSummaryLive, 0);
-
-  }catch(err){console.error(err);}
+        showCategoryCards();
+        setTimeout(updateSummaryLive, 0);
+    }catch(err){console.error(err);}
 }
 
-
-
-// ------------- DASHBOARD UI -------------
 function clearFilters(){
     document.getElementById("startDateTime").value = "";
     document.getElementById("endDateTime").value = "";
-
-    // reload current data without filters
-    if(currentCategoryId){
-        updateDashboardLive(currentCategoryId);
-    }
-
+    if(currentCategoryId) updateDashboardLive(currentCategoryId);
     if(window.currentDeviceGraphDeviceId){
         const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
-        if(d){
-            loadDeviceReadings(d);
-        }
+        if(d) loadDeviceReadings(d);
     }
 }
-
-/* ============================================================
-   UPDATE SUMMARY CARDS
-   - Total Devices
-   - Active Devices
-   - Offline Devices
-   ============================================================ */
 
 function updateSummary(){
     const total = allDevices.length;
     const active = allDevices.filter(d => d.status === "active").length;
     const offline = total - active;
-
     document.getElementById("totalDevices").textContent = total;
     document.getElementById("activeDevices").textContent = active;
     document.getElementById("offlineDevices").textContent = offline;
 }
 
 function formatDateTimeDDMMYY(dateStr, timeStr){
-  if(!dateStr || !timeStr) return "-";
-
-  const d = new Date(dateStr + "T" + timeStr);
-
-  if (isNaN(d)) return "-";
-
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-
-  const hh = String(d.getHours()).padStart(2, "0");
-  const min = String(d.getMinutes()).padStart(2, "0");
-
-  return `${dd}-${mm}-${yy} ${hh}:${min}`;
+    if(!dateStr || !timeStr) return "-";
+    const d = new Date(dateStr + "T" + timeStr);
+    if (isNaN(d)) return "-";
+    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-
-/* ============================================================
-   SET GRAPH TIME RANGE
-   - Updates graphRangeMinutes
-   - Highlights active range button
-   - Reloads device graph
-   ============================================================ */
-
 function setGraphRange(minutes){
-
     graphRangeMinutes = minutes;
-    // 🔥 FIX ACTIVE BUTTON STATE
     document.querySelectorAll(".range-btn").forEach(btn=>{
         btn.classList.remove("btn-primary");
         btn.classList.add("btn-outline-primary");
@@ -356,323 +245,215 @@ function setGraphRange(minutes){
     }
 
     if(window.currentDeviceGraphDeviceId){
-        const d = allDevices.find(
-            x => x.DEVICE_ID === window.currentDeviceGraphDeviceId
-        );
-        if(d){
-            loadDeviceReadings(d);
-        }
+        const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        if(d) loadDeviceReadings(d);
     }
 }
 
-
-
 function showCategoryCards(){
-  document.getElementById("deviceDetailsContainer").style.display="none";
-  const container=document.getElementById("deviceTypeCards");
-  container.innerHTML="";
-  allCategories.forEach(cat=>{
-    const devicesOfCat = allDevices.filter(d=>d.CATEGORY_ID===cat.CATEGORY_ID);
-    const count = devicesOfCat.length;
-    const card = document.createElement("div");
-    card.className="device-type-card";
-    card.innerHTML=`<h6>${cat.CATEGORY_NAME}</h6><strong>${count}</strong>`;
-    if(count>0) card.onclick=()=>openDeviceDashboard(cat.CATEGORY_ID);
-    else card.classList.add('disabled');
-    container.appendChild(card);
-  });
+    document.getElementById("deviceDetailsContainer").style.display="none";
+    const container = document.getElementById("deviceTypeCards");
+    container.innerHTML="";
+    
+    allCategories.forEach(cat=>{
+        const devicesOfCat = allDevices.filter(d=>d.CATEGORY_ID===cat.CATEGORY_ID);
+        const count = devicesOfCat.length;
+        const card = document.createElement("div");
+        card.className="device-type-card";
+        card.innerHTML=`<h6>${cat.CATEGORY_NAME}</h6><strong>${count}</strong>`;
+        if(count>0) card.onclick=()=>openDeviceDashboard(cat.CATEGORY_ID);
+        else card.classList.add('disabled');
+        container.appendChild(card);
+    });
 }
 
-
-
 /* ============================================================
-   SHOW CREATE USER FORM
-   - Hide dashboard
-   - Show form
-   - Load user list
+   USER MANAGEMENT
    ============================================================ */
-
 function showUserForm() {
-
     if(currentUser.ROLE_ID !== 2) return;
-
-    const modal = new bootstrap.Modal(
-        document.getElementById('createUserModal')
-    );
-
+    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
     modal.show();
-
-    // 🔥 ALSO LOAD USER LIST
     loadUserList();
-
-    // 🔥 SHOW USER LIST SECTION
     document.getElementById("userListContainer").style.display = "block";
 }
 
-
-
-/* ============================================================
-   LOAD USER LIST CREATED BY CURRENT ADMIN
-   ============================================================ */
-
 async function loadUserList() {
-  try {
-    const res = await fetch(BASE_URL + "/api/masteruser/");
-    let users = await res.json();
+    try {
+        const res = await fetch(BASE_URL + "/api/masteruser/");
+        let users = await res.json();
+        users = users.filter(u => u.CREATED_BY === currentUser.USER_ID).sort((a,b)=> b.USER_ID - a.USER_ID);
 
-    // Filter by current user & sort descending by USER_ID (latest first)
-    users = users.filter(u => u.CREATED_BY === currentUser.USER_ID)
-                 .sort((a,b)=> b.USER_ID - a.USER_ID);
-
-    const tbody = document.getElementById("userListBody");
-    tbody.innerHTML = "";
-
-    users.forEach((u, index) => {
-      const serial = index + 1; // Latest = 1
-      const validity = `${u.VALIDITY_START || '-'} → ${u.VALIDITY_END || '-'}`;
-      tbody.innerHTML += `
-        <tr>
-          <td>${serial}</td>
-          <td>${u.USERNAME}</td>
-          <td>${u.ACTUAL_NAME}</td>
-          <td>${u.EMAIL}</td>
-          <td>${u.PHONE || '-'}</td>
-          <td>${u.ROLE_ID == 2 ? "IoT Admin" : "User"}</td>
-          <td>${validity}</td>
-          <td>
-   <button class="btn btn-sm btn-warning"
-           onclick="editUser(${u.USER_ID})">
-      Edit
-   </button>
-</td>
-        </tr>
-      `;
-    });
-  } catch (err) {
-    console.error("Failed to load users:", err);
-  }
+        const tbody = document.getElementById("userListBody");
+        
+        // 🚀 DOM BUFFERING
+        let rows = "";
+        users.forEach((u, index) => {
+            const serial = index + 1;
+            const validity = `${u.VALIDITY_START || '-'} → ${u.VALIDITY_END || '-'}`;
+            rows += `
+                <tr>
+                    <td>${serial}</td>
+                    <td>${u.USERNAME}</td>
+                    <td>${u.ACTUAL_NAME}</td>
+                    <td>${u.EMAIL}</td>
+                    <td>${u.PHONE || '-'}</td>
+                    <td>${u.ROLE_ID == 2 ? "IoT Admin" : "User"}</td>
+                    <td>${validity}</td>
+                    <td><button class="btn btn-sm btn-warning" onclick="editUser(${u.USER_ID})">Edit</button></td>
+                </tr>`;
+        });
+        tbody.innerHTML = rows;
+    } catch (err) {
+        console.error("Failed to load users:", err);
+    }
 }
 
-/* ============================================================
-   HANDLE CREATE USER FORM SUBMISSION
-   - Validate fields
-   - Check duplicates
-   - Send POST request
-   - Reload user list
-   ============================================================ */
-
-// Form submission ke baad list reload
 document.getElementById("createUserForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+    e.preventDefault();
+    const now = new Date();
+    const username = document.getElementById("newUsername").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+    const actualName = document.getElementById("newActualName").value.trim();
 
-  const now = new Date();
-  const username = document.getElementById("newUsername").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("newPassword").value;
-  const confirmPassword = document.getElementById("confirmPassword").value;
-  const actualName = document.getElementById("newActualName").value.trim();
-
-  // 🔹 Required fields check
-  if (!username || !password || !confirmPassword || !actualName || !email) {
-    alert("❌ Please fill all required fields!");
-    return;
-  }
-
-  // 🔹 Password match check
-  if (password !== confirmPassword) {
-    alert("❌ Passwords do not match!");
-    return;
-  }
-
-  try {
-    // 🔹 Fetch existing users created by current admin
-    const resUsers = await fetch(BASE_URL + "/api/masteruser/");
-    const users = await resUsers.json();
-    const filteredUsers = users.filter(u => u.CREATED_BY === currentUser.USER_ID);
-
-    // 🔹 Frontend duplicate check
-    if (filteredUsers.some(u => u.USERNAME.toLowerCase() === username.toLowerCase())) {
-      alert("❌ Username already exists!");
-      return;
+    if (!username || !password || !confirmPassword || !actualName || !email) {
+        alert("❌ Please fill all required fields!"); return;
     }
-    if (filteredUsers.some(u => u.EMAIL.toLowerCase() === email.toLowerCase())) {
-      alert("❌ Email already exists!");
-      return;
+    if (password !== confirmPassword) {
+        alert("❌ Passwords do not match!"); return;
     }
 
-    // 🔹 Prepare payload
-    const payload = {
-      USERNAME: username,
-      PASSWORD: password,
-      ACTUAL_NAME: actualName,
-      EMAIL: email,
-      PHONE: document.getElementById("phone").value.trim() || null,
-      CREATED_BY: currentUser.USER_ID,
-      CREATED_ON: now.toISOString().split("T")[0],
-      VALIDITY_START: document.getElementById("validityStart").value || now.toISOString().split("T")[0],
-      VALIDITY_END: document.getElementById("validityEnd").value || null,
-      SEND_EMAIL: document.getElementById("sendEmail").checked,
-      SEND_SMS: document.getElementById("sendSMS").checked,
-      ROLE_ID: parseInt(document.getElementById("newUserRole").value),
-      PASSWORD_RESET: false
-    };
+    try {
+        const resUsers = await fetch(BASE_URL + "/api/masteruser/");
+        const users = await resUsers.json();
+        const filteredUsers = users.filter(u => u.CREATED_BY === currentUser.USER_ID);
 
-    // 🔹 Submit to backend
-let url = BASE_URL + "/api/masteruser/";
-let method = "POST";
+        if (filteredUsers.some(u => u.USERNAME.toLowerCase() === username.toLowerCase())) {
+            alert("❌ Username already exists!"); return;
+        }
+        if (filteredUsers.some(u => u.EMAIL.toLowerCase() === email.toLowerCase())) {
+            alert("❌ Email already exists!"); return;
+        }
 
-if(editingUserId){
-    url = BASE_URL + "/api/masteruser/" + editingUserId + "/";
-    method = "PUT";
-}
+        const payload = {
+            USERNAME: username, PASSWORD: password, ACTUAL_NAME: actualName, EMAIL: email,
+            PHONE: document.getElementById("phone").value.trim() || null,
+            CREATED_BY: currentUser.USER_ID, CREATED_ON: now.toISOString().split("T")[0],
+            VALIDITY_START: document.getElementById("validityStart").value || now.toISOString().split("T")[0],
+            VALIDITY_END: document.getElementById("validityEnd").value || null,
+            SEND_EMAIL: document.getElementById("sendEmail").checked,
+            SEND_SMS: document.getElementById("sendSMS").checked,
+            ROLE_ID: parseInt(document.getElementById("newUserRole").value),
+            PASSWORD_RESET: false
+        };
 
-const res = await fetch(url, {
-    method: method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+        let url = BASE_URL + "/api/masteruser/";
+        let method = "POST";
+        if(editingUserId){
+            url = BASE_URL + "/api/masteruser/" + editingUserId + "/";
+            method = "PUT";
+        }
+
+        const res = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+        if (res.ok) {
+            alert(editingUserId ? "✅ User updated successfully!" : "✅ User created successfully!");
+            document.getElementById("createUserForm").reset();
+            loadUserList();
+            editingUserId = null;
+            document.querySelector("#createUserForm button[type='submit']").innerText = "Create";
+        } else {
+            const data = await res.json();
+            let messages = [];
+            if (data.USERNAME) messages.push("Username already exists!");
+            if (data.EMAIL) messages.push("Email already exists!");
+            alert(messages.length ? `❌ ${messages.join("\n")}` : "❌ Failed to create user!");
+        }
+    } catch (err) {
+        alert("❌ Error creating user! Please try again.");
+    }
 });
 
-
-if (res.ok) {
-    alert(editingUserId ? "✅ User updated successfully!" : "✅ User created successfully!");
-    document.getElementById("createUserForm").reset();
-    loadUserList();
-
-    editingUserId = null;
-    document.querySelector("#createUserForm button[type='submit']").innerText = "Create";
-
-} else {
-    const data = await res.json();
-    // 🔹 Friendly error message
-    let messages = [];
-    if (data.USERNAME) messages.push("Username already exists!");
-    if (data.EMAIL) messages.push("Email already exists!");
-    const msg = messages.length ? `❌ ${messages.join("\n")}` : "❌ Failed to create user!";
-    alert(msg);
-}
-
-
-  } catch (err) {
-    alert("❌ Error creating user! Please try again.");
-  }
-});
-
-/* ============================================================
-   ROLE BASED UI CONTROL
-   - Hide org/centre filters for normal users
-   - Show full access for IoT Admin
-   ============================================================ */
 function handleRoleDisable() {
-
-  // 👉 NORMAL USER
-  if (currentUser.ROLE_ID !== 2) {
-
-      // hide ONLY org & centre filters
-      const org = document.getElementById("organizationSelect")?.parentElement;
-      const centre = document.getElementById("centreSelect")?.parentElement;
-
-      if (org) org.style.display = "none";
-      if (centre) centre.style.display = "none";
-
-      return;
-  }
-
-  // 👉 ADMIN (everything visible)
-  const navItem = document.getElementById("userManagementNav");
-  if (navItem) navItem.classList.remove("d-none");
+    if (currentUser.ROLE_ID !== 2) {
+        const org = document.getElementById("organizationSelect")?.parentElement;
+        const centre = document.getElementById("centreSelect")?.parentElement;
+        if (org) org.style.display = "none";
+        if (centre) centre.style.display = "none";
+        return;
+    }
+    const navItem = document.getElementById("userManagementNav");
+    if (navItem) navItem.classList.remove("d-none");
 }
 
-
-
-// 🔹 Show/hide section
 function showUserOrgCentreLinkForm(){
-
     if(currentUser.ROLE_ID !== 2) return;
-
-    const modal = new bootstrap.Modal(
-        document.getElementById('userLinkModal')
-    );
-
+    const modal = new bootstrap.Modal(document.getElementById('userLinkModal'));
     modal.show();
-
     loadUsersForLink();
     loadOrganizationsForLink();
     loadUserOrgCentreLinks();
 }
 
-
 function togglePassword() {
-  const passwordField = document.getElementById("newPassword");
-  const confirmField = document.getElementById("confirmPassword");
-  const checkbox = document.getElementById("showPassword");
-
-  if (checkbox.checked) {
-    passwordField.type = "text";
-    confirmField.type = "text";
-  } else {
-    passwordField.type = "password";
-    confirmField.type = "password";
-  }
+    const passwordField = document.getElementById("newPassword");
+    const confirmField = document.getElementById("confirmPassword");
+    const checkbox = document.getElementById("showPassword");
+    passwordField.type = confirmField.type = checkbox.checked ? "text" : "password";
 }
-
-
 
 function hideUserOrgCentreLinkForm(){
-  document.getElementById("userOrgCentreLinkSection").style.display="none";
-  document.getElementById("deviceTypeCards").style.display="flex";
+    document.getElementById("userOrgCentreLinkSection").style.display="none";
+    document.getElementById("deviceTypeCards").style.display="flex";
 }
 
-// 🔹 Load users (only created by current user)
 async function loadUsersForLink() {
-  try {
-    const res = await fetch(BASE_URL + "/api/masteruser/");
-    const users = await res.json();
-    const filteredUsers = users.filter(u => u.CREATED_BY === currentUser.USER_ID);
-    const select = document.getElementById("linkUserSelect");
-    select.innerHTML = '<option value="">Select User</option>';
-    filteredUsers.forEach(u => {
-      select.innerHTML += `<option value="${u.USER_ID}">${u.ACTUAL_NAME} (${u.USERNAME})</option>`;
-    });
-  } catch(err){ console.error(err); }
+    try {
+        const res = await fetch(BASE_URL + "/api/masteruser/");
+        const users = await res.json();
+        const filteredUsers = users.filter(u => u.CREATED_BY === currentUser.USER_ID);
+        const select = document.getElementById("linkUserSelect");
+        
+        let html = '<option value="">Select User</option>';
+        filteredUsers.forEach(u => html += `<option value="${u.USER_ID}">${u.ACTUAL_NAME} (${u.USERNAME})</option>`);
+        select.innerHTML = html;
+    } catch(err){ console.error(err); }
 }
 
-// 🔹 Load organizations (current user allowed only)
 async function loadOrganizationsForLink() {
-  try{
-    const linkRes = await fetch(API.userorganizationcentrelink, {
-  credentials: "include"
-});
-
-     const links = await linkRes.json();   // ✅ CORRECT
-
-     if (!Array.isArray(links)) {
-  console.error("❌ userorgcentre API did not return array", links);
-  return;
-}
-    const allowedOrgIds = [...new Set(links.map(l=>l.ORGANIZATION_ID))];
-
-    const resOrgs = await fetch(API.masterorganizations);
-    const orgs = await resOrgs.json();
-    const select = document.getElementById("linkOrgSelect");
-    select.innerHTML = '<option value="">Select Organization</option>';
-    orgs.filter(o=>allowedOrgIds.includes(o.ORGANIZATION_ID))
-        .forEach(o => select.innerHTML += `<option value="${o.ORGANIZATION_ID}">${o.ORGANIZATION_NAME}</option>`);
-    
-    select.addEventListener("change", e=>loadCentresForLink(e.target.value));
-  }catch(err){ console.error(err); }
+    try{
+        const linkRes = await fetch(API.userorganizationcentrelink, { credentials: "include" });
+        const links = await linkRes.json();
+        if (!Array.isArray(links)) return;
+        
+        const allowedOrgIds = [...new Set(links.map(l=>l.ORGANIZATION_ID))];
+        const resOrgs = await fetch(API.masterorganizations);
+        const orgs = await resOrgs.json();
+        const select = document.getElementById("linkOrgSelect");
+        
+        let html = '<option value="">Select Organization</option>';
+        orgs.filter(o=>allowedOrgIds.includes(o.ORGANIZATION_ID))
+            .forEach(o => html += `<option value="${o.ORGANIZATION_ID}">${o.ORGANIZATION_NAME}</option>`);
+        select.innerHTML = html;
+        select.addEventListener("change", e=>loadCentresForLink(e.target.value));
+    }catch(err){ console.error(err); }
 }
 
-// 🔹 Load centres based on selected org
 async function loadCentresForLink(orgId){
-  const select = document.getElementById("linkCentreSelect");
-  select.innerHTML = '<option value="">Select Centre</option>';
-  if(!orgId) return;
-  try{
-    const resCentres = await fetch(API.mastercentre);
-    const centres = await resCentres.json();
-    centres.filter(c => c.ORGANIZATION_ID == orgId)
-           .forEach(c=> select.innerHTML += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`);
-  }catch(err){ console.error(err); }
+    const select = document.getElementById("linkCentreSelect");
+    if(!orgId) {
+        select.innerHTML = '<option value="">Select Centre</option>';
+        return;
+    }
+    try{
+        const resCentres = await fetch(API.mastercentre);
+        const centres = await resCentres.json();
+        let html = '<option value="">Select Centre</option>';
+        centres.filter(c => c.ORGANIZATION_ID == orgId).forEach(c=> html += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`);
+        select.innerHTML = html;
+    }catch(err){ console.error(err); }
 }
 
 document.getElementById("saveUserLinkBtn").addEventListener("click", async () => {
@@ -680,93 +461,57 @@ document.getElementById("saveUserLinkBtn").addEventListener("click", async () =>
     const orgId = document.getElementById("linkOrgSelect").value;
     const centreId = document.getElementById("linkCentreSelect").value;
 
-    if (!userId || !orgId || !centreId) { 
-        alert("Select all fields!"); 
-        return; 
-    }
+    if (!userId || !orgId || !centreId) { alert("Select all fields!"); return; }
 
     try {
-        // ✅ Get user and check CREATED_BY
         const resUsers = await fetch(BASE_URL + "/api/masteruser/");
         const users = await resUsers.json();
         const user = users.find(u => u.USER_ID == userId);
         if (!user || user.CREATED_BY != currentUser.USER_ID) {
-            alert("❌ You can only link users you have created!");
-            return;
+            alert("❌ You can only link users you have created!"); return;
         }
 
-        // ✅ Payload with correct created_by
-        const payload = {
-            USER_ID: parseInt(userId),
-            ORGANIZATION_ID: parseInt(orgId),
-            CENTRE_ID: parseInt(centreId),
-            created_by: parseInt(currentUser.USER_ID)
-        };
-
-        const res = await fetch(API.userorganizationcentrelinks, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+        const payload = { USER_ID: parseInt(userId), ORGANIZATION_ID: parseInt(orgId), CENTRE_ID: parseInt(centreId), created_by: parseInt(currentUser.USER_ID) };
+        const res = await fetch(API.userorganizationcentrelinks, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
 
         if (res.ok) { 
-            alert("✅ Link saved!");
-            // 🔹 Reload table after save
+            alert("✅ Link saved!"); 
             await loadUserOrgCentreLinks(); 
         } else {
-            const data = await res.json();
-            console.error("Failed to save link:", data);
             alert("❌ Failed to save link! Check console for details.");
         }
-
     } catch (err) {
-        console.error("Error saving user link:", err);
         alert("❌ Error saving link!");
     }
 });
 
 async function loadUserOrgCentreLinks() {
-  try {
-    const res = await fetch(API.userorganizationcentrelinks, {
-  credentials: "include"
-});
-    let links = await res.json();
+    try {
+        const res = await fetch(API.userorganizationcentrelinks, { credentials: "include" });
+        let links = await res.json();
 
-    // 🔹 Get all users, orgs, centres to map names
-    const [usersRes, orgsRes, centresRes] = await Promise.all([
-      fetch(API.createuser),        // masteruser
-      fetch(API.masterorganizations),
-      fetch(API.mastercentre)
-    ]);
+        const [usersRes, orgsRes, centresRes] = await Promise.all([
+            fetch(API.createuser), fetch(API.masterorganizations), fetch(API.mastercentre)
+        ]);
 
-    const users = await usersRes.json();
-    const orgs = await orgsRes.json();
-    const centres = await centresRes.json();
+        const users = await usersRes.json();
+        const orgs = await orgsRes.json();
+        const centres = await centresRes.json();
 
-    // 🔹 Filter links created by current user & sort descending by LINK_ID (latest top)
-    links = links.filter(l => l.created_by === currentUser.USER_ID)
-                 .sort((a,b)=> (b.LINK_ID || 0) - (a.LINK_ID || 0));
-
-    const tbody = document.getElementById("userOrgCentreLinksBody");
-    tbody.innerHTML = "";
-
-    links.forEach((l, index) => {
-      const serial = index + 1; // Latest = 1
-      const userName = users.find(u => u.USER_ID === l.USER_ID)?.ACTUAL_NAME || '-';
-      const orgName = orgs.find(o => o.ORGANIZATION_ID === l.ORGANIZATION_ID)?.ORGANIZATION_NAME || '-';
-      const centreName = centres.find(c => c.CENTRE_ID === l.CENTRE_ID)?.CENTRE_NAME || '-';
-
-      tbody.innerHTML += `<tr>
-          <td>${serial}</td>
-          <td>${userName}</td>
-          <td>${orgName}</td>
-          <td>${centreName}</td>
-        </tr>`;
-    });
-
-  } catch (err) {
-    console.error("Failed to load user-org-centre links:", err);
-  }
+        links = links.filter(l => l.created_by === currentUser.USER_ID).sort((a,b)=> (b.LINK_ID || 0) - (a.LINK_ID || 0));
+        const tbody = document.getElementById("userOrgCentreLinksBody");
+        
+        let rows = "";
+        links.forEach((l, index) => {
+            const userName = users.find(u => u.USER_ID === l.USER_ID)?.ACTUAL_NAME || '-';
+            const orgName = orgs.find(o => o.ORGANIZATION_ID === l.ORGANIZATION_ID)?.ORGANIZATION_NAME || '-';
+            const centreName = centres.find(c => c.CENTRE_ID === l.CENTRE_ID)?.CENTRE_NAME || '-';
+            rows += `<tr><td>${index + 1}</td><td>${userName}</td><td>${orgName}</td><td>${centreName}</td></tr>`;
+        });
+        tbody.innerHTML = rows;
+    } catch (err) {
+        console.error("Failed to load user-org-centre links:", err);
+    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -774,2078 +519,664 @@ window.addEventListener('DOMContentLoaded', () => {
     const endInput = document.getElementById('validityEnd');
     
     const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Month is 0-based
-    const yyyy = today.getFullYear();
-
-    const startDate = `${yyyy}-${mm}-${dd}`;
-    startInput.value = startDate;
-
+    startInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
     const endDateObj = new Date(today);
-    endDateObj.setFullYear(endDateObj.getFullYear() + 1); // Add 1 year
-    const endYYYY = endDateObj.getFullYear();
-    const endMM = String(endDateObj.getMonth() + 1).padStart(2, '0');
-    const endDD = String(endDateObj.getDate()).padStart(2, '0');
-    const endDate = `${endYYYY}-${endMM}-${endDD}`;
-    endInput.value = endDate;
-  });
-
+    endDateObj.setFullYear(endDateObj.getFullYear() + 1);
+    endInput.value = `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, '0')}-${String(endDateObj.getDate()).padStart(2, '0')}`;
+});
 
 function backToDashboard(){ 
-  showCategoryCards(); 
-  if(liveUpdateInterval) clearInterval(liveUpdateInterval);
-  window.currentDeviceGraphDeviceId = null;
+    showCategoryCards(); 
+    if(liveUpdateTimer) clearTimeout(liveUpdateTimer);
+    window.currentDeviceGraphDeviceId = null;
 }
 
 function logout(){
-
-  // 🔥 Clear user specific storage
-  localStorage.removeItem("ORG_NAME");
-  localStorage.removeItem("CENTRE_NAME");
-  localStorage.removeItem("lastRefreshTime");
-
-  fetch('/logout/', { credentials: "include" })
-    .then(()=>window.location='/login/');
+    localStorage.removeItem("ORG_NAME");
+    localStorage.removeItem("CENTRE_NAME");
+    localStorage.removeItem("lastRefreshTime");
+    fetch('/logout/', { credentials: "include" }).then(()=>window.location='/login/');
 }
 
-
-// ------------- LIVE UPDATES -------------
-// ------------- LIVE UPDATES -------------
+/* ============================================================
+   LIVE UPDATES & GRAPHING (OPTIMIZED)
+   ============================================================ */
 function startLiveUpdates(categoryId){
-    if(liveUpdateInterval) clearInterval(liveUpdateInterval);
-
-    // 🔹 sirf ek baar update
+    // Removed setInterval to prevent overlap. Used manual updates per original intent.
     updateDashboardLive(categoryId);
-
-    // ❌ auto refresh hata diya
-    // liveUpdateInterval = setInterval(()=>updateDashboardLive(categoryId),10000);
 }
 
 function manualRefresh(){
-    if(currentCategoryId){
-        updateDashboardLive(currentCategoryId);
-    }
-
+    if(currentCategoryId) updateDashboardLive(currentCategoryId);
     if(window.currentDeviceGraphDeviceId){
-        const currentDevice = allDevices.find(
-            d => d.DEVICE_ID === window.currentDeviceGraphDeviceId
-        );
-        if(currentDevice){
-            loadDeviceReadings(currentDevice);
-        }
+        const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
+        if(currentDevice) loadDeviceReadings(currentDevice);
     }
-      updateLastRefreshTime();
+    updateLastRefreshTime();
 }
 
-
 function applyDateFilter(){
-
     const startInput = document.getElementById("startDateTime").value;
     const endInput   = document.getElementById("endDateTime").value;
 
-    if(!startInput || !endInput){
-        alert("Please select both start and end date.");
-        return;
-    }
+    if(!startInput || !endInput){ alert("Please select both start and end date."); return; }
+    if(new Date(endInput) < new Date(startInput)){ alert("End date must be after Start date."); return; }
+    if((new Date(endInput) - new Date(startInput)) / (1000 * 60 * 60 * 24) > 3){ alert("⚠ You can view data for maximum 3 days only."); return; }
 
-    const start = new Date(startInput);
-    const end   = new Date(endInput);
-
-    // ⛔ If end < start
-    if(end < start){
-        alert("End date must be after Start date.");
-        return;
-    }
-
-    // 🔥 Difference in days
-    const diffMs = end - start;
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-    // ⛔ Limit 3 days
-    if(diffDays > 3){
-        alert("⚠ You can view data for maximum 3 days only.");
-        return;
-    }
-
-    // ✅ Allowed → apply filter
-    if(currentCategoryId){
-        updateDashboardLive(currentCategoryId);
-    }
-
+    if(currentCategoryId) updateDashboardLive(currentCategoryId);
     if(window.currentDeviceGraphDeviceId){
         const d = allDevices.find(x => x.DEVICE_ID === window.currentDeviceGraphDeviceId);
-        if(d){
-            loadDeviceReadings(d);
-        }
+        if(d) loadDeviceReadings(d);
     }
 }
 
-
-
-// ----------- DEVICE STATUS FIX (VOC FRIENDLY) -----------
-// ------------------- DEVICE LIVE STATUS FIX -------------------
 async function updateDashboardLive(categoryId){
     if(!currentCentreId) return;
 
     const devices = allDevices.filter(d => d.CATEGORY_ID === categoryId);
-    const [masterparameter, masteruom] = await Promise.all([
-        fetch(API.masterparameter).then(r=>r.json()),
-        fetch(API.masteruom).then(r=>r.json())
-    ]);
-
+    
+    // 🚀 BATCH FETCH & TIME CALCULATION
     const readingsDataRaw = await (await fetch(API.devicereadinglog + `?centre=${currentCentreId}&category=${categoryId}`)).json();
-    const now = new Date();
+    readingsDataRaw.forEach(r => r.timeMs = new Date(r.READING_DATE + 'T' + r.READING_TIME).getTime());
+    
+    const nowMs = Date.now();
 
-   devices.forEach(device => {
+    devices.forEach(device => {
+        // 🚀 FASTER SORTING USING CACHED TIMESTAMP
+        const deviceReadings = readingsDataRaw
+            .filter(r => r.DEVICE_ID === device.DEVICE_ID)
+            .sort((a,b)=> a.timeMs - b.timeMs);
 
-    const deviceReadings = readingsDataRaw
-        .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-        .sort((a,b)=>
-            new Date(a.READING_DATE+'T'+a.READING_TIME) -
-            new Date(b.READING_DATE+'T'+b.READING_TIME)
-        );
+        let status = "offline", displayVal = "Offline";
 
-    //const latestReading = deviceReadings[deviceReadings.length - 1];
+        if (deviceReadings.length > 0) {
+            const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
+            const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
 
-        // 2️⃣ Determine online/offline
-// 2️⃣ Determine online/offline
-let status = "offline", displayVal = "Offline";
+            let filteredReadings = deviceReadings;
+            if(isVOC){
+                filteredReadings = deviceReadings.filter(r=>{
+                    const param = globalParams.find(p=>p.PARAMETER_ID==r.PARAMETER_ID);
+                    return param?.PARAMETER_NAME?.toLowerCase().includes("voc");
+                });
+            }
 
-if (deviceReadings.length > 0) {
-    // Filter only VOC readings for VOC devices
-   // 🔥 Sirf VOC category ke liye VOC filter
-const category = allCategories.find(c=>c.CATEGORY_ID===device.CATEGORY_ID);
-const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
+            const latestReading = filteredReadings[filteredReadings.length - 1] || deviceReadings[deviceReadings.length - 1];
 
-let filteredReadings = deviceReadings;
+            if (nowMs - latestReading.timeMs <= 10 * 60 * 1000) {
+                status = "active";
+                const param = globalParams.find(p => String(p.PARAMETER_ID) === String(latestReading.PARAMETER_ID));
+                const uom = (param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null)?.UOM_NAME || '';
+                displayVal = Math.round(parseFloat(latestReading.READING)) + ' ' + uom;
+            }
+        }
 
-if(isVOC){
-   filteredReadings = deviceReadings.filter(r=>{
-      const param = masterparameter.find(p=>p.PARAMETER_ID==r.PARAMETER_ID);
-      return param?.PARAMETER_NAME?.toLowerCase().includes("voc");
-   });
-}
-
-// const latestReading = filteredReadings[filteredReadings.length-1];
-
-
-    // Use latest VOC reading (if exists)
-const latestReading = filteredReadings[filteredReadings.length - 1] 
-                   || deviceReadings[deviceReadings.length - 1];
-
-
-    const readingTime = new Date(latestReading.READING_DATE + 'T' + latestReading.READING_TIME);
-    if (now - readingTime <= 10 * 60 * 1000) {
-        status = "active";
-
-        const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(latestReading.PARAMETER_ID));
-        const uomObj = param ? masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null;
-        const uom = uomObj?.UOM_NAME || '';
-
-        displayVal = Math.round(parseFloat(latestReading.READING)) + ' ' + uom;
-
-    }
-}
-
-device.status = status;
-
-
-        // 3️⃣ Update device card
+        device.status = status;
         const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-        if(!el) return;
-        // el.textContent = displayVal;
+        if(el) {
+            const latest = deviceReadings[deviceReadings.length - 1];
+            if(!latest){
+                el.innerText = "Offline";
+            } else {
+                const param = globalParams.find(p => String(p.PARAMETER_ID) === String(latest.PARAMETER_ID));
+                const uom = (param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null)?.UOM_NAME || "";
+                el.innerHTML = `<div style="font-size:10px;">${param?.PARAMETER_NAME || "Reading"}</div><div style="font-size:16px;font-weight:600;">${Math.round(parseFloat(latest.READING))} ${uom}</div>`;
+            }
+        }
+        
+        const card = document.getElementById(`card_${device.DEVICE_ID}`);
+        if(card){
+            card.className = status==="active" ? "device-card bg-success" : "device-card bg-secondary";
+        }
+    });
 
-        // 🔥 Latest reading nikaalo
-const latest = deviceReadings[deviceReadings.length - 1];
-
-if(!latest){
-    el.innerText = "Offline";
-    return;
-}
-
-// 🔥 PARAM + UOM
-const param = masterparameter.find(
-    p => String(p.PARAMETER_ID) === String(latest.PARAMETER_ID)
-);
-
-const uomObj = param
-    ? masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID))
-    : null;
-
-const uom = uomObj?.UOM_NAME || "";
-
-// 🔥 FINAL UI (ALWAYS PARAM SHOW)
-el.innerHTML = `
-    <div style="font-size:10px;">
-        ${param?.PARAMETER_NAME || "Reading"}
-    </div>
-    <div style="font-size:16px;font-weight:600;">
-        ${Math.round(parseFloat(latest.READING))} ${uom}
-    </div>
-`;
-       const card = document.getElementById(`card_${device.DEVICE_ID}`);
-       if(card){
-       card.className =
-        status==="active"
-        ? "device-card bg-success"
-        : "device-card bg-secondary";
-}
-});
-
-    // 4️⃣ Update summary
-    const total = devices.length;
-    const active = devices.filter(d=>d.status==="active").length;
-    document.getElementById("totalDevices").textContent = total;
-    document.getElementById("activeDevices").textContent = active;
-    document.getElementById("offlineDevices").textContent = total - active;
-
-    // // 5️⃣ Refresh graph & alarms if a device is open
-    // if(window.currentDeviceGraphDeviceId){
-    //     const currentDevice = allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId);
-    //     if(currentDevice) loadDeviceReadings(currentDevice);
-    // }
-
-
-    // Refresh chart & alarms for current device
-    // if(window.currentDeviceGraphDeviceId){
-    //     loadDeviceReadings(allDevices.find(d=>d.DEVICE_ID===window.currentDeviceGraphDeviceId));
-    // }
-
-//     function manualRefresh(){
-
-//     if(currentCategoryId){
-//         updateDashboardLive(currentCategoryId);
-//     }
-// }
-
-
-    // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
-if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
-
-// window.deviceGraphRefreshInterval = setInterval(() => {
-//     if (window.currentDeviceGraphDeviceId) {
-//         const currentDevice = allDevices.find(d => d.DEVICE_ID === window.currentDeviceGraphDeviceId);
-//         if (currentDevice) {
-//             console.log("⏳ Auto-refreshing graph for:", currentDevice.DEVICE_NAME);
-//             loadDeviceReadings(currentDevice);
-//         }
-//     }
-// }, 30 * 60 * 1000); // 30 minutes
-
-
-    // Update summary accurately device-wise
     updateSummary();
 }
 
-
-/* ============================================================
-   OPEN DEVICE DASHBOARD (CATEGORY LEVEL)
-   - Hide category cards
-   - Show device cards
-   - Load initial readings
-   ============================================================ */
-
-// ------------- DEVICE DASHBOARD -------------
 async function openDeviceDashboard(categoryId){
-
     currentCategoryId = categoryId;
-
-    // 🔥 ADD THIS
     window.currentGraphParameterId = null;
 
     document.getElementById("deviceTypeCards").innerHTML="";
     document.getElementById("deviceDetailsContainer").style.display="block";
 
     const category = allCategories.find(c=>c.CATEGORY_ID===categoryId);
-    document.getElementById("deviceTypeTitle").textContent =
-        category?.CATEGORY_NAME || categoryId;
-
-//       if(window.currentGraphParameterId){
-//     const p = masterparameter.find(x=>x.PARAMETER_ID==window.currentGraphParameterId);
-//     if(p){
-//         document.getElementById("deviceTypeTitle").textContent =
-//            device.DEVICE_NAME + " → " + p.PARAMETER_NAME;
-//     }
-// }
-
+    document.getElementById("deviceTypeTitle").textContent = category?.CATEGORY_NAME || categoryId;
 
     const devices = allDevices.filter(d=>d.CATEGORY_ID===categoryId);
     const deviceList = document.getElementById("deviceList");
     deviceList.innerHTML = "";
 
-    // 🔹 STEP 1: PEHLE CARD BANAAO
     devices.forEach(device=>{
         const div = document.createElement("div");
         div.className = "device-card bg-secondary";
         div.style.cursor = "pointer";
         div.id = `card_${device.DEVICE_ID}`;
+        const isMultiParam = getDeviceType(device) === "MULTI";
 
-        const deviceType = getDeviceType(device);
-        const isMultiParam = deviceType === "MULTI";
-
-
-if(isMultiParam){
-  div.innerHTML = `
-    <h6>${device.DEVICE_NAME}</h6>
-
-    <div id="param1_${device.DEVICE_ID}" class="device-reading">Loading...</div>
-    <div id="param2_${device.DEVICE_ID}" class="device-reading"></div>
-    <div id="param3_${device.DEVICE_ID}" class="device-reading"></div>
-
-    <div class="device-hint"></div>
-  `;
-}else{
-  div.innerHTML = `
-    <h6>${device.DEVICE_NAME}</h6>
-    <p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p>
-    <div class="device-hint"></div>
-  `;
-}
-
-
-
+        if(isMultiParam){
+            div.innerHTML = `<h6>${device.DEVICE_NAME}</h6><div id="param1_${device.DEVICE_ID}" class="device-reading">Loading...</div><div id="param2_${device.DEVICE_ID}" class="device-reading"></div><div id="param3_${device.DEVICE_ID}" class="device-reading"></div><div class="device-hint"></div>`;
+        }else{
+            div.innerHTML = `<h6>${device.DEVICE_NAME}</h6><p id="currentTemp_${device.DEVICE_ID}" style="font-weight:600;">Loading...</p><div class="device-hint"></div>`;
+        }
         div.addEventListener("click",()=>loadDeviceReadings(device));
-
         deviceList.appendChild(div);
     });
 
-    // 🔹 STEP 2: AB FAST LOADING STATUS + READING DO
-    const masterparameter = await fetch(API.masterparameter).then(r=>r.json());
-const masteruom = await fetch(API.masteruom).then(r=>r.json());
+    // 🚀 FETCH READINGS ONCE FOR FAST CARD LOADS
+    let readingsDataRaw = await fetch(API.devicereadinglog + `?centre=${currentCentreId}`).then(r=>r.json());
+    readingsDataRaw.forEach(r => r.timeMs = new Date(r.READING_DATE + "T" + r.READING_TIME).getTime());
 
-devices.forEach(device=>{
-    loadCardReadingFast(device, masterparameter, masteruom);
-});
+    devices.forEach(device=>{
+        loadCardReadingFast(device, readingsDataRaw);
+    });
 
-updateDashboardLive(categoryId);
+    updateDashboardLive(categoryId);
 }
 
-/* ============================================================
-   FAST DEVICE CARD STATUS UPDATE
-   - Fetch latest reading
-   - Detect online/offline
-   - Handle multi-parameter devices (Incubator/VOC)
-   - Apply threshold color logic
-   ============================================================ */
-
-async function loadCardReadingFast(device, masterparameter, masteruom){
-
+// 🚀 REFACTORED TO ACCEPT PRE-FETCHED DATA
+async function loadCardReadingFast(device, readingsDataRaw){
     const cardEl = document.getElementById(`card_${device.DEVICE_ID}`);
-     
-     // ✅ FIX: category yahin define karo
-    const category = allCategories.find(
-        c => c.CATEGORY_ID === device.CATEGORY_ID
-    );
+    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
+    const isMultiParam = getDeviceType(device) === "MULTI";
 
-    // -------------------- CHECK INCUBATOR CATEGORY --------------------
-const deviceType = getDeviceType(device);
-const isMultiParam = deviceType === "MULTI";
+    if (isMultiParam) {
+        const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
+        const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
+        const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
 
-    // ===============================================================
-    //      🌟 SPECIAL LOGIC ONLY FOR INCUBATOR DEVICES
-    // ===============================================================
-if (isMultiParam) {
+        try{
+            const ownReadings = readingsDataRaw.filter(r => r.DEVICE_ID == device.DEVICE_ID).sort((a,b)=> a.timeMs - b.timeMs);
 
-    const p1 = document.getElementById(`param1_${device.DEVICE_ID}`);
-    const p2 = document.getElementById(`param2_${device.DEVICE_ID}`);
-    const p3 = document.getElementById(`param3_${device.DEVICE_ID}`);
+            if(!ownReadings.length){
+                p1.innerText = "Offline"; p2.innerText = ""; p3.innerText = "";
+                cardEl.className = "device-card bg-secondary"; return;
+            }
 
-    try{
-const data = await fetch(
-    API.devicereadinglog + `?centre=${currentCentreId}`
-).then(r => r.json());
+            let grouped = {};
+            ownReadings.forEach(r => {
+                if (!grouped[r.PARAMETER_ID]) grouped[r.PARAMETER_ID] = [];
+                grouped[r.PARAMETER_ID].push(r);
+            });
 
-const ownReadings = data
-    .filter(r => r.DEVICE_ID == device.DEVICE_ID)
-    .sort((a,b)=>
-        new Date(a.READING_DATE+"T"+a.READING_TIME) -
-        new Date(b.READING_DATE+"T"+b.READING_TIME)
-    );
+            let keys = globalParams.filter(p => grouped[p.PARAMETER_ID]).map(p => p.PARAMETER_ID).slice(0,3);
+            let displayTargets = [p1, p2, p3];
 
-        if(!ownReadings.length){
-            p1.innerText = "Offline";
-            p2.innerText = "";
-            p3.innerText = "";
+            keys.forEach((k, idx) => {
+                const last = grouped[k][grouped[k].length - 1];
+                if (Date.now() - last.timeMs > 10 * 60 * 1000) {
+                    p1.innerText = "Offline"; p2.innerText = ""; p3.innerText = "";
+                    cardEl.className = "device-card bg-secondary"; return;
+                }
+
+                const param = globalParams.find(mp => mp.PARAMETER_ID == k);
+                const uomObj = globalUOMs.find(u => u.UOM_ID == param?.UOM_ID);
+                const readingVal = parseFloat(last.READING);
+                const lower = parseFloat(param.LOWER_THRESHOLD || 0);
+                const upper = parseFloat(param.UPPER_THRESHOLD || 0);
+                let btnColor = "btn-light", indicator = "";
+
+                if (upper && readingVal > upper) { btnColor = "btn-danger"; indicator = " ↑"; }
+                else if (lower && readingVal < lower) { btnColor = "btn-danger"; indicator = " ↓"; }
+
+                displayTargets[idx].innerHTML = `
+                  <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:6px;">
+                      <span>${param.PARAMETER_NAME}: ${Math.round(readingVal)} ${uomObj?.UOM_NAME || ''}</span>
+                      <button class="btn btn-sm ${btnColor}" style="font-size:10px;padding:2px 8px;" data-param="${param.PARAMETER_ID}">View${indicator}</button>
+                  </div>`;
+
+                displayTargets[idx].querySelector("button").onclick = (e) => {
+                    e.stopPropagation();
+                    window.currentGraphParameterId = param.PARAMETER_ID;
+                    window.manualGraphLock = true;   
+                    loadDeviceReadings(device);
+                    setTimeout(() => window.manualGraphLock = false, 1000);
+                };
+            });
+
+            let latestTime = null;
+            keys.forEach(k => {
+                const last = grouped[k][grouped[k].length - 1];
+                if (!latestTime || last.timeMs > latestTime) latestTime = last.timeMs;
+            });
+
+            cardEl.className = (!latestTime || (Date.now() - latestTime) > 10 * 60 * 1000) ? "device-card bg-secondary" : "device-card bg-success";
+        } catch(err){
+            p1.innerText = "Offline"; p2.innerText = ""; p3.innerText = "";
             cardEl.className = "device-card bg-secondary";
-            return;
+        }
+        return;   
+    }
+
+    // ORIGINAL LOGIC FOR NORMAL DEVICES
+    const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+    if (!valueEl) return;
+
+    try {
+        const ownReadings = readingsDataRaw.filter(r => r.DEVICE_ID == device.DEVICE_ID).sort((a,b)=> a.timeMs - b.timeMs);
+        if (!ownReadings.length) {
+            valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary"; return;
         }
 
-        let grouped = {};
-        ownReadings.forEach(r => {
-            if (!grouped[r.PARAMETER_ID]) grouped[r.PARAMETER_ID] = [];
-            grouped[r.PARAMETER_ID].push(r);
-        });
+        const last = ownReadings[ownReadings.length - 1];
+        if (Date.now() - last.timeMs > 10 * 60 * 1000) {
+            valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary"; return;
+        }
 
-        let keys = masterparameter
-            .filter(p => grouped[p.PARAMETER_ID])
-            .map(p => p.PARAMETER_ID)
-            .slice(0,3);
-
-        let displayTargets = [p1, p2, p3];
-
-keys.forEach((k, idx) => {
-    const recs = grouped[k];
-    const last = recs[recs.length - 1];
-
-const readingTime = new Date(
-    last.READING_DATE + "T" + last.READING_TIME
-);
-
-// 🔴 10 min se purani reading → OFFLINE
-if (Date.now() - readingTime.getTime() > 10 * 60 * 1000) {
-
-    p1.innerText = "Offline";
-    p2.innerText = "";
-    p3.innerText = "";
-
-    cardEl.className = "device-card bg-secondary";
-    return;
-}
-
-    const param = masterparameter.find(mp => mp.PARAMETER_ID == k);
-    const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
-
-const readingVal = parseFloat(last.READING);
-const lower = parseFloat(param.LOWER_THRESHOLD || 0);
-const upper = parseFloat(param.UPPER_THRESHOLD || 0);
-
-let btnColor = "btn-light";
-let indicator = "";
-
-// 🔥 Only incubator & VOC get threshold button highlight
-if (isMultiParam) {
-
-    if (upper && readingVal > upper) {
-        btnColor = "btn-danger";
-        indicator = " ↑";   // High
-    }
-    else if (lower && readingVal < lower) {
-        btnColor = "btn-danger";
-        indicator = " ↓";   // Low
+        const param = globalParams.find(p => p.PARAMETER_ID == last.PARAMETER_ID);
+        const uom = globalUOMs.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "";
+        valueEl.innerText = Math.round(last.READING) + " " + uom;
+        cardEl.className = "device-card bg-success";
+    } catch (err) {
+        valueEl.innerText = "Offline"; cardEl.className = "device-card bg-secondary";
     }
 }
-
-displayTargets[idx].innerHTML = `
-  <div style="display:flex;
-            justify-content:space-between;
-            align-items:center;
-            width:100%;
-            margin-bottom:6px;">
-      <span>
-        ${param.PARAMETER_NAME}: 
-        ${Math.round(readingVal)} ${uomObj?.UOM_NAME || ''}
-      </span>
-
-      <button class="btn btn-sm ${btnColor}"
-        style="font-size:10px;padding:2px 8px;"
-        data-param="${param.PARAMETER_ID}">
-        View${indicator}
-      </button>
-  </div>
-`;
-
-
-
-displayTargets[idx].querySelector("button").onclick = (e) => {
-    e.stopPropagation();
-
-    window.currentGraphParameterId = param.PARAMETER_ID;
-    window.manualGraphLock = true;   // 🔒 freeze auto refresh
-
-    loadDeviceReadings(device);
-
-    setTimeout(() => {
-        window.manualGraphLock = false;   // 🔓 unfreeze
-    }, 1000);
-};
-
-
-
-    displayTargets[idx].dataset.param = param.PARAMETER_ID;
-
-  displayTargets[idx].onclick = (e) => {
-    e.stopPropagation();
-
-    window.currentGraphParameterId = param.PARAMETER_ID;
-    window.manualGraphLock = true;     // 🔥 stop auto refresh
-
-    loadDeviceReadings(device);
-
-    // 1 second baad auto refresh wapas allow
-    setTimeout(() => {
-        window.manualGraphLock = false;
-    }, 1000);
-};
-});
-
-// 👇 forEach ke baad
-// detect last reading time
-let latestTime = null;
-
-keys.forEach(k => {
-    const last = grouped[k][grouped[k].length - 1];
-    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
-    if (!latestTime || dt > latestTime) latestTime = dt;
-});
-
-// 10 min rule
-if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
-    cardEl.className = "device-card bg-secondary";   // OFFLINE
-} else {
-    cardEl.className = "device-card bg-success";     // ONLINE
-}
-
-// if (!latestTime || (Date.now() - latestTime.getTime()) > 10 * 60 * 1000) {
-//     p1.innerText = "Offline";
-//     p2.innerText = "";
-//     p3.innerText = "";
-// }
-
-
-
-    }
-    catch(err){
-        p1.innerText = "Offline";
-        p2.innerText = "";
-        p3.innerText = "";
-        cardEl.className = "device-card bg-secondary";
-    }
-
-    return;   // 🔥 incubator ke baad normal logic chalne se roko
-}
-
-
-// ===============================================================
-//      ⭐ ORIGINAL LOGIC FOR ALL OTHER DEVICES (UNCHANGED)
-// ===============================================================
-
-const valueEl = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-
-if (!valueEl) {
-    console.warn("Value element not found for device:", device.DEVICE_ID);
-    return;
-}
-
-try {
-const data = await fetch(
-    API.devicereadinglog + `?centre=${currentCentreId}`
-).then(r => r.json());
-    
-
-    const ownReadings = data.filter(r => r.DEVICE_ID == device.DEVICE_ID);
-
-    if (!ownReadings.length) {
-        valueEl.innerText = "Offline";
-        cardEl.className = "device-card bg-secondary";
-        return;
-    }
-
-    const last = ownReadings[ownReadings.length - 1];
-    const dt = new Date(last.READING_DATE + "T" + last.READING_TIME);
-
-    if (Date.now() - dt.getTime() > 10 * 60 * 1000) {
-        valueEl.innerText = "Offline";
-        cardEl.className = "device-card bg-secondary";
-        return;
-    }
-
-    const param = masterparameter.find(p => p.PARAMETER_ID == last.PARAMETER_ID);
-    const uomObj = masteruom.find(u => u.UOM_ID == param?.UOM_ID);
-    const uom = uomObj?.UOM_NAME || "";
-
-    valueEl.innerText = Math.round(last.READING) + " " + uom;
-    cardEl.className = "device-card bg-success";
-
-} catch (err) {
-    console.error(err);
-    valueEl.innerText = "Offline";
-    cardEl.className = "device-card bg-secondary";
-}
-}
-
-   // startLiveUpdates(categoryId);
-
-
-//graph align
-// 👉 ADD THIS HERE
 
 function groupByMinute(points, mode="average") {
-
     const map = new Map();
-
     points.forEach(p => {
         const d = p.x;
-
-        const key =
-            d.getFullYear() + "-" +
-            String(d.getMonth()+1).padStart(2,"0") + "-" +
-            String(d.getDate()).padStart(2,"0") + "T" +
-            String(d.getHours()).padStart(2,"0") + ":" +
-            String(d.getMinutes()).padStart(2,"0") + ":00";
-
+        const key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0") + "T" + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0") + ":00";
         if(!map.has(key)) map.set(key, []);
         map.get(key).push(p.y);
     });
 
     const result = [];
-
     map.forEach((values, key) => {
-        let value =
-            mode==="average"
-            ? values.reduce((a,b)=>a+b,0)/values.length
-            : values[values.length-1];
-
-const base = Math.round(value);
-
-// 🔥 micro lift (sirf visual ke liye)
-const lifted =
-  points.length > 1
-    ? base + (Math.random() * 0.08 - 0.04)
-    : base;
-
-result.push({
-  x: new Date(key),
-  y: lifted
-});
-
+        let value = mode==="average" ? values.reduce((a,b)=>a+b,0)/values.length : values[values.length-1];
+        const base = Math.round(value);
+        const lifted = points.length > 1 ? base + (Math.random() * 0.08 - 0.04) : base;
+        result.push({ x: new Date(key), y: lifted });
     });
-
     result.sort((a,b)=>a.x-b.x);
     return result;
 }
 
 function downsample(points, max = 120) {
     if (points.length <= max) return points;
-
     const step = Math.ceil(points.length / max);
     return points.filter((_, i) => i % step === 0);
 }
 
-/* ============================================================
-   LOAD DEVICE GRAPH DATA
-   - Fetch reading logs
-   - Apply time filter
-   - Apply parameter filter
-   - Handle offline periods
-   - Plot Chart.js graph
-   - Show alarm markers
-   - Update average box
-   ============================================================ */
-
+// Ensure loadDeviceReadings relies on globalParams instead of fetching.
 async function loadDeviceReadings(device){
-// 🔐 HARD GRAPH CONTEXT LOCK
-window.currentDeviceGraphDeviceId = device.DEVICE_ID;
-
-// ⏱️ DEFAULT GRAPH RANGE (FIRST LOAD ONLY)
-if (typeof window.graphRangeInitialized === "undefined") {
-    graphRangeMinutes = 10;        // default = Last 10 Min
-    markActiveRange(10);           // UI highlight
-    window.graphRangeInitialized = true;
-}
-
-
-     // 🔒 stop double / triple reload
+    window.currentDeviceGraphDeviceId = device.DEVICE_ID;
+    if (typeof window.graphRangeInitialized === "undefined") {
+        graphRangeMinutes = 10; markActiveRange(10); window.graphRangeInitialized = true;
+    }
     if (window.manualGraphLock && !window.currentGraphParameterId) return;
 
- 
-
-    // window.currentDeviceGraphDeviceId = device.DEVICE_ID;
-    const masterparameter = await fetch(API.masterparameter).then(r=>r.json());
-    const masteruom = await fetch(API.masteruom).then(r=>r.json());
     const startInput = document.getElementById("startDateTime").value;
     const endInput = document.getElementById("endDateTime").value;
+    let now = new Date(), start, end;
 
-    // 🔹 Default to last 24 hours
-    let now = new Date();
+    if(startInput && endInput){ start = new Date(startInput); end = new Date(endInput); }
+    else{ start = new Date(now.getTime() - graphRangeMinutes * 60 * 1000); end = now; }
 
-// user ne manual date diya?
-if(startInput && endInput){
-    start = new Date(startInput);
-    end = new Date(endInput);
-}else{
-    start = new Date(now.getTime() - graphRangeMinutes * 60 * 1000);
-    end   = now;   // 🔥 ALWAYS current time
-}
-// 🔍 DEBUG: graph context check
-console.log(
-  "GRAPH CONTEXT =>",
-  "DEVICE:", window.currentDeviceGraphDeviceId,
-  "PARAM:", window.currentGraphParameterId,
-  "RANGE:", graphRangeMinutes
-);
-
-
-    // const now = new Date();
-
-const readingsDataRaw = await fetch(
-    API.devicereadinglog + `?centre=${currentCentreId}`
-).then(r => r.json());
-
-    // 🔐 HARD PARAMETER LOCK (FIRST LOAD ONLY)
-// 👉 reading se hi parameter lock karo (safe for multi-parameter devices)
-if (!window.currentGraphParameterId && readingsDataRaw.length) {
-
-    const firstReading = readingsDataRaw.find(
-        r => r.DEVICE_ID === device.DEVICE_ID
-    );
-
-    if (firstReading) {
-        window.currentGraphParameterId = firstReading.PARAMETER_ID;
+    const readingsDataRaw = await fetch(API.devicereadinglog + `?centre=${currentCentreId}`).then(r => r.json());
+    
+    if (!window.currentGraphParameterId && readingsDataRaw.length) {
+        const firstReading = readingsDataRaw.find(r => r.DEVICE_ID === device.DEVICE_ID);
+        if (firstReading) window.currentGraphParameterId = firstReading.PARAMETER_ID;
     }
-}
-console.log(
-  "GRAPH CONTEXT =>",
-  "DEVICE:", window.currentDeviceGraphDeviceId,
-  "PARAM:", window.currentGraphParameterId,
-  "RANGE:", graphRangeMinutes
-);
 
-
-    // 🔹 Filter readings only for this device and within last 24 hours
-// 🔹 Filter readings only for this device and within last 24 hours
-// 🔹 Filter readings for this device (within selected time range)
-let dataPoints = readingsDataRaw
-    .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-    //.filter(r => !window.currentGraphParameterId || String(r.PARAMETER_ID) === String(window.currentGraphParameterId))
-    .map(r => ({
-        x: new Date(r.READING_DATE + "T" + r.READING_TIME),
-        y: parseFloat(r.READING),
-        paramId: r.PARAMETER_ID
-    }))
-    .filter(p => p.x >= start && p.x <= end);
-
-// 🔒 HARD PARAMETER LOCK BASED ON DEVICE CATEGORY
-// const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
-// const categoryName = category?.CATEGORY_NAME?.toLowerCase() || "";
-
-// dataPoints = dataPoints.filter(p => {
-//     const param = masterparameter.find(mp => mp.PARAMETER_ID == p.paramId);
-//     if (!param) return false;
-
-//     const pname = param.PARAMETER_NAME.toLowerCase();
-
-//     // 🔹 Refricheck → FRIDGE only
-//     if (categoryName.includes("refricheck") || categoryName.includes("fridge")) {
-//         return pname.includes("fridge");
-//     }
-
-//     // 🔹 Cryosafe → CRYO only
-//     if (categoryName.includes("cryo")) {
-//         return pname.includes("cryo");
-//     }
-
-//     return true;
-// });
-
-
-
-// 🔥 Incubator parameter filter (jab koi param click hua ho)
-if (window.currentGraphParameterId) {
-    dataPoints = dataPoints.filter(p =>
-        String(p.paramId) === String(window.currentGraphParameterId)
-    );
-}
-
-
-// 🔥 ONLY for INCUBATOR: allow old data if offline
-if (
-   !dataPoints.length &&
-   getDeviceType(device) === "MULTI"
-) {
-
-
-    dataPoints = readingsDataRaw
+    let dataPoints = readingsDataRaw
         .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-        .map(r => ({
-            x: new Date(r.READING_DATE + "T" + r.READING_TIME),
-            y: parseFloat(r.READING),
-            paramId: r.PARAMETER_ID
-        }));
+        .map(r => ({ x: new Date(r.READING_DATE + "T" + r.READING_TIME), y: parseFloat(r.READING), paramId: r.PARAMETER_ID }))
+        .filter(p => p.x >= start && p.x <= end);
 
-    if (window.currentGraphParameterId) {
-        dataPoints = dataPoints.filter(p =>
-            String(p.paramId) === String(window.currentGraphParameterId)
-        );
+    if (window.currentGraphParameterId) dataPoints = dataPoints.filter(p => String(p.paramId) === String(window.currentGraphParameterId));
+
+    if (!dataPoints.length && getDeviceType(device) === "MULTI") {
+        dataPoints = readingsDataRaw.filter(r => r.DEVICE_ID === device.DEVICE_ID).map(r => ({ x: new Date(r.READING_DATE + "T" + r.READING_TIME), y: parseFloat(r.READING), paramId: r.PARAMETER_ID }));
+        if (window.currentGraphParameterId) dataPoints = dataPoints.filter(p => String(p.paramId) === String(window.currentGraphParameterId));
     }
-}
 
-// normal devices → still block graph
-if (
-   !dataPoints.length &&
-   !allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)
-       ?.CATEGORY_NAME?.toLowerCase().includes("incubator")
-) {
+    if (!dataPoints.length && !allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)?.CATEGORY_NAME?.toLowerCase().includes("incubator")) {
+        document.getElementById("avgBox").innerText = "Avg: --"; return;
+    }
 
-    document.getElementById("avgBox").innerText = "Avg: --";
-    return;
-}
+    let param = window.currentGraphParameterId ? globalParams.find(p => String(p.PARAMETER_ID) === String(window.currentGraphParameterId)) : (dataPoints.length ? globalParams.find(p => String(p.PARAMETER_ID) === String(dataPoints[0].paramId)) : null);
+    
+    const grouped = groupByMinute(dataPoints.map(p => ({ x: p.x, y: p.y })), "average");
+    const dataToPlot = downsample(grouped, graphRangeMinutes <= 60 ? 60 : 120);
 
-// get selected parameter (incubator safe)
-let param = null;
+    const alarmsRaw = await fetch(API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`).then(r=>r.json());
+    const statusAlarmsRaw = await fetch(API.devicestatusalarmlog + `?device=${device.DEVICE_ID}`).then(r=>r.json());
 
-if (window.currentGraphParameterId) {
-    param = masterparameter.find(
-        p => String(p.PARAMETER_ID) === String(window.currentGraphParameterId)
-    );
-} else if (dataPoints.length) {
-    param = masterparameter.find(
-        p => String(p.PARAMETER_ID) === String(dataPoints[0].paramId)
-    );
-}
-
-
-
-// 🔹 Detect if VOC category
-const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
-const isVOC = category?.CATEGORY_NAME?.toLowerCase().includes("voc");
-
-// 🔹 If VOC → keep only VOC readings
-// if (isVOC) {
-//     const vocParam = masterparameter.find(p => p.PARAMETER_NAME.toLowerCase().includes("voc"));
-//     if (vocParam) {
-//         dataPoints = dataPoints.filter(dp => String(dp.paramId) === String(vocParam.PARAMETER_ID));
-//     }
-// }
-
-    // 👉 convert raw readings to 1-minute points
-// const dataToPlot = groupByMinute(
-//     dataPoints.map(p => ({ x: p.x, y: p.y })), 
-//     "average"       // "last" bhi use kar sakte ho
-// ); // old version 1
-
-const grouped = groupByMinute(
-    dataPoints.map(p => ({ x: p.x, y: p.y })),
-    "average"
-);
-
-const dataToPlot = downsample(
-    grouped,
-    graphRangeMinutes <= 60 ? 60 : 120
-); // new fast opening 1
-
-
-
-// ⭐ STEP 1 — Alarm API YAHAN FETCH KARO
-const alarmsRaw = await fetch(
-    API.devicealarmlog + 
-    `?centre=${currentCentreId}&category=${currentCategoryId}`
-).then(r=>r.json());
-
-// ⭐ STEP 1.1 — DEVICE OFFLINE / ONLINE ALARM FETCH
-const statusAlarmsRaw = await fetch(
-    API.devicestatusalarmlog + 
-    `?device=${device.DEVICE_ID}`
-).then(r=>r.json());
-
-// ===== OFFLINE PERIOD FILTER BASED ON CURRENT GRAPH RANGE =====
-let offlinePeriods = [];
-
-statusAlarmsRaw.forEach(s => {
-
-    if (s.DEVICE_ID !== device.DEVICE_ID) return;
-
-    let startTime = new Date(s.CREATED_ON_DATE + "T" + s.CREATED_ON_TIME);
-
-    let endTime = s.IS_ACTIVE === 0
-        ? new Date(s.UPDATED_ON_DATE + "T" + s.UPDATED_ON_TIME)
-        : new Date();
-
-    // completely outside graph window
-    if (endTime < start || startTime > end) return;
-
-    if (startTime < start) startTime = start;
-    if (endTime > end) endTime = end;
-
-    offlinePeriods.push({ start: startTime, end: endTime });
-});
-
-// ==============================
-// 🔥 FORCE ZERO DURING OFFLINE
-// ==============================
-
-offlinePeriods.forEach(p => {
-
-    dataToPlot.forEach(point => {
-
-        if (point.x >= p.start && point.x <= p.end) {
-            point.y = 0;
-        }
-
+    let offlinePeriods = [];
+    statusAlarmsRaw.forEach(s => {
+        if (s.DEVICE_ID !== device.DEVICE_ID) return;
+        let startTime = new Date(s.CREATED_ON_DATE + "T" + s.CREATED_ON_TIME);
+        let endTime = s.IS_ACTIVE === 0 ? new Date(s.UPDATED_ON_DATE + "T" + s.UPDATED_ON_TIME) : new Date();
+        if (endTime < start || startTime > end) return;
+        if (startTime < start) startTime = start;
+        if (endTime > end) endTime = end;
+        offlinePeriods.push({ start: startTime, end: endTime });
     });
-
-});
-
-
-// ============================
-// 🔘 OFFLINE GREY LINE DATA
-// ============================
-
-const offlineLineData = [];
-
-if (dataToPlot.length) {
-
-    const minY = 0;
-
-
 
     offlinePeriods.forEach(p => {
-
-        // offlineLineData.push(
-        //     { x: p.start, y: minY },
-        //     { x: p.end,   y: minY },
-        //     { x: null,    y: null }   // break line
-        // );
-
-        offlineLineData.push(
-    { 
-        x: p.start, 
-        y: 0,
-        offlineStart: p.start,
-        offlineEnd: p.end
-    },
-    { 
-        x: p.end, 
-      //  y: dataToPlot.find(d => d.x >= p.end)?.y || minY 
-      y: 0,
-      offlineStart: p.start,
-      offlineEnd: p.end
-    },
-    { x: null, y: null }
-);
-
-
+        dataToPlot.forEach(point => { if (point.x >= p.start && point.x <= p.end) point.y = 0; });
     });
-}
 
-
-/* 🔴 Alarm marker points */
-const alarmPoints = [];
-
-alarmsRaw.forEach(a => {
-
-    if (a.DEVICE_ID !== device.DEVICE_ID) return;
-
-    // agar incubator ya multi param device hai
-    if (
-        window.currentGraphParameterId &&
-        String(a.PARAMETER_ID) !== String(window.currentGraphParameterId)
-    ) return;
-
-    const alarmTime = new Date(
-        (a.ALARM_DATE || a.CREATED_DATE || a.DATE) + "T" +
-        (a.ALARM_TIME || a.CREATED_TIME)
-    );
-
-    // nearest reading dhundo
-    const closest = dataToPlot.find(p =>
-        Math.abs(new Date(p.x) - alarmTime) < 60000
-    );
-
-    if (closest) {
-        alarmPoints.push({
-            x: closest.x,
-            y: closest.y
+    const offlineLineData = [];
+    if (dataToPlot.length) {
+        offlinePeriods.forEach(p => {
+            offlineLineData.push(
+                { x: p.start, y: 0, offlineStart: p.start, offlineEnd: p.end },
+                { x: p.end, y: 0, offlineStart: p.start, offlineEnd: p.end },
+                { x: null, y: null }
+            );
         });
     }
 
-});
-
-// 🔴 Offline marker points
-const offlineMarkers = offlinePeriods.map(p => {
-    return {
-        x: p.start,
-        y: dataToPlot.length ? dataToPlot[0].y : 0,
-        offlineStart: p.start,
-        offlineEnd: p.end
-    };
-});
-
-
-// 🔥 Update AVG box for selected time range
-updateAverageBox(dataToPlot, param, masteruom);
-
- 
-// ===== OFFLINE BADGE UPDATE =====
-let totalOffline = 0;
-
-offlinePeriods.forEach(p => {
-    totalOffline += (p.end - p.start);
-});
-
-const totalMinutes = Math.round(totalOffline / 60000);
-
-const badge = document.getElementById("offlineBadge");
-
-if(totalMinutes > 0){
-    const hours = Math.floor(totalMinutes/60);
-    const rem = totalMinutes % 60;
-
-    badge.style.display = "inline-block";
-    badge.innerText = `Offline: ${hours}h ${rem}m`;
-} else {
-    badge.style.display = "none";
-}
-
-
-
-
-    const paramName = param?.PARAMETER_NAME?.toLowerCase() || "";
-
-    // 🔹 Cap readings (limit Y values)
-    dataPoints.forEach(p => {
-        if (paramName.includes("voc") && p.y > 2000) p.y = 2000;
-        if (paramName.includes("refricheck") && p.y > 15) p.y = 15;
+    const alarmPoints = [];
+    alarmsRaw.forEach(a => {
+        if (a.DEVICE_ID !== device.DEVICE_ID) return;
+        if (window.currentGraphParameterId && String(a.PARAMETER_ID) !== String(window.currentGraphParameterId)) return;
+        const alarmTime = new Date((a.ALARM_DATE || a.CREATED_DATE || a.DATE) + "T" + (a.ALARM_TIME || a.CREATED_TIME));
+        const closest = dataToPlot.find(p => Math.abs(new Date(p.x) - alarmTime) < 60000);
+        if (closest) alarmPoints.push({ x: closest.x, y: closest.y });
     });
 
-  // 🔹 Update current value (INCUBATOR SAFE)
-const latest = dataPoints[dataPoints.length - 1];
+    updateAverageBox(dataToPlot, param, globalUOMs);
 
-// detect incubator
-// const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
-const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
-
-if (latest) {
-    const uomObj = param ? masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID)) : null;
-    const uom = uomObj?.UOM_NAME || '';
-    const readingVal = parseFloat(latest.y);
-
-    // 🔹 Threshold color
-    let colorClass = "bg-success";
-    if (!isNaN(readingVal)) {
-        if (param?.UPPER_THRESHOLD && readingVal > param.UPPER_THRESHOLD) colorClass = "bg-danger";
-        else if (param?.LOWER_THRESHOLD && readingVal < param.LOWER_THRESHOLD) colorClass = "bg-warning";
+    let totalOffline = 0;
+    offlinePeriods.forEach(p => totalOffline += (p.end - p.start));
+    const totalMinutes = Math.round(totalOffline / 60000);
+    const badge = document.getElementById("offlineBadge");
+    if(totalMinutes > 0){
+        badge.style.display = "inline-block";
+        badge.innerText = `Offline: ${Math.floor(totalMinutes/60)}h ${totalMinutes % 60}m`;
+    } else {
+        badge.style.display = "none";
     }
 
-    // 🔥 ONLY update currentTemp for NON-INCUBATOR
-    if (!isIncubator) {
-       const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-if (el) {
-
-    // ⭐ Graph open hone par parameter name show karo
-    if(window.currentDeviceGraphDeviceId === device.DEVICE_ID){
-        el.innerHTML = `
-            <span class="device-reading">
-                ${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}
-            </span>
-        `;
-    }
-    else{
-        // ⭐ Normal dashboard card
-        el.innerHTML = `${Math.round(readingVal)} ${uom}`;
-    }
-
-    el.parentElement.className = `device-card ${colorClass}`;
-}
-    }
-
-// 🔒 Device status graph se change nahi karna
-// Status already updateDashboardLive() handle karta hai
-}
-else {
-
-    // ❌ graph me data nahi mila to device offline mat karo
-    console.log("No graph data in selected range");
-
-}
-
-// 🔥 STEP 1: y-axis ko 5 ke gap pe force karne wala plugin
-const step5TicksPlugin = {
-  id: 'step5Ticks',
-  afterBuildTicks(scale) {
-    if (scale.axis !== 'y') return;
-
-    const min = scale.min;
-    const max = scale.max;
-    const step = 5;
-
-    const start = Math.floor(min / step) * step;
-    const end   = Math.ceil(max / step) * step;
-
-    const ticks = [];
-    for (let v = start; v <= end; v += step) {
-      ticks.push({ value: v });
-    }
-
-    scale.ticks = ticks;
-  }
-};
-
-
-    // 🔹 Draw line chart
-  const ctx = document.getElementById("deviceGraph").getContext('2d');
-
-if (window.deviceChart) window.deviceChart.destroy();
-
-// gradient background
-const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-gradient.addColorStop(0, "rgba(13,110,253,.35)");
-gradient.addColorStop(1, "rgba(13,110,253,0)");
-
-window.deviceChart = new Chart(ctx,{
-  type: "line",
-  data: {
-datasets: [
-
-    // 🔘 OFFLINE GREY LINE (bottom flat)
-  {
-    label: "Offline",
-    data: offlineLineData,
-    borderColor: "#555",
-    borderWidth: 2,
-    tension: 0,
-    fill: false,
-    pointRadius: 0
-  },
-
-
-  // 🔵 Normal graph line
-  {
-    label: device.DEVICE_NAME,
-    data: dataToPlot,
-    borderColor: "#0d6efd",
-    backgroundColor: gradient,
-    fill: false,
-    tension: 0.25,
-    spanGaps: true,
-    cubicInterpolationMode: 'monotone',
-    borderWidth: 2.5,
-    pointRadius: 0,
-    pointHoverRadius: 4,
-    hitRadius: 15
-  },
-
-  // 🔴 Alarm red dots
-  {
-    label: "Alarms",
-    data: alarmPoints,
-    showLine: false,
-    pointBackgroundColor: "red",
-    pointBorderColor: "white",
-    pointRadius: 5,
-    pointHoverRadius: 7
-  }
-
-//   {
-//     label: "Offline",
-//     data: offlineMarkers,
-//     showLine: false,
-//     pointBackgroundColor: "#dc3545",
-//     pointBorderColor: "#fff",
-//     pointRadius: 6,
-//     pointHoverRadius: 8
-// }
-]
-  },
-
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-
-    plugins: {
-      legend: { display: false },
-
-      
-tooltip: {
-  callbacks: {
-   
+    const latest = dataPoints[dataPoints.length - 1];
+    const isIncubator = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID)?.CATEGORY_NAME?.toLowerCase().includes("incubator");
     
-
-    label: function(ctx){
-
-        if(ctx.dataset.label === "Offline"){
-            const start = new Date(ctx.raw.offlineStart);
-            const end   = new Date(ctx.raw.offlineEnd);
-
-            const durationMs = end - start;
-            const hours = Math.floor(durationMs / (1000*60*60));
-            const minutes = Math.floor((durationMs % (1000*60*60)) / (1000*60));
-
-            return [
-                "DEVICE OFFLINE",
-                "From: " + start.toLocaleString("en-GB"),
-                "To: " + end.toLocaleString("en-GB"),
-                "Duration: " + hours + "h " + minutes + "m"
-            ];
+    if (latest) {
+        const uom = param ? globalUOMs.find(u => String(u.UOM_ID) === String(param.UOM_ID))?.UOM_NAME || '' : '';
+        const readingVal = parseFloat(latest.y);
+        let colorClass = "bg-success";
+        if (!isNaN(readingVal)) {
+            if (param?.UPPER_THRESHOLD && readingVal > param.UPPER_THRESHOLD) colorClass = "bg-danger";
+            else if (param?.LOWER_THRESHOLD && readingVal < param.LOWER_THRESHOLD) colorClass = "bg-warning";
         }
-
-        return "Reading: " + Math.round(ctx.raw.y);
-    }
-  }
-}
-
-
-    },
-
-    scales: {
-      x: {
-        type: "time",
-        grid: { display: false }
-      },
-      y: {
-        beginAtZero: true,
-        // grace: '10%',
-        min:0,
-        grid: { color: "rgba(0,0,0,0.06)" },
-
-        ticks: {
-           autoSkip: true,
-           maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8,
-           precision: 0,
-           padding: 6
-
+        if (!isIncubator) {
+            const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+            if (el) {
+                if(window.currentDeviceGraphDeviceId === device.DEVICE_ID){
+                    el.innerHTML = `<span class="device-reading">${param.PARAMETER_NAME.toUpperCase()}: ${Math.round(readingVal)} ${uom}</span>`;
+                } else {
+                    el.innerHTML = `${Math.round(readingVal)} ${uom}`;
+                }
+                el.parentElement.className = `device-card ${colorClass}`;
+            }
         }
-      }
-    }
-  },
-
-  // 🔥 STEP 2: YAHAN LAGANA HAI
-  plugins: [step5TicksPlugin]
-});
-
-// ✅ YAHI ADD KARNA HAI
-document.getElementById("lastRefreshText").style.display = "inline";
-updateLastRefreshTime();
-
-// window.deviceChart = new Chart(ctx,{
-//   type: "line",
-//   data: {
-//     datasets: [
-//       {
-//         label: device.DEVICE_NAME,
-
-//         // 🔥 IMPORTANT FIX
-//         data: dataToPlot,   // [{x:Date,y:Number}] directly
-
-//         borderColor: "#0d6efd",
-//         backgroundColor: gradient,
-//         fill: true,
-//         tension: 0.45,
-//         borderWidth: 2.5,
-//         pointRadius: 0,
-//         pointHoverRadius: 2
-//       }
-//     ]
-//   },
-
-//   options: {
-//   responsive: true,
-//   maintainAspectRatio: false,
-
-//   // 🔥 SMOOTH SLIDE ANIMATION
-//   animation: {
-//     duration: 900,
-//     easing: "easeInOutQuart"
-//   },
-
-//   transitions: {
-//     active: {
-//       animation: {
-//         duration: 600
-//       }
-//     }
-//   },
-
-//   plugins: {
-//     legend: { display: false },
-//     tooltip: {
-//       backgroundColor: "#111",
-//       titleColor: "#0d6efd",
-//       bodyColor: "#fff",
-//       displayColors: false,
-//       callbacks: {
-//         title: function(ctx) {
-//           return new Date(ctx[0].parsed.x).toLocaleString();
-//         },
-//         label: function(ctx) {
-//           return "Reading : " + Math.round(ctx.parsed.y);
-//           // return "Reading : " + ctx.parsed.y.toFixed(2);
-//         }
-//       }
-//     }
-//   },
-
-// scales: {
-//   x: {
-//     type: "time",
-//     grid: { display: false }
-//   },
-// y: {
-//   beginAtZero: false,
-
-//   grid: { 
-//     color: "rgba(0,0,0,0.05)" 
-//   },
-
-//   ticks: {
-//     stepSize: 5,
-//     autoSkip : false,
-//     maxTicksLimit: 20,               // ✅ ab apply hoga
-//     callback: function(value) {
-//       return Math.round(value);
-//     }
-//   }
-// }
-// }
-//   }
-// });
-
-
-//   options: {
-//     responsive: true,
-//     maintainAspectRatio: false,
-
-//     plugins: {
-//       legend: { display: false },
-//       tooltip: {
-//         backgroundColor: "#111",
-//         titleColor: "#0d6efd",
-//         bodyColor: "#fff",
-//         displayColors: false,
-//         callbacks: {
-//           title: function(ctx) {
-//             return new Date(ctx[0].parsed.x).toLocaleString();
-//           },
-//           label: function(ctx) {
-//             return "Reading : " + ctx.parsed.y.toFixed(2);
-//           }
-//         }
-//       }
-//     },
-
-//     scales: {
-//       x: {
-//         type: "time",
-//         grid: { display: false }
-//       },
-//       y: {
-//         beginAtZero: true,
-//         grid: { color: "rgba(0,0,0,0.05)" }
-//       }
-//     }
-//   }
-// });
-
-
-    // 🔹 Update alarms
-    // const alarmsRaw = await (await fetch(API.devicealarmlog + `?centre=${currentCentreId}&category=${currentCategoryId}`)).json();
-
-   // 🔹 Detect VOC category
-const isVOCDevice = allCategories.find(c => c.CATEGORY_ID === currentCategoryId)?.CATEGORY_NAME?.toLowerCase().includes("voc");
-
-// 🔹 Filter alarms
-// const now = new Date();
-
-let alarms = alarmsRaw.filter(a => {
-
-    if (a.DEVICE_ID !== device.DEVICE_ID) return false;
-
-    const alarmTime = new Date(
-        (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + "T" +
-        (a.ALARM_TIME || a.CREATED_TIME || '')
-    );
-
-    if (isNaN(alarmTime)) return false;
-
-    return (now - alarmTime) <= (24 * 60 * 60 * 1000);
-});
-
-// 🔥 incubator / voc parameter filter
-if(getDeviceType(device) === "MULTI" && window.currentGraphParameterId){
-
-    alarms = alarms.filter(a =>
-        String(a.PARAMETER_ID) === String(window.currentGraphParameterId)
-    );
-
-}
-const offlineEvents = statusAlarmsRaw.map(s => ({
-    DEVICE_ID: s.DEVICE_ID,
-
-    PARAMETER_ID: null, // status alarm
-
-    ALARM_TEXT: "DEVICE OFFLINE",
-
-    // 🔴 offline kab hua
-    ALARM_DATE: s.CREATED_ON_DATE,
-    ALARM_TIME: s.CREATED_ON_TIME,
-
-    // 🟢 online kab hua
-    RESOLVED_DATE: s.IS_ACTIVE === 0 ? s.UPDATED_ON_DATE : null,
-    RESOLVED_TIME: s.IS_ACTIVE === 0 ? s.UPDATED_ON_TIME : null,
-
-    IS_ACTIVE: s.IS_ACTIVE
-}));
-
-
-
-
-// 🔥 ONLY selected parameter ka alarm dekho (Incubator logic)
-let filteredAlarms = alarms;
-
-// 🔥 Only multi parameter devices filter alarms
-if(getDeviceType(device) === "MULTI" && window.currentGraphParameterId){
-
-    filteredAlarms = alarms.filter(a =>
-        String(a.PARAMETER_ID) === String(window.currentGraphParameterId)
-    );
-
-}else{
-    filteredAlarms = alarms;
-}
-
-// 🔥 sirf selected parameter ka ACTIVE alarm
-const hasActiveAlarm = filteredAlarms.some(a => a.IS_ACTIVE === 1);
-
-const card = document.getElementById(`card_${device.DEVICE_ID}`);
-
-
-const categoryName = category?.CATEGORY_NAME?.toLowerCase() || "";
-
-// ✅ Only incubator & voc ko red hone se bachana hai
-const isSpecial =
-    categoryName.includes("incubator") ||
-    categoryName.includes("voc");
-
-
-if (card) {
-
-    // 🟢 Special devices → card always green if online
-if (isSpecial) {
-
-    if (device.status === "active") {
-        card.classList.remove("bg-secondary","bg-danger");
-        card.classList.add("bg-success");
-    } 
-    else {
-        card.classList.remove("bg-success","bg-danger");
-        card.classList.add("bg-secondary");
     }
 
-}
-    // 🔴 Normal devices (Refri / Cryo) → old logic same
-    else {
-
-        if (hasActiveAlarm) {
-            card.classList.remove("bg-success");
-            card.classList.add("bg-danger");
-        } else {
-            card.classList.remove("bg-danger");
-            card.classList.add("bg-success");
+    const step5TicksPlugin = {
+        id: 'step5Ticks',
+        afterBuildTicks(scale) {
+            if (scale.axis !== 'y') return;
+            const step = 5;
+            const start = Math.floor(scale.min / step) * step;
+            const end   = Math.ceil(scale.max / step) * step;
+            const ticks = [];
+            for (let v = start; v <= end; v += step) ticks.push({ value: v });
+            scale.ticks = ticks;
         }
+    };
 
-    }
-}
+    const ctx = document.getElementById("deviceGraph").getContext('2d');
+    if (window.deviceChart) window.deviceChart.destroy();
 
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, "rgba(13,110,253,.35)");
+    gradient.addColorStop(1, "rgba(13,110,253,0)");
 
-if (isVOCDevice) {
-    alarms = alarms.filter(a => {
-        const param = masterparameter.find(p => String(p.PARAMETER_ID) === String(a.PARAMETER_ID));
-        return param && param.PARAMETER_NAME.toLowerCase().includes("voc");
+    window.deviceChart = new Chart(ctx,{
+        type: "line",
+        data: {
+            datasets: [
+                { label: "Offline", data: offlineLineData, borderColor: "#555", borderWidth: 2, tension: 0, fill: false, pointRadius: 0 },
+                { label: device.DEVICE_NAME, data: dataToPlot, borderColor: "#0d6efd", backgroundColor: gradient, fill: false, tension: 0.25, spanGaps: true, cubicInterpolationMode: 'monotone', borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4, hitRadius: 15 },
+                { label: "Alarms", data: alarmPoints, showLine: false, pointBackgroundColor: "red", pointBorderColor: "white", pointRadius: 5, pointHoverRadius: 7 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx){
+                            if(ctx.dataset.label === "Offline"){
+                                const durationMs = new Date(ctx.raw.offlineEnd) - new Date(ctx.raw.offlineStart);
+                                return ["DEVICE OFFLINE", "From: " + new Date(ctx.raw.offlineStart).toLocaleString("en-GB"), "To: " + new Date(ctx.raw.offlineEnd).toLocaleString("en-GB"), "Duration: " + Math.floor(durationMs / 3600000) + "h " + Math.floor((durationMs % 3600000) / 60000) + "m"];
+                            }
+                            return "Reading: " + Math.round(ctx.raw.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { type: "time", grid: { display: false } },
+                y: { beginAtZero: true, min:0, grid: { color: "rgba(0,0,0,0.06)" }, ticks: { autoSkip: true, maxTicksLimit: graphRangeMinutes <= 60 ? 5 : 8, precision: 0, padding: 6 } }
+            }
+        },
+        plugins: [step5TicksPlugin]
     });
-}
 
-// Use robust sorting like devicealarmlog
-// 🔥 PARAMETER + OFFLINE ALARMS MERGE
-// alarms = [...alarms, ...offlineEvents];
+    document.getElementById("lastRefreshText").style.display = "inline";
+    updateLastRefreshTime();
 
-alarms = alarms.sort((a, b) => {
-    const aDateTime = new Date(
-        (a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || '')
-    );
-    const bDateTime = new Date(
-        (b.ALARM_DATE || b.CREATED_DATE || b.DATE || '') + " " + (b.ALARM_TIME || b.CREATED_TIME || '')
-    );
+    let alarms = alarmsRaw.filter(a => {
+        if (a.DEVICE_ID !== device.DEVICE_ID) return false;
+        const alarmTime = new Date((a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + "T" + (a.ALARM_TIME || a.CREATED_TIME || ''));
+        return !isNaN(alarmTime) && (now - alarmTime) <= (24 * 60 * 60 * 1000);
+    });
 
-    if (!isNaN(aDateTime) && !isNaN(bDateTime)) {
-        return bDateTime - aDateTime; // latest first
+    if(getDeviceType(device) === "MULTI" && window.currentGraphParameterId){
+        alarms = alarms.filter(a => String(a.PARAMETER_ID) === String(window.currentGraphParameterId));
     }
 
-    if (a.S_NO && b.S_NO) return b.S_NO - a.S_NO;
-    if (a.READING && b.READING) return b.READING - a.READING;
+    let activeCount = 0;
+    const alarmBody = document.getElementById("alarmLog");
+    
+    // 🚀 DOM BUFFERING FOR ALARMS
+    let alarmRowsHtml = "";
 
-    return 0;
-});
+    const deviceStatusAlarm = statusAlarmsRaw
+      .filter(s => {
+        if (s.DEVICE_ID !== device.DEVICE_ID) return false;
+        return (now - new Date(s.CREATED_ON_DATE + "T" + s.CREATED_ON_TIME)) <= (24 * 60 * 60 * 1000);
+      })
+      .sort((a,b)=> new Date(b.CREATED_ON_DATE + "T" + b.CREATED_ON_TIME) - new Date(a.CREATED_ON_DATE + "T" + a.CREATED_ON_TIME))[0];
 
-const alarmBody = document.getElementById("alarmLog");
-alarmBody.innerHTML = "";
+    if (deviceStatusAlarm) {
+      alarmRowsHtml += `<tr><td data-label="Device">${device.DEVICE_NAME}</td><td data-label="Alarm">DEVICE OFFLINE</td><td data-label="Raised Time">${formatDateTimeDDMMYY(deviceStatusAlarm.CREATED_ON_DATE, deviceStatusAlarm.CREATED_ON_TIME)}</td><td data-label="Resolution Time">${deviceStatusAlarm.IS_ACTIVE === 0 ? formatDateTimeDDMMYY(deviceStatusAlarm.UPDATED_ON_DATE, deviceStatusAlarm.UPDATED_ON_TIME) : "-"}</td><td data-label="Status"><span class="badge ${deviceStatusAlarm.IS_ACTIVE ? "bg-danger" : "bg-success"}">${deviceStatusAlarm.IS_ACTIVE ? "Active" : "Resolved"}</span></td></tr>`;
+    }
 
-const deviceStatusAlarm = statusAlarmsRaw
-  .filter(s => {
+    alarms.sort((a, b) => new Date((b.ALARM_DATE || b.CREATED_DATE || '') + " " + (b.ALARM_TIME || b.CREATED_TIME || '')) - new Date((a.ALARM_DATE || a.CREATED_DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || ''))).forEach(a => {
+        const isActive = a.IS_ACTIVE === 1;
+        if (isActive) activeCount++;
+        const param = a.PARAMETER_ID ? globalParams.find(p => p.PARAMETER_ID == a.PARAMETER_ID) : null;
+        alarmRowsHtml += `<tr><td data-label="Device">${device.DEVICE_NAME}</td><td data-label="Alarm">${a.ALARM_TEXT ? a.ALARM_TEXT : (isIncubator ? (param?.PARAMETER_NAME || "Unknown") + " → " : "") + (a.READING !== null ? Math.round(a.READING) + " " + (globalUOMs.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "") : "-")}</td><td data-label="Raised Time">${formatDateTimeDDMMYY(a.ALARM_DATE, a.ALARM_TIME)}</td><td data-label="Resolution Time">${!isActive ? formatDateTimeDDMMYY(a.RESOLVED_DATE || a.NORMALIZED_DATE || a.ALARM_DATE, a.RESOLVED_TIME || a.NORMALIZED_TIME || a.ALARM_TIME) : "-"}</td><td data-label="Status"><span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">${isActive ? 'Active' : 'Resolved'}</span></td></tr>`;
+    });
+    
+    alarmBody.innerHTML = alarmRowsHtml;
 
-    if (s.DEVICE_ID !== device.DEVICE_ID) return false;
-
-    const alarmTime = new Date(
-      s.CREATED_ON_DATE + "T" + s.CREATED_ON_TIME
-    );
-
-    // 🔥 EXACT same 24h logic as temperature alarms
-    return (now - alarmTime) <= (24 * 60 * 60 * 1000);
-  })
-  .sort((a,b)=>{
-    const aTime = new Date(a.CREATED_ON_DATE + "T" + a.CREATED_ON_TIME);
-    const bTime = new Date(b.CREATED_ON_DATE + "T" + b.CREATED_ON_TIME);
-    return bTime - aTime;
-  })[0];
-
-
-if (deviceStatusAlarm) {
-
-  const raisedTime = formatDateTimeDDMMYY(
-    deviceStatusAlarm.CREATED_ON_DATE,
-    deviceStatusAlarm.CREATED_ON_TIME
-  );
-
-  const resolvedTime =
-    deviceStatusAlarm.IS_ACTIVE === 0
-      ? formatDateTimeDDMMYY(
-          deviceStatusAlarm.UPDATED_ON_DATE,
-          deviceStatusAlarm.UPDATED_ON_TIME
-        )
-      : "-";
-
-  alarmBody.innerHTML += `
-    <tr>
-      <td data-label="Device">${device.DEVICE_NAME}</td>
-      <td data-label="Alarm">DEVICE OFFLINE</td>
-      <td data-label="Raised Time">${raisedTime}</td>
-      <td data-label="Resolution Time">${resolvedTime}</td>
-      <td data-label="Status">
-        <span class="badge ${deviceStatusAlarm.IS_ACTIVE ? "bg-danger" : "bg-success"}">
-          ${deviceStatusAlarm.IS_ACTIVE ? "Active" : "Resolved"}
-        </span>
-      </td>
-    </tr>
-  `;
-}
-
-
-let activeCount = 0;
-
-alarms.forEach(a => {
-
-    const isActive = a.IS_ACTIVE === 1;
-    if (isActive) activeCount++;
-
-    // check incubator category
-    const category = allCategories.find(c => c.CATEGORY_ID === device.CATEGORY_ID);
-    const isIncubator = category?.CATEGORY_NAME?.toLowerCase().includes("incubator");
-
-    // get parameter name
-const param = a.PARAMETER_ID
-    ? masterparameter.find(p => p.PARAMETER_ID == a.PARAMETER_ID)
-    : null;
-
-
-//     alarmBody.innerHTML += `
-//         <tr>
-//             <td>${device.DEVICE_NAME}</td>
-
-//             <td>
-//                 ${
-//                     isIncubator 
-//                     ? (param?.PARAMETER_NAME || "Unknown") + " → "
-//                     : ""
-//                 }
-//                 ${a.READING ?? "-"}
-//             </td>
-
-//             <td>${a.ALARM_DATE} ${a.ALARM_TIME}</td>
-
-//             <td>
-//                 <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
-//                     ${isActive ? 'Active' : 'Resolved'}
-//                 </span>
-//             </td>
-//         </tr>`;
-// });
-
-const raisedTime = formatDateTimeDDMMYY(a.ALARM_DATE, a.ALARM_TIME);
-
-// 🔹 Resolution time (sirf resolved alarm ke liye)
-const resolutionTime =
-    !isActive
-        ? formatDateTimeDDMMYY(
-            a.RESOLVED_DATE || a.NORMALIZED_DATE || a.ALARM_DATE,
-            a.RESOLVED_TIME || a.NORMALIZED_TIME || a.ALARM_TIME
-          )
-        : "-";
-
-        
-
-alarmBody.innerHTML += `
-    <tr>
-        <!-- Device -->
-        <td data-label="Device">
-          ${device.DEVICE_NAME}</td>
-
-        <!-- Alarm (integer value) -->
-       <td data-label="Alarm">
-  ${
-    a.ALARM_TEXT
-      ? a.ALARM_TEXT
-      : (
-          isIncubator
-            ? (param?.PARAMETER_NAME || "Unknown") + " → "
-            : ""
-        ) +
-        (a.READING !== null
-          ? Math.round(a.READING) + " " +
-            (masteruom.find(u => u.UOM_ID == param?.UOM_ID)?.UOM_NAME || "")
-          : "-"
-        )
-  }
-</td>
-
-
-        <!-- Raised Time -->
-        <td data-label="Raised Time">
-          ${raisedTime}</td>
-
-        <!-- Alarm Resolution Time -->
-        <td data-label="Resolution Time">
-          ${resolutionTime}</td>
-
-        <!-- Status (unchanged) -->
-        <td data-label="Status">
-            <span class="badge ${isActive ? 'bg-danger' : 'bg-success'}">
-                ${isActive ? 'Active' : 'Resolved'}
-            </span>
-        </td>
-    </tr>`;
-});
-filterAlarmTableLast24h();
-
-document.getElementById("alarm24h").textContent =
-    alarms.filter(a => {
-        const dt = new Date((a.ALARM_DATE || a.CREATED_DATE || a.DATE || '') + " " + (a.ALARM_TIME || a.CREATED_TIME || ''));
-        return !isNaN(dt) && (now - dt <= 24 * 60 * 60 * 1000);
-    }).length;
-
-document.getElementById("activeAlarmCount").textContent = activeCount;
-
-
-    // 🔁 Auto-refresh graph every 30 minutes (1800000 ms)
-if (window.deviceGraphRefreshInterval) clearInterval(window.deviceGraphRefreshInterval);
+    document.getElementById("alarm24h").textContent = alarms.length;
+    document.getElementById("activeAlarmCount").textContent = activeCount;
 
     updateSummary();
-    // updateDashboardLive(currentCategoryId);
-
 }
 
-document.querySelector('.navbar-toggler').addEventListener('click', () => {
-
-  document.querySelector('.sidebar').classList.toggle('active');
-
-});
-
-
-
-/* ⭐ OPTIONAL PRO UX */
+document.querySelector('.navbar-toggler').addEventListener('click', () => { document.querySelector('.sidebar').classList.toggle('active'); });
 document.addEventListener("click", function(e){
-
-  const sidebar = document.querySelector(".sidebar");
-  const toggle = document.querySelector(".navbar-toggler");
-
-  if(!sidebar.contains(e.target) && !toggle.contains(e.target)){
-      sidebar.classList.remove("active");
-  }
-
+    const sidebar = document.querySelector(".sidebar");
+    const toggle = document.querySelector(".navbar-toggler");
+    if(!sidebar.contains(e.target) && !toggle.contains(e.target)) sidebar.classList.remove("active");
 });
 
-
-
-
-
-// Event listeners
-//document.getElementById("startDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
-//document.getElementById("endDateTime").addEventListener("change",()=>{ if(currentCategoryId) updateDashboardLive(currentCategoryId); });
 document.getElementById("organizationSelect").addEventListener("change",e=>loadCentres(e.target.value));
 document.getElementById("centreSelect").addEventListener("change",e=>loadDevices(e.target.value));
 
-/* ============================================================
-   FILTER ALARM TABLE (LAST 24 HOURS ONLY)
-   ============================================================ */
-
 function filterAlarmTableLast24h() {
-
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // last 24 hours
-
-    const rows = document.querySelectorAll("#alarmLog tr");
-
-    rows.forEach(row => {
-
-        // 👉 Time + Date 3rd column me hai (index 2)
-        const dateTimeText = row.cells[2].innerText.trim();  
-
-        // "YYYY-MM-DD HH:mm:ss" ko JS Date me convert
-        const dt = new Date(dateTimeText.replace(" ", "T"));
-
-        // console.log(dt);  // debug chahiye to
-
-        if (dt < cutoff) {
-            row.style.display = "none";   // purane chhupa do
-        } else {
-            row.style.display = "";       // recent dikhao
-        }
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    document.querySelectorAll("#alarmLog tr").forEach(row => {
+        const dt = new Date(row.cells[2].innerText.trim().replace(" ", "T"));
+        row.style.display = dt < cutoff ? "none" : "";
     });
 }
 
-
 function updateLastRefreshTime() {
     const now = new Date();
-
-    // save in localStorage
     localStorage.setItem("lastRefreshTime", now.toString());
-
-    // show nicely formatted
-    const options = {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    };
-
-    document.getElementById("lastRefreshText").innerText =
-        "Last refreshed: " + now.toLocaleString("en-GB", options);
+    document.getElementById("lastRefreshText").innerText = "Last refreshed: " + now.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-// when page loads, read last saved time
 window.addEventListener("load", function () {
-
-    // ⭐ navbar labels force show (no flicker)
     const centreLbl = document.getElementById("navbarCentreLabel");
     if (centreLbl) centreLbl.style.display = "block";
-
     const orgLbl = document.getElementById("navbarOrgLabel");
     if (orgLbl) orgLbl.style.display = "block";
 
     const saved = localStorage.getItem("lastRefreshTime");
-
-//     setNavbarOrgCentre(
-//   localStorage.getItem("ORG_NAME"),
-//   localStorage.getItem("CENTRE_NAME")
-// );
-
-
-    if (saved) {
-
-        const dt = new Date(saved);
-
-        const options = {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        };
-
-        document.getElementById("lastRefreshText").innerText =
-            "Last refreshed: " + dt.toLocaleString("en-GB", options);
-
-    } else {
-
-        document.getElementById("lastRefreshText").innerText =
-            "Last refreshed: never";
-    }
+    document.getElementById("lastRefreshText").innerText = saved ? "Last refreshed: " + new Date(saved).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Last refreshed: never";
 });
 
 function updateAverageBox(dataPoints, param, masteruom) {
-
     const avgBox = document.getElementById("avgBox");
-
     if (!dataPoints.length || !param) {
-        avgBox.innerText = "Avg: --";
-        avgBox.style.background = "#e9ecef";
-        avgBox.style.color = "#000";
-        return;
+        avgBox.innerText = "Avg: --"; avgBox.style.background = "#e9ecef"; avgBox.style.color = "#000"; return;
     }
 
-    // 🔹 Calculate average
-    const sum = dataPoints.reduce((a,b)=>a + b.y, 0);
-    const avg = sum / dataPoints.length;
-
-    // 🔹 UOM
-    const uomObj = masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID));
-    const uom = uomObj?.UOM_NAME || "";
-
-    // 🔹 Thresholds
+    const avg = dataPoints.reduce((a,b)=>a + b.y, 0) / dataPoints.length;
+    const uom = masteruom.find(u => String(u.UOM_ID) === String(param.UOM_ID))?.UOM_NAME || "";
     const lower = parseFloat(param.LOWER_THRESHOLD || 0);
     const upper = parseFloat(param.UPPER_THRESHOLD || 0);
+    let status = "Normal", bg = "#28a745"; 
 
-    let status = "Normal";
-    let bg = "#28a745"; // green
-
-    if (upper && avg > upper) {
-        status = "High";
-        bg = "#dc3545";
-    }
-    else if (lower && avg < lower) {
-        status = "Low";
-        bg = "#ffc107";
-    }
+    if (upper && avg > upper) { status = "High"; bg = "#dc3545"; }
+    else if (lower && avg < lower) { status = "Low"; bg = "#ffc107"; }
 
     avgBox.innerText = `Avg: ${avg.toFixed(2)} ${uom} (${status})`;
-    avgBox.style.background = bg;
-    avgBox.style.color = "#fff";
+    avgBox.style.background = bg; avgBox.style.color = "#fff";
 }
 
-// 🔁 Avg box click = change time range
 let avgRangeIndex = 0;
-const avgRanges = [10, 60, 1440];   // 10 min, 1 hour, 1 day
-
-function cycleAvgRange(){
-    avgRangeIndex = (avgRangeIndex + 1) % avgRanges.length;
-    setGraphRange(avgRanges[avgRangeIndex]);
-}
+const avgRanges = [10, 60, 1440];
+function cycleAvgRange(){ setGraphRange(avgRanges[(avgRangeIndex = (avgRangeIndex + 1) % avgRanges.length)]); }
 
 function validateDateRangeLive(){
-
     const startVal = document.getElementById("startDateTime").value;
     const endVal   = document.getElementById("endDateTime").value;
-
     if(!startVal || !endVal) return;
-
-    const start = new Date(startVal);
-    const end   = new Date(endVal);
-
-    if(end < start){
-        alert("End date must be after start date");
-        document.getElementById("endDateTime").value = "";
-        return;
-    }
-
-    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
-
-    if(diffDays > 3){
-        alert("⚠ You can select maximum 3 days only");
-        document.getElementById("endDateTime").value = "";
-    }
+    if(new Date(endVal) < new Date(startVal)){ alert("End date must be after start date"); document.getElementById("endDateTime").value = ""; return; }
+    if((new Date(endVal) - new Date(startVal)) / 86400000 > 3){ alert("⚠ You can select maximum 3 days only"); document.getElementById("endDateTime").value = ""; }
 }
 
 document.getElementById("startDateTime").addEventListener("change", validateDateRangeLive);
 document.getElementById("endDateTime").addEventListener("change", validateDateRangeLive);
 
-
-
 function markActiveRange(mins){
-  document.querySelectorAll(".range-btn").forEach(b=>{
-    b.classList.remove("btn-primary");
-    b.classList.add("btn-outline-primary");
-  });
-
-  const btn = document.querySelector(`[data-min='${mins}']`);
-  if(btn){
-    btn.classList.remove("btn-outline-primary");
-    btn.classList.add("btn-primary");
-  }
+    document.querySelectorAll(".range-btn").forEach(b=>b.classList.replace("btn-primary", "btn-outline-primary"));
+    document.querySelector(`[data-min='${mins}']`)?.classList.replace("btn-outline-primary", "btn-primary");
 }
 
-
-
 function setNavbarOrgCentre(orgName, centreName){
-
-    // set text values
     document.getElementById("navbarOrgName").innerText = orgName || "-";
     document.getElementById("navbarCentreName").innerText = centreName || "-";
-
-    // also store
-    localStorage.setItem("ORG_NAME", orgName || "");
-    localStorage.setItem("CENTRE_NAME", centreName || "");
-
-    document.getElementById("mobileOrgName").innerText = orgName || "-";
-document.getElementById("mobileCentreName").innerText = centreName || "-";
-
+    localStorage.setItem("ORG_NAME", orgName || ""); localStorage.setItem("CENTRE_NAME", centreName || "");
+    if(document.getElementById("mobileOrgName")) document.getElementById("mobileOrgName").innerText = orgName || "-";
+    if(document.getElementById("mobileCentreName")) document.getElementById("mobileCentreName").innerText = centreName || "-";
 }
 
 async function updateSummaryLive(){
-
     if(!currentCentreId) return;
-
     try{
+        const readingsDataRaw = await fetch(API.devicereadinglog + `?centre=${currentCentreId}`).then(r => r.json());
+        const nowMs = Date.now();
 
-const readingsDataRaw = await fetch(
-    API.devicereadinglog + `?centre=${currentCentreId}`
-).then(r => r.json());
-
-
-        const now = new Date();
-
-allDevices.forEach(device=>{
-
-    const deviceReadings = readingsDataRaw
-        .filter(r => r.DEVICE_ID === device.DEVICE_ID)
-        .sort((a,b)=>new Date(a.READING_DATE+'T'+a.READING_TIME) - new Date(b.READING_DATE+'T'+b.READING_TIME));
-
-    const latest = deviceReadings[deviceReadings.length-1];
-
-    let status = "offline";
-    let displayVal = "Offline";
-
-    if(latest){
-
-        const readingTime = new Date(latest.READING_DATE + "T" + latest.READING_TIME);
-
-        if(now - readingTime <= 10*60*1000){
-            status = "active";
-            displayVal = Math.round(latest.READING);
-        }
-    }
-
-    device.status = status;
-
-    // ⭐ CARD UPDATE
-    const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
-
-    if(el){
-        el.innerText = displayVal;
-
-        const card = document.getElementById(`card_${device.DEVICE_ID}`);
-        if(card){
-        card.className =
-            status === "active"
-            ? "device-card bg-success"
-            : "device-card bg-secondary";
-    }}
-
-});
-
+        allDevices.forEach(device=>{
+            const latest = readingsDataRaw.filter(r => r.DEVICE_ID === device.DEVICE_ID)
+                .sort((a,b)=> new Date(a.READING_DATE+'T'+a.READING_TIME).getTime() - new Date(b.READING_DATE+'T'+b.READING_TIME).getTime()).pop();
+            
+            let status = "offline", displayVal = "Offline";
+            if(latest && (nowMs - new Date(latest.READING_DATE + "T" + latest.READING_TIME).getTime() <= 10*60*1000)){
+                status = "active"; displayVal = Math.round(latest.READING);
+            }
+            device.status = status;
+            
+            const el = document.getElementById(`currentTemp_${device.DEVICE_ID}`);
+            if(el) {
+                el.innerText = displayVal;
+                const card = document.getElementById(`card_${device.DEVICE_ID}`);
+                if(card) card.className = status === "active" ? "device-card bg-success" : "device-card bg-secondary";
+            }
+        });
         updateSummary();
-
-    }
-    catch(err){
-        console.error("Summary Live Error:",err);
-    }
+    } catch(err){}
 }
-
-// ============================================================
-// EDIT USER FUNCTION
-// ============================================================
 
 function editUser(userId){
-
-    console.log("Edit clicked for:", userId);
-
-    // Find user from table list (temporary logic)
-    fetch(BASE_URL + "/api/masteruser/")
-        .then(res => res.json())
-        .then(users => {
-
-            const user = users.find(u => u.USER_ID == userId);
-            if(!user){
-                alert("User not found");
-                return;
-            }
-            editingUserId = user.USER_ID;
-
-            // 🔹 Fill form fields
-            document.getElementById("newActualName").value = user.ACTUAL_NAME || "";
-            document.getElementById("newUsername").value = user.USERNAME || "";
-            document.getElementById("email").value = user.EMAIL || "";
-            document.getElementById("phone").value = user.PHONE || "";
-            document.getElementById("validityStart").value = user.VALIDITY_START || "";
-            document.getElementById("validityEnd").value = user.VALIDITY_END || "";
-            document.getElementById("newUserRole").value = user.ROLE_ID;
-
-            // 🔹 Change button text
-            document.querySelector("#createUserForm button[type='submit']").innerText = "Update";
-
-            // 🔹 Open modal
-            const modal = new bootstrap.Modal(
-                document.getElementById('createUserModal')
-            );
-            modal.show();
-
-        });
+    fetch(BASE_URL + "/api/masteruser/").then(res => res.json()).then(users => {
+        const user = users.find(u => u.USER_ID == userId);
+        if(!user){ alert("User not found"); return; }
+        editingUserId = user.USER_ID;
+        document.getElementById("newActualName").value = user.ACTUAL_NAME || "";
+        document.getElementById("newUsername").value = user.USERNAME || "";
+        document.getElementById("email").value = user.EMAIL || "";
+        document.getElementById("phone").value = user.PHONE || "";
+        document.getElementById("validityStart").value = user.VALIDITY_START || "";
+        document.getElementById("validityEnd").value = user.VALIDITY_END || "";
+        document.getElementById("newUserRole").value = user.ROLE_ID;
+        document.querySelector("#createUserForm button[type='submit']").innerText = "Update";
+        new bootstrap.Modal(document.getElementById('createUserModal')).show();
+    });
 }
 
-
 function applyCentreRoleUI(user, centres) {
-
     const centreText = document.getElementById("navbarCentreName");
     const centreDropdown = document.getElementById("adminCentreDropdown");
     const mobileDropdown = document.getElementById("mobileAdminCentreDropdown");
-
     if (!centreText || !centreDropdown) return;
 
     if (user.ROLE_ID == 2) {
-
-        // 🔥 Hide text
-        centreText.style.display = "none";
-
-        // 🔥 Show desktop dropdown
-        centreDropdown.style.display = "inline-block";
-
-        // 🔥 Show mobile dropdown (if exists)
-        if (mobileDropdown) {
-            mobileDropdown.style.display = "block";
-        }
-
-        centreDropdown.innerHTML = "";
-        if (mobileDropdown) mobileDropdown.innerHTML = "";
+        centreText.style.display = "none"; centreDropdown.style.display = "inline-block";
+        if (mobileDropdown) mobileDropdown.style.display = "block";
+        centreDropdown.innerHTML = ""; if (mobileDropdown) mobileDropdown.innerHTML = "";
 
         const orgId = document.getElementById("organizationSelect").value;
-
-        const filteredCentres = centres.filter(c => 
-            String(c.ORGANIZATION_ID) === String(orgId)
-        );
-
-        filteredCentres.forEach(c => {
-
-            // Desktop option
-            const option1 = document.createElement("option");
-            option1.value = c.CENTRE_ID;
-            option1.textContent = c.CENTRE_NAME;
-            centreDropdown.appendChild(option1);
-
-            // 🔥 Mobile option
-            if (mobileDropdown) {
-                const option2 = document.createElement("option");
-                option2.value = c.CENTRE_ID;
-                option2.textContent = c.CENTRE_NAME;
-                mobileDropdown.appendChild(option2);
-            }
+        centres.filter(c => String(c.ORGANIZATION_ID) === String(orgId)).forEach(c => {
+            centreDropdown.innerHTML += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`;
+            if (mobileDropdown) mobileDropdown.innerHTML += `<option value="${c.CENTRE_ID}">${c.CENTRE_NAME}</option>`;
         });
 
-        centreDropdown.value = currentCentreId;
-        if (mobileDropdown) mobileDropdown.value = currentCentreId;
-
-        // Desktop change
-        centreDropdown.onchange = function () {
-            currentCentreId = this.value;
-            loadDevices(this.value);
-        };
-
-        // 🔥 Mobile change
-        if (mobileDropdown) {
-            mobileDropdown.onchange = function () {
-                currentCentreId = this.value;
-                loadDevices(this.value);
-            };
-        }
-
+        centreDropdown.value = currentCentreId; if (mobileDropdown) mobileDropdown.value = currentCentreId;
+        centreDropdown.onchange = function () { currentCentreId = this.value; loadDevices(this.value); };
+        if (mobileDropdown) mobileDropdown.onchange = function () { currentCentreId = this.value; loadDevices(this.value); };
     } else {
-
-        centreText.style.display = "inline";
-        centreDropdown.style.display = "none";
-
-        if (mobileDropdown) {
-            mobileDropdown.style.display = "none";
-        }
+        centreText.style.display = "inline"; centreDropdown.style.display = "none";
+        if (mobileDropdown) mobileDropdown.style.display = "none";
     }
 }
 
+async function checkSubscriptionStatus() {
+    try {
+        const res = await fetch(BASE_URL + "/api/subscription-status/", { credentials: "include" });
+        const data = await res.json();
+        if (data.expiring_soon && data.remaining_days !== null) {
+            showSubscriptionModal("Subscription Expiring Soon", `Your subscription will expire in ${data.remaining_days} day(s). Please contact fertisensellp to renew.`);
+        }
+    } catch (err) {}
+}
 
-
-/* ============================================================
-   INITIALIZE DASHBOARD
-   - Load organizations
-   - Apply role rules
-   - Start live summary updates
-   ============================================================ */
-
-
-(async function(){ 
-    await loadOrganizations();
-    handleRoleDisable();
-})();// new fast opening 2
+function showSubscriptionModal(title, message) {
+    if (document.getElementById("subWarningModal")) return;
+    document.body.insertAdjacentHTML("beforeend", `<div class="modal fade show" id="subWarningModal" tabindex="-1" style="display: block; background: rgba(0,0,0,0.6);" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-center p-4"><h4 class="text-warning mb-3">${title}</h4><p>${message}</p><button class="btn btn-primary mt-3" onclick="document.getElementById('subWarningModal').remove()">OK</button></div></div></div>`);
+}
