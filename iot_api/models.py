@@ -138,7 +138,7 @@ IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
 
 # ================== Alarm Normalized Alert ==================
 def send_normalized_alert(active_alarm):
-    if not has_active_subscription(active_alarm.DEVICE_ID):
+    if not has_active_subcription(active_alarm.DEVICE_ID):
         print("⛔ Subscription expired → Normalized alert skipped")
         return
     from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
@@ -385,6 +385,7 @@ class CompassDates(models.Model):
         
 class MasterDevice(models.Model): 
     DEVICE_MACID =models.CharField(max_length=100,null=True,blank=True) 
+    DEVICE_SERIAL_NO = models.CharField(max_length=50, null=True, blank=True)
     CENTRE_ID = models.IntegerField(default=1) 
     DEVICE_ID = models.AutoField(primary_key=True) 
     DEVICE_NAME = models.CharField(max_length=200) 
