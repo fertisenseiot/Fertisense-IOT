@@ -8,12 +8,11 @@ from .views import twilio_call_status
 from .views import hardware_payment_status_api
 
 
-
 from .views import (
     DeviceReadingLogViewSet, MasterDeviceViewSet, CompassDatesViewSet,
     MasterOrganizationViewSet, MasterParameterViewSet, MasterSensorViewSet,
     SeUserViewSet, SensorParameterLinkViewSet, DeviceSensorLinkViewSet,
-    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet,AddReadingByMacIdView,hardware_payment_status_mac_api,devicecheck_mac)
+    DeviceAlarmCallLogViewSet, DeviceAlarmLogViewSet, MasterUOMViewSet , MasterCentreViewSet, MasterRoleViewSet ,CentreOrganizationLinkViewSet, MasterUserViewSet , UserOrganizationCentreLinkViewSet, MasterNotificationTimeViewSet , DeviceCategoryViewSet , MasterSubscriptionInfoViewSet, MasterPlanTypeViewSet, Subscription_HistoryViewSet,DeviceStatusAlarmLogViewSet,EmailReportLogViewSet, user_subscription_status_api,AddReadingByMacIdView,hardware_payment_status_mac_api,devicecheck_mac)
 
 # Router setup
 router = routers.DefaultRouter()
@@ -57,18 +56,19 @@ urlpatterns = [
     # path('api/devicecheck/', views.devicecheck, name='devicecheck'),
     path('devicecheck/<int:device_id>/', views.devicecheck, name='devicecheck'),
     path("twilio/call-status/", twilio_call_status),
-
-    path(
+   
+   path(
     'hardware-payment-status-api/',
     hardware_payment_status_api,
     name='hardware_payment_status_api'
 ),
 
-    path('api/add-reading-mac/', AddReadingByMacIdView.as_view(), name='add_reading_mac'),
+path('api/subscription-status/', user_subscription_status_api, name='subscription_status_api'),
 
-    # Nayi MAC ID wali checking APIs
+path('api/add-reading-mac/', AddReadingByMacIdView.as_view(), name='add_reading_mac'),
+
+# Nayi MAC ID wali checking APIs
     path('api/hardware-payment-mac/', hardware_payment_status_mac_api, name='hardware_payment_mac'),
     path('api/device-check-mac/', devicecheck_mac, name='device_check_mac'),
-   
-    
+
 ]
