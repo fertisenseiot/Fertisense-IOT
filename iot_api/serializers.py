@@ -23,7 +23,7 @@ class CompassDatesSerializer(serializers.ModelSerializer):
 class MasterDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterDevice
-        fields = ['DEVICE_ID','DEVICE_NAME','CATEGORY_ID','ORGANIZATION_ID','CENTRE_ID','DEVICE_STATUS','IS_HARDWARE_PAYMENT_DONE']
+        fields = ['DEVICE_MACID','DEVICE_ID','DEVICE_SERIAL_NO','DEVICE_NAME','CATEGORY_ID','ORGANIZATION_ID','CENTRE_ID','DEVICE_STATUS','IS_HARDWARE_PAYMENT_DONE']
 
 # -------------------------
 # DeviceReadingLog
@@ -280,4 +280,3 @@ class MacIdReadingSerializer(serializers.Serializer):
     READING = serializers.FloatField(help_text="Enter Reading Value")
     READING_DATE = serializers.DateField(required=False, help_text="Optional (YYYY-MM-DD)")
     READING_TIME = serializers.TimeField(required=False, help_text="Optional (HH:MM:SS)")
-
