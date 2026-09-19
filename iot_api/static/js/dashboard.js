@@ -47,7 +47,7 @@ const PRIMARY_KEYS = {
 
 const FIELD_SCHEMAS = {
   masterorganizations: ["ORGANIZATION_ID","ORGANIZATION_NAME"], mastercentre: ["CENTRE_ID","ORGANIZATION_ID","CENTRE_NAME"],
-  masterdevices: ["DEVICE_ID","DEVICE_NAME","DEVICE_IP","CATEGORY_ID","ORGANIZATION_ID","CENTRE_ID","DEVICE_STATUS","IS_HARDWARE_PAYMENT_DONE"],
+  masterdevices: ["DEVICE_MACID","DEVICE_ID","DEVICE_NAME","DEVICE_SERIAL_NO","DEVICE_IP","CATEGORY_ID","ORGANIZATION_ID","CENTRE_ID","DEVICE_STATUS","IS_HARDWARE_PAYMENT_DONE"],
   mastersensor: ["SENSOR_ID","SENSOR_NAME","SENSOR_TYPE","UOM_ID","SENSOR_STATUS"], masterparameter: ["PARAMETER_ID","PARAMETER_NAME","UOM_ID","LOWER_THRESHOLD","UPPER_THRESHOLD","THRESHOLD"],
   masteruom: ["UOM_ID","UOM_NAME","SYMBOL"], createuser: ["USER_ID","ACTUAL_NAME","USERNAME","ROLE_ID","PHONE","SEND_SMS","EMAIL","SEND_EMAIL","PASSWORD","confirm_password","VALIDITY_START","VALIDITY_END"],
   masterrole: ["ROLE_ID","ROLE_NAME"], devicereadinglog: ["ID","DEVICE_ID","SENSOR_ID","PARAMETER_ID","READING","RAISED_TIME"],
@@ -96,13 +96,29 @@ function populateUserDropdown(){
 
 function sortDescending(table, data) {
   if (!data || data.length === 0) return data;
-  if (table === "mastersubscriptionhistory") return data[0].id ? data.sort((a,b)=>b.id-a.id) : data.sort((a,b)=>new Date(b.Subscription_Start_date)-new Date(a.Subscription_Start_date));
+  
+  // Table ki main ID (Primary Key) nikalo
+  const pk = PRIMARY_KEYS[table];
+  
+  if (table === "mastersubscriptionhistory") {
+      return data[0].id ? data.sort((a,b)=>b.id-a.id) : data.sort((a,b)=>new Date(b.Subscription_Start_date)-new Date(a.Subscription_Start_date));
+  }
+
+  // 🚀 NAYA LOGIC: Hamesha Table ki Main ID (jaise DEVICE_ID) se sabse naya sabse upar (Descending)
+  if (pk && data[0][pk] !== undefined && data[0][pk] !== null) {
+      return data.sort((a, b) => Number(b[pk]) - Number(a[pk]));
+  }
+
+  // Backup sorting methods (Dates aur dusre numbers ke liye)
   const dateKeys = Object.keys(data[0]).filter(k => k.toLowerCase().includes("date") || k.toLowerCase().includes("time"));
   if (dateKeys.length) return data.sort((a,b)=>new Date(b[dateKeys[0]])-new Date(a[dateKeys[0]]));
+  
   const numberKeys = Object.keys(data[0]).filter(k => typeof data[0][k] === "number" || !isNaN(Number(data[0][k])));
   if (numberKeys.length) return data.sort((a,b)=>Number(b[numberKeys[0]])-Number(a[numberKeys[0]]));
+  
   return data; 
 }
+
 
 function calculateSubscriptionStatus(row) {
   const today = new Date(); today.setHours(0,0,0,0); const start = new Date(row.Subscription_Start_date); start.setHours(0,0,0,0);
@@ -166,7 +182,7 @@ async function loadTable(table) {
 
         if (h === "ORG_ID" || h === "ORGANIZATION_ID") { const org = (dropdownData.orgs || []).find(o => o.ORGANIZATION_ID == row[h]); cellVal = org ? `${org.ORGANIZATION_NAME} (${org.ORGANIZATION_ID})` : row[h]; }
         if (h === "CENTRE_ID") { const c = (dropdownData.centres || []).find(c => c.CENTRE_ID == row[h]); cellVal = c ? `${c.CENTRE_NAME} (${c.CENTRE_ID})` : row[h]; }
-        if (h === "CREATED_BY" || h === "created_by") {
+       if (h === "CREATED_BY" || h === "created_by") {
             let creatorId = row[h] ?? row["CREATED_BY"] ?? row["created_by"];
             if (typeof creatorId === 'object' && creatorId !== null) {
                 creatorId = creatorId.USER_ID || creatorId.id;
@@ -180,6 +196,7 @@ async function loadTable(table) {
                 cellVal = "-";
             }
         }
+
         if (h === "CATEGORY_ID") { const cat = (dropdownData.devicescategory || []).find(dc => dc.CATEGORY_ID == row[h]); cellVal = cat ? `${cat.CATEGORY_NAME} (${cat.CATEGORY_ID})` : (row[h] !== null ? row[h] : "-"); }
         if (h === "DEVICE_ID" && currentTable !== "masterdevices") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
         if (h === "Device_ID") { const d = (dropdownData.devices || []).find(d => d.DEVICE_ID == row[h]); cellVal = d ? `${d.DEVICE_NAME} (${d.DEVICE_ID})` : row[h]; }
@@ -212,7 +229,22 @@ async function loadTable(table) {
       }
       if (currentTable === "masterdevices") {
         return `<tr class="${row.DEVICE_STATUS === 1 ? '' : 'inactive-row'}">${rowCells}
-          <td><div class="d-flex align-items-center"><button class="btn-action edit me-3" onclick='openModal(${JSON.stringify(row)})' title="Edit"><i class="bi bi-pencil"></i></button><label class="switch mb-0"><input type="checkbox" ${row.DEVICE_STATUS === 1 ? "checked" : ""} onchange="toggleActiveStatus(${row.DEVICE_ID}, this)"><span class="slider round"><span class="status-text">${row.DEVICE_STATUS === 1 ? "Active" : "Inactive"}</span></span></label></div></td></tr>`;
+          <td>
+            <div class="d-flex align-items-center">
+              <button class="btn-action edit me-2" onclick='openModal(${JSON.stringify(row)})' title="Edit"><i class="bi bi-pencil"></i></button>
+              
+              <!-- 👇 Bulletproof QR Print Button (Poora row pass kar rahe hain) -->
+              <button class="btn btn-sm btn-outline-dark me-3 rounded-circle" onclick='printQRCode(${JSON.stringify(row)})' title="Print QR" style="width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;">
+                <i class="bi bi-qr-code"></i>
+              </button>
+
+              <label class="switch mb-0">
+                <input type="checkbox" ${row.DEVICE_STATUS === 1 ? "checked" : ""} onchange="toggleActiveStatus(${row.DEVICE_ID}, this)">
+                <span class="slider round"><span class="status-text">${row.DEVICE_STATUS === 1 ? "Active" : "Inactive"}</span></span>
+              </label>
+            </div>
+          </td>
+        </tr>`;
       }
       if (currentTable === "mastersensor") {
         return `<tr class="${row.SENSOR_STATUS === 1 ? '' : 'inactive-row'}">${rowCells}
@@ -240,11 +272,13 @@ async function openModal(row ={}){
 
   const fieldsDiv = document.getElementById('modalFields'); fieldsDiv.innerHTML = "";
 
-  if (currentTable === "masterdevices") {
+if (currentTable === "masterdevices") {
     fieldsDiv.innerHTML = `
       <input type="hidden" name="DEVICE_ID" value="${row.DEVICE_ID ?? ''}">
       
-      <div class="col-md-12 mb-2"><label class="form-label">Device Name</label><input type="text" class="form-control" name="DEVICE_NAME" value="${row.DEVICE_NAME ?? ''}" ${autoCapStr} required></div>
+      <div class="col-md-6 mb-2"><label class="form-label">Device Name</label><input type="text" class="form-control" name="DEVICE_NAME" value="${row.DEVICE_NAME ?? ''}" ${autoCapStr} required></div>
+      <div class="col-md-6 mb-2"><label class="form-label">Serial Number</label><input type="text" class="form-control" name="DEVICE_SERIAL_NO" value="${row.DEVICE_SERIAL_NO ?? ''}" placeholder="Auto-generated by system"></div>
+      
       <div class="col-md-6 mb-2"><label class="form-label">Category</label><select class="form-select" name="CATEGORY_ID" required><option value="">Select Category</option>${(dropdownData.devicescategory||[]).map(c=>`<option value="${c.CATEGORY_ID}" ${row.CATEGORY_ID==c.CATEGORY_ID?'selected':''}>${c.CATEGORY_NAME} (${c.CATEGORY_ID})</option>`).join('')}</select></div>
       <div class="col-md-6 mb-2"><label class="form-label">Organization</label><select class="form-select" name="ORGANIZATION_ID" id="dev_org_select" required><option value="">Select Org</option>${(dropdownData.orgs||[]).map(o=>`<option value="${o.ORGANIZATION_ID}" ${row.ORGANIZATION_ID==o.ORGANIZATION_ID?'selected':''}>${o.ORGANIZATION_NAME} (${o.ORGANIZATION_ID})</option>`).join('')}</select></div>
       <div class="col-md-6 mb-2"><label class="form-label">Centre</label><select class="form-select" name="CENTRE_ID" id="dev_centre_select" required><option value="">Select Centre</option>${(dropdownData.centres||[]).filter(c => c.ORGANIZATION_ID == row.ORGANIZATION_ID).map(c=>`<option value="${c.CENTRE_ID}" ${row.CENTRE_ID==c.CENTRE_ID?'selected':''}>${c.CENTRE_NAME} (${c.CENTRE_ID})</option>`).join('')}</select></div>
@@ -353,13 +387,36 @@ document.getElementById('crudForm').addEventListener('submit', async function(e)
   const originalText = document.getElementById('submitBtnText').innerText;
   submitBtn.disabled = true; document.getElementById('submitBtnText').innerText = "Processing...";
 
-  try {
+try {
     if (currentTable === "masterdevices") {
         if(!isEdit) {
-            let dRes = await fetch(API.masterdevices, { method: 'POST', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE, DEVICE_STATUS: 1 }) });
+            let dRes = await fetch(API.masterdevices, { 
+                method: 'POST', 
+                headers: {"Content-Type":"application/json"}, 
+                body: JSON.stringify({ 
+                    DEVICE_NAME: payload.DEVICE_NAME, 
+                    DEVICE_SERIAL_NO: payload.DEVICE_SERIAL_NO, 
+                    CATEGORY_ID: payload.CATEGORY_ID, 
+                    ORGANIZATION_ID: payload.ORGANIZATION_ID, 
+                    CENTRE_ID: payload.CENTRE_ID, 
+                    IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE, 
+                    DEVICE_STATUS: 1 
+                }) 
+            });
             if(!dRes.ok) throw new Error("Failed to create Device");
         } else {
-            let dRes = await fetch(API.masterdevices + id + "/", { method: 'PATCH', headers: {"Content-Type":"application/json"}, body: JSON.stringify({ DEVICE_NAME: payload.DEVICE_NAME, CATEGORY_ID: payload.CATEGORY_ID, ORGANIZATION_ID: payload.ORGANIZATION_ID, CENTRE_ID: payload.CENTRE_ID, IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE }) });
+            let dRes = await fetch(API.masterdevices + id + "/", { 
+                method: 'PATCH', 
+                headers: {"Content-Type":"application/json"}, 
+                body: JSON.stringify({ 
+                    DEVICE_NAME: payload.DEVICE_NAME, 
+                    DEVICE_SERIAL_NO: payload.DEVICE_SERIAL_NO, 
+                    CATEGORY_ID: payload.CATEGORY_ID, 
+                    ORGANIZATION_ID: payload.ORGANIZATION_ID, 
+                    CENTRE_ID: payload.CENTRE_ID, 
+                    IS_HARDWARE_PAYMENT_DONE: payload.IS_HARDWARE_PAYMENT_DONE 
+                }) 
+            });
             if(!dRes.ok) throw new Error("Failed to update Device");
         }
     } 
@@ -708,3 +765,90 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateSummary(); 
 });
 window.addEventListener("hashchange", function() { const table = location.hash.replace("#", ""); if (table) loadTable(table); });
+
+/* ============================================================
+   🖨️ PRINT QR CODE UTILITY (Brother PT-D610BT | 24mm TZe Tape)
+   ============================================================ */
+function printQRCode(row) {
+// 👇 1. BACKEND SE BANA BANAYA SERIAL NO UTHAO AUR "S/N:" LAGA DO
+    let serialNo = row.DEVICE_SERIAL_NO || "N/A"; 
+    
+    // Agar S/N: nahi laga hai toh khud laga do
+    if (!serialNo.startsWith("S/N:")) {
+        serialNo = "S/N:" + serialNo;
+    }
+    
+    const categoryId = row.CATEGORY_ID;
+    const macId = row.DEVICE_MACID;
+
+    // 2. CATEGORY NAME NIKALO (PRINTING KE LIYE)
+    let catName = "DEVICE";
+    if (dropdownData.devicescategory) {
+        const cat = dropdownData.devicescategory.find(c => c.CATEGORY_ID == categoryId);
+        if (cat && cat.CATEGORY_NAME) {
+            catName = cat.CATEGORY_NAME;
+        }
+    }
+
+    // 👇 Yahan se wo lamba chauda Date() aur prefix wala logic hata diya hai 
+    // kyunki backend ab wo sab khud handle karke DEVICE_SERIAL_NO bhej raha hai!
+
+    // 3. QR CODE KA URL SET KARO
+    const qrDataToScan = macId || "NO-MAC";
+    const qrUrl = `https://bwipjs-api.metafloor.com/?bcid=datamatrix&text=${encodeURIComponent(qrDataToScan)}&scale=4`;
+
+    const printWindow = window.open('', '', 'width=500,height=400');
+    
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Print Label - ${serialNo}</title>
+            <style>
+                @page { margin: 0; size: 38mm 24mm; }
+                body { 
+                    margin: 0; padding: 0; background: white; 
+                    display: flex; justify-content: flex-start; align-items: center; 
+                    width: 38mm; height: 24mm; 
+                    font-family: Arial, Helvetica, sans-serif;
+                    -webkit-font-smoothing: none;
+                }
+                .label-container { 
+                    width: 100%; height: 100%; display: flex; align-items: center; 
+                    box-sizing: border-box; 
+                    padding: 1mm 1mm 1mm 4mm; 
+                }
+                .qr-code { 
+                    width: 12mm; height: 12mm; 
+                    margin-right: 2mm; object-fit: contain; image-rendering: pixelated; 
+                }
+                .text-details { 
+                    display: flex; flex-direction: column; justify-content: center; 
+                    flex: 1; overflow: hidden; 
+                }
+                .device-name { 
+                    color: #000; font-size: 9pt; font-weight: bold; 
+                    margin: 0 0 1.5px 0; white-space: nowrap; letter-spacing: -0.2px;
+                }
+                .serial-no { 
+                    color: #000; font-size: 7.5pt; font-weight: bold; 
+                    margin: 0 0 1.5px 0; white-space: nowrap; letter-spacing: -0.2px; 
+                }
+                .company-name { 
+                    color: #000; font-size: 6.5pt; font-weight: bold; margin: 0; white-space: nowrap; 
+                }
+            </style>
+        </head>
+        <body>
+            <div class="label-container">
+                <img class="qr-code" src="${qrUrl}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
+                <div class="text-details">
+                    <p class="device-name">${catName}</p>
+                    <p class="serial-no">${serialNo}</p>
+                    <p class="company-name">Fertisense LLP</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
