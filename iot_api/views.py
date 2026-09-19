@@ -21,7 +21,7 @@ from .serializers import (
     MasterDeviceSerializer, DeviceReadingLogSerializer, DeviceAlarmLogSerializer,
     MasterOrganizationSerializer, MasterParameterSerializer, MasterSensorSerializer,
     CompassDatesSerializer, SeUserSerializer, SensorParameterLinkSerializer,
-    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer ,EmailReportLogSerializer,
+    DeviceSensorLinkSerializer, DeviceAlarmCallLogSerializer , MasterUOMSerializer , MasterCentreSerializer , MasterRoleSerializer , CentreOrganizationLinkSerializer,MasterUserSerializer,UserOrganizationCentreLinkSerializer,MasterNotificationTimeSerializer , DeviceCategorySerializer , MasterSubscriptionInfoSerializer , Master_PlanTypeSerializer,Subscription_HistorySerializer,DeviceStatusAlarmLogSerializer ,EmailReportLogSerializer
 )
 
 from django.contrib import messages
@@ -40,43 +40,27 @@ def login_view(request):
 
         with connection.cursor() as cursor:
             cursor.execute("""
-                SELECT USER_ID, USERNAME, ROLE_ID 
+                SELECT USER_ID, USERNAME, ROLE_ID, VALIDITY_END 
                 FROM master_user 
                 WHERE USERNAME=%s AND PASSWORD=%s
             """, [username, password])
             row = cursor.fetchone()
 
         if row:
-            user_id, username, role = row
+            user_id, username, role, validity_end = row
+            today = date.today()
 
-            # 🛑 Non-admin users ke liye Subscription ID check (Sirf ID 1 aur 2 allow honge, ID 3 restricted)
-            if role != 1:
-                today = date.today()
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT COUNT(*) 
-                        FROM userorganizationcentrelink uoc
-                        JOIN iot_api_masterdevice md ON md.ORGANIZATION_ID = uoc.ORGANIZATION_ID_id AND md.CENTRE_ID = uoc.CENTRE_ID_id
-                        JOIN Subcription_History sh ON sh.Device_ID = md.DEVICE_ID
-                        WHERE uoc.USER_ID_id = %s
-                          AND sh.Subscription_ID IN (1, 2)
-                          AND sh.Subscription_Start_date <= %s
-                          AND (sh.Subcription_End_date IS NULL OR sh.Subcription_End_date >= %s)
-                    """, [user_id, today, today])
-                    
-                    sub_check = cursor.fetchone()
-                    allowed_count = sub_check[0] if sub_check else 0
-
-                if allowed_count == 0:
-                    messages.error(request, "Access Denied: Your device subscription plan (Device Only / ID 3) does not allow dashboard login.")
+            # 🛑 Non-admin users ke liye master_user ki VALIDITY_END check
+            if role != 1 and validity_end:
+                if validity_end < today:
+                    messages.error(request, "Access Denied: Your account validity has expired. Please contact fertisensellp to renew.")
                     return render(request, "login.html")
 
-            # ✅ Store all details in session
+            # ✅ Store details in session & redirect
             request.session["user_id"] = user_id
             request.session["username"] = username
             request.session["role"] = role
 
-            # Role ke hisaab se redirect
             if role == 1:
                 return redirect("dashboard")
             else:
@@ -148,10 +132,26 @@ def dashboard_view(request):
 # -------------------------
 # DRF ViewSets for all models
 # -------------------------
+# Agar file ke top par datetime import nahi hai, toh top par ye line daal dena:
+# from datetime import datetime
+
 class MasterDeviceViewSet(viewsets.ModelViewSet):
     queryset = MasterDevice.objects.all()
     serializer_class = MasterDeviceSerializer
 
+    # 👇 NAYA LOGIC: Jab dashboard se 'Add New' karoge tab S/N banega
+    def perform_create(self, serializer):
+        # 1. Pehle device DB mein save karo taaki usko ID mil jaye
+        device = serializer.save()
+        
+        # 2. Date aur ID se Serial Number banao (Format: S/N: 180926-33)
+        date_str = datetime.now().strftime("%d%m%y")
+        padded_id = str(device.DEVICE_ID).zfill(2)
+        
+        # 3. Serial Number update karke save kar do
+        device.DEVICE_SERIAL_NO = f"S/N: {date_str}-{padded_id}"
+        device.save()
+        
 class DeviceReadingLogViewSet(viewsets.ModelViewSet):
     queryset = DeviceReadingLog.objects.all()
     serializer_class = DeviceReadingLogSerializer
@@ -527,6 +527,38 @@ def hardware_payment_status_api(request):
 
         })
 
+
+from datetime import date
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def user_subscription_status_api(request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return Response({"error": "Not logged in"}, status=401)
+
+    try:
+        user = MasterUser.objects.filter(USER_ID=user_id).first()
+        if not user or not user.VALIDITY_END:
+            return Response({"expiring_soon": False, "remaining_days": None})
+
+        today = date.today()
+        end_date = user.VALIDITY_END
+        
+        min_remaining_days = 9999
+        if end_date >= today:
+            delta = (end_date - today).days
+            min_remaining_days = delta
+
+        expiring_soon = 1 <= min_remaining_days <= 5 if min_remaining_days != 9999 else False
+
+        return Response({
+            "expiring_soon": expiring_soon,
+            "remaining_days": min_remaining_days if min_remaining_days != 9999 else None
+        })
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
 # =========================================================
 # NEW API: Add Reading by MAC ID (Mass Production Ready)
 # =========================================================
@@ -607,6 +639,20 @@ class AddReadingByMacIdView(APIView):
                     ORGANIZATION_ID=default_org_id,
                     CENTRE_ID=default_centre_id
                 )
+
+                # ----------------------------------------------------
+                # 👇 NAYA LOGIC: Prefix Hata Diya! Sirf Date aur Device ID ek sath
+                # ----------------------------------------------------
+                # Date lock (Jaise: 180926)
+                date_str = datetime.now().strftime("%d%m%y")
+                
+                # ID padding (Jaise: 05, 12, 33)
+                padded_id = str(device.DEVICE_ID).zfill(2)
+                
+                # Final S/N DB mein update kar do (Format: S/N: 180926-33)
+                device.DEVICE_SERIAL_NO = f"S/N: {date_str}{padded_id}"
+                device.save()
+                # ----------------------------------------------------
                 
                 # 8. 🚀 Naye device ko hamesha "Device + Data Logging" (ID: 2) ka Auto-Subscription de do
                 from datetime import timedelta
@@ -767,6 +813,3 @@ def devicecheck_mac(request):
             else "Active"
         )
     })
-
-
-
