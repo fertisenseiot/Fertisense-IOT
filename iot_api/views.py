@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db import connection, transaction  # 👈 transaction add karein
+from datetime import date, datetime
 
 
 from .models import (
@@ -572,7 +573,6 @@ class AddReadingByMacIdView(APIView):
     permission_classes = [AllowAny]
     serializer_class = MacIdReadingSerializer  
 
-    # Ye GET request ko handle karega (Taaki browser mein 405 error na aaye)
     def get(self, request, *args, **kwargs):
         return Response({"message": "Form is ready. Please enter data and click POST."})
 
@@ -590,46 +590,47 @@ class AddReadingByMacIdView(APIView):
             device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
             
             # ----------------------------------------------------
-            # SMART AUTO-REGISTRATION (Bina kisi hardcode ke)
+            # 🚀 NAYA LOGIC: Database Screenshots ke exact IDs se Mapping
+            # ----------------------------------------------------
+            if param_id in [10, 11, 12]:      # Room Temp, Humidity, Voc
+                device_keyword = "voc_2.0"
+                category_id = 5               # Voc_2.0 (Category 5)
+            elif param_id == 1:               # Fridge temp
+                device_keyword = "refri"
+                category_id = 1               # Refricheck (Category 1)
+            elif param_id == 3:               # Cryo temperature
+                device_keyword = "cryo"
+                category_id = 2               # Cryosafe (Category 2)
+            elif param_id in [4, 8, 9]:       # Inc_temp_t1, Inc_Co2, Inc_O2
+                device_keyword = "incubator"
+                category_id = 3               # G185-Incubator (Category 3)
+            else:
+                device_keyword = "voc_2.0"    # Default fallback
+                category_id = 5
+
+            # VOC Category (4 ya 5) bypass flag set karo
+            is_voc = category_id in [4, 5]
+            
+            # Agar device already hai, toh uski asali DB category se confirm karo
+            if device and device.CATEGORY_ID in [4, 5]:
+                is_voc = True
+            # ----------------------------------------------------
+
+            # ----------------------------------------------------
+            # SMART AUTO-REGISTRATION
             # ----------------------------------------------------
             if not device:
-                # 1. Default Org aur Centre ID set karo (Apne database ke hisaab se check kar lena)
                 default_org_id = 2
                 default_centre_id = 3
                 
-                # 2. Organization ka naam nikalo (Spaces hata kar)
                 org = MasterOrganization.objects.filter(ORGANIZATION_ID=default_org_id).first()
                 org_name = org.ORGANIZATION_NAME.strip().replace(" ", "") if org else "Org"
 
-                # 3. Is organization mein ab tak kitne devices hain, uska count nikaal kar +1 karo
                 current_count = MasterDevice.objects.filter(ORGANIZATION_ID=default_org_id).count()
                 next_count = current_count + 1
                 
-                # 4. API me aayi param_id se us parameter ka asali naam dhundo
-                parameter_obj = MasterParameter.objects.filter(PARAMETER_ID=param_id).first()
-                param_name = parameter_obj.PARAMETER_NAME.lower() if parameter_obj else ""
-
-                # 5. Parameter ke naam se Device Keyword (Signal ke liye) aur Category guess karo
-                if 'voc' in param_name or 'room' in param_name or 'humidity' in param_name:
-                    device_keyword = "voc_2.0"
-                    category_id = 1
-                elif 'fridge' in param_name or 'refri' in param_name:
-                    device_keyword = "refri"
-                    category_id = 2  
-                elif 'cryo' in param_name:
-                    device_keyword = "cryo"
-                    category_id = 3  
-                elif 'inc' in param_name or 'o2' in param_name or 'co2' in param_name:
-                    device_keyword = "incubator"
-                    category_id = 4  
-                else:
-                    device_keyword = "voc_2.0" # Default fallback
-                    category_id = 1
-
-                # 6. Final Naya Naam (Jaise: RedOrangesConsulting15_voc_2.0)
                 auto_name = f"{org_name}{next_count}_{device_keyword}"
                 
-                # 7. Device create karo (Sath mein Payment = 1 kar do)
                 device = MasterDevice.objects.create(
                     DEVICE_MACID=mac_id,
                     DEVICE_NAME=auto_name,
@@ -640,42 +641,33 @@ class AddReadingByMacIdView(APIView):
                     CENTRE_ID=default_centre_id
                 )
 
-                # ----------------------------------------------------
-                # 👇 NAYA LOGIC: Prefix Hata Diya! Sirf Date aur Device ID ek sath
-                # ----------------------------------------------------
-                # Date lock (Jaise: 180926)
+                # Date lock aur Serial No generate (Dash ke sath)
                 date_str = datetime.now().strftime("%d%m%y")
-                
-                # ID padding (Jaise: 05, 12, 33)
                 padded_id = str(device.DEVICE_ID).zfill(2)
-                
-                # Final S/N DB mein update kar do (Format: S/N: 180926-33)
-                device.DEVICE_SERIAL_NO = f"S/N: {date_str}{padded_id}"
+                device.DEVICE_SERIAL_NO = f"S/N: {date_str}-{padded_id}"
                 device.save()
-                # ----------------------------------------------------
                 
-                # 8. 🚀 Naye device ko hamesha "Device + Data Logging" (ID: 2) ka Auto-Subscription de do
-                from datetime import timedelta
-                today = date.today()
-                
-                SubscriptionHistory.objects.create(
-                    Device_ID=device.DEVICE_ID,      # 👈 Naye bane huye device ki ID
-                    Subscription_ID=2,               # 👈 2 = "Device + Data Logging"
-                    Plan_ID=1,                       # 👈 1 = "Subscription"
-                    Subscription_Start_date=today,
-                    Subcription_End_date=today + timedelta(days=365), # 1 Saal ki validity
-                    Payment_Date=today,              # 👈 DB me ye column bhi tha
-                    Status="Active"
-                )
-                # ----------------------------------------------------
-            # ----------------------------------------------------
+                # 🚀 VIP LOGIC: Agar VOC NAHI hai (is_voc = False), tabhi Subscription banega
+                if not is_voc:
+                    from datetime import timedelta
+                    today = date.today()
+                    
+                    SubscriptionHistory.objects.create(
+                        Device_ID=device.DEVICE_ID,      
+                        Subscription_ID=2,               
+                        Plan_ID=1,                       
+                        Subscription_Start_date=today,
+                        Subcription_End_date=today + timedelta(days=365), 
+                        Payment_Date=today,              
+                        Status="Active"
+                    )
             
-            # Step 2: Is DEVICE_ID se jude huye SAARE SENSOR_IDs nikaalo
+            # Step 2: Sensors Link Check
             device_sensors = DeviceSensorLink.objects.filter(DEVICE_ID=device.DEVICE_ID).values_list('SENSOR_ID', flat=True)
             if not device_sensors:
                 return Response({"status": 0, "error": "No Sensors linked to this Device"}, status=status.HTTP_404_NOT_FOUND)
             
-            # Step 3: Un sensors mein se wo SENSOR_ID dhundo jo bheje gaye PARAMETER_ID se link hai
+            # Step 3: Parameter Link Check
             sensor_param = SensorParameterLink.objects.filter(SENSOR_ID__in=device_sensors, PARAMETER_ID=param_id).first()
             if not sensor_param:
                 return Response({
@@ -683,21 +675,25 @@ class AddReadingByMacIdView(APIView):
                     "error": f"Parameter ID {param_id} is not linked to any sensor on this device."
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # Step 4: Sab automatically mil gaya! Ab Reading save karo
-            DeviceReadingLog.objects.create(
-                DEVICE_ID=device.DEVICE_ID, 
-                SENSOR_ID=sensor_param.SENSOR_ID, 
-                PARAMETER_ID=param_id, 
-                READING=reading_val,
-                READING_DATE=reading_date,
-                READING_TIME=reading_time,
-                ORGANIZATION_ID=device.ORGANIZATION_ID,
-                CENTRE_ID=device.CENTRE_ID
-            )
+            # Step 4: 🚀 VIP LOGIC: Agar VOC NAHI hai, tabhi Reading DB mein save hogi!
+            if not is_voc:
+                DeviceReadingLog.objects.create(
+                    DEVICE_ID=device.DEVICE_ID, 
+                    SENSOR_ID=sensor_param.SENSOR_ID, 
+                    PARAMETER_ID=param_id, 
+                    READING=reading_val,
+                    READING_DATE=reading_date,
+                    READING_TIME=reading_time,
+                    ORGANIZATION_ID=device.ORGANIZATION_ID,
+                    CENTRE_ID=device.CENTRE_ID
+                )
+                msg = "Reading saved successfully! Device auto-registered if it was new."
+            else:
+                msg = "VOC hardware connected! Device registered but Reading & Subscription intentionally skipped."
 
             return Response({
                 "status": 1,
-                "message": "Reading saved successfully! Device auto-registered if it was new.",
+                "message": msg,
                 "derived_data": {
                     "MAC_ID": mac_id,
                     "AUTOMATIC_DEVICE_NAME": device.DEVICE_NAME,
@@ -752,13 +748,22 @@ def devicecheck_mac(request):
         # 🚀 VIP PASS: Hardware ko bol do ki sab "Active" hai, taaki wo reading bhej sake!
         return Response({
             "mac_id": mac_id,
-            "exists": True, # Yahan True bhej rahe hain bypass ke liye
+            "exists": True, 
             "plan_type": "Auto-Trial",
             "valid_till": "2099-12-31",
             "status": "Active"
         }, status=200)
 
-    # ... Baaki neeche ka poora purana code waisa hi rahega (Active/Future/Expired check)
+    # 👇 NAYA LOGIC: VOC Devices (ID 4 & 5) ke liye Subscription API hamesha "Active" return karegi
+    if device.CATEGORY_ID in [4, 5]:
+        return Response({
+            "mac_id": mac_id,
+            "device_id": device.DEVICE_ID,
+            "exists": True,
+            "plan_type": "VOC-Bypass",
+            "valid_till": "2099-12-31",
+            "status": "Active"
+        }, status=200)
 
     # Agar device mil gaya toh uski ID nikaal lo
     device_id = device.DEVICE_ID
