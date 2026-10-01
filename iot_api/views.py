@@ -10,7 +10,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.db import connection, transaction  # 👈 transaction add karein
-from datetime import date, datetime
 
 
 from .models import (
@@ -167,6 +166,18 @@ class DeviceReadingLogViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(DEVICE_ID__USER_ID=user_id)
 
         if device_id:
+            from datetime import date
+            today = date.today()
+            active_sub = SubscriptionHistory.objects.filter(
+                Device_ID=device_id,
+                Subscription_Start_date__lte=today,
+                Subcription_End_date__gte=today
+            ).order_by('-Subscription_Start_date').first()
+            
+            # Agar Subscription_ID 3 (Device Only) hai, toh empty list return karein
+            if active_sub and active_sub.Subscription_ID == 3:
+                return DeviceReadingLog.objects.none() 
+
             queryset = queryset.filter(DEVICE_ID=device_id)
 
         return queryset.order_by("-READING_DATE", "-READING_TIME")
@@ -431,6 +442,7 @@ def devicecheck(request, device_id):
         })
 
     plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
+    is_device_only = (sub.Subscription_ID == 3) # NAYA: Check for device only
 
     return Response({
         "device_id": device_id,
@@ -441,7 +453,8 @@ def devicecheck(request, device_id):
             "Future" if today < sub.Subscription_Start_date
             else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
             else "Active"
-        )
+        ),
+        "show_readings": not is_device_only # NAYA: Flag for app
     })
 
 
@@ -586,49 +599,36 @@ class AddReadingByMacIdView(APIView):
             reading_date = serializer.validated_data.get('READING_DATE', date.today())
             reading_time = serializer.validated_data.get('READING_TIME', datetime.now().time())
 
-            # Step 1: MAC ID se DEVICE_ID nikaalo
             device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
             
-            # ----------------------------------------------------
-            # 🚀 NAYA LOGIC: Database Screenshots ke exact IDs se Mapping
-            # ----------------------------------------------------
-            if param_id in [10, 11, 12]:      # Room Temp, Humidity, Voc
+            if param_id in [10, 11, 12]:      
                 device_keyword = "voc_2.0"
-                category_id = 5               # Voc_2.0 (Category 5)
-            elif param_id == 1:               # Fridge temp
+                category_id = 5               
+            elif param_id == 1:               
                 device_keyword = "refri"
-                category_id = 1               # Refricheck (Category 1)
-            elif param_id == 3:               # Cryo temperature
+                category_id = 1               
+            elif param_id == 3:               
                 device_keyword = "cryo"
-                category_id = 2               # Cryosafe (Category 2)
-            elif param_id in [4, 8, 9]:       # Inc_temp_t1, Inc_Co2, Inc_O2
+                category_id = 2               
+            elif param_id in [4, 8, 9]:       
                 device_keyword = "incubator"
-                category_id = 3               # G185-Incubator (Category 3)
+                category_id = 3               
             else:
-                device_keyword = "voc_2.0"    # Default fallback
+                device_keyword = "voc_2.0"    
                 category_id = 5
 
-            # VOC Category (4 ya 5) bypass flag set karo
             is_voc = category_id in [4, 5]
-            
-            # Agar device already hai, toh uski asali DB category se confirm karo
             if device and device.CATEGORY_ID in [4, 5]:
                 is_voc = True
-            # ----------------------------------------------------
 
-            # ----------------------------------------------------
-            # SMART AUTO-REGISTRATION
-            # ----------------------------------------------------
             if not device:
                 default_org_id = 2
                 default_centre_id = 3
-                
                 org = MasterOrganization.objects.filter(ORGANIZATION_ID=default_org_id).first()
                 org_name = org.ORGANIZATION_NAME.strip().replace(" ", "") if org else "Org"
 
                 current_count = MasterDevice.objects.filter(ORGANIZATION_ID=default_org_id).count()
                 next_count = current_count + 1
-                
                 auto_name = f"{org_name}{next_count}_{device_keyword}"
                 
                 device = MasterDevice.objects.create(
@@ -641,17 +641,14 @@ class AddReadingByMacIdView(APIView):
                     CENTRE_ID=default_centre_id
                 )
 
-                # Date lock aur Serial No generate (Dash ke sath)
                 date_str = datetime.now().strftime("%d%m%y")
                 padded_id = str(device.DEVICE_ID).zfill(2)
                 device.DEVICE_SERIAL_NO = f"S/N: {date_str}-{padded_id}"
                 device.save()
                 
-                # 🚀 VIP LOGIC: Agar VOC NAHI hai (is_voc = False), tabhi Subscription banega
                 if not is_voc:
                     from datetime import timedelta
                     today = date.today()
-                    
                     SubscriptionHistory.objects.create(
                         Device_ID=device.DEVICE_ID,      
                         Subscription_ID=2,               
@@ -662,12 +659,10 @@ class AddReadingByMacIdView(APIView):
                         Status="Active"
                     )
             
-            # Step 2: Sensors Link Check
             device_sensors = DeviceSensorLink.objects.filter(DEVICE_ID=device.DEVICE_ID).values_list('SENSOR_ID', flat=True)
             if not device_sensors:
                 return Response({"status": 0, "error": "No Sensors linked to this Device"}, status=status.HTTP_404_NOT_FOUND)
             
-            # Step 3: Parameter Link Check
             sensor_param = SensorParameterLink.objects.filter(SENSOR_ID__in=device_sensors, PARAMETER_ID=param_id).first()
             if not sensor_param:
                 return Response({
@@ -675,8 +670,19 @@ class AddReadingByMacIdView(APIView):
                     "error": f"Parameter ID {param_id} is not linked to any sensor on this device."
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # Step 4: 🚀 VIP LOGIC: Agar VOC NAHI hai, tabhi Reading DB mein save hogi!
-            if not is_voc:
+            # Check for 'Device only' (Subscription_ID = 3)
+            is_device_only = False
+            today = date.today()
+            active_sub = SubscriptionHistory.objects.filter(
+                Device_ID=device.DEVICE_ID,
+                Subscription_Start_date__lte=today,
+                Subcription_End_date__gte=today
+            ).order_by('-Subscription_Start_date').first()
+            
+            if active_sub and active_sub.Subscription_ID == 3:
+                is_device_only = True
+
+            if not is_voc and not is_device_only:
                 DeviceReadingLog.objects.create(
                     DEVICE_ID=device.DEVICE_ID, 
                     SENSOR_ID=sensor_param.SENSOR_ID, 
@@ -688,6 +694,8 @@ class AddReadingByMacIdView(APIView):
                     CENTRE_ID=device.CENTRE_ID
                 )
                 msg = "Reading saved successfully! Device auto-registered if it was new."
+            elif is_device_only:
+                msg = "Device is on 'Device only' subscription. Reading data ignored and not saved."
             else:
                 msg = "VOC hardware connected! Device registered but Reading & Subscription intentionally skipped."
 
@@ -805,6 +813,7 @@ def devicecheck_mac(request):
         })
 
     plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
+    is_device_only = (sub.Subscription_ID == 3) # NAYA: Check for device only
 
     return Response({
         "mac_id": mac_id,
@@ -816,5 +825,6 @@ def devicecheck_mac(request):
             "Future" if today < sub.Subscription_Start_date
             else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
             else "Active"
-        )
+        ),
+        "show_readings": not is_device_only # NAYA: Flag for app
     })
