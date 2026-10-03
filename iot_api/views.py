@@ -166,14 +166,14 @@ class DeviceReadingLogViewSet(viewsets.ModelViewSet):
         if device_id:
             from datetime import date
             today = date.today()
-            active_sub = SubscriptionHistory.objects.filter(
-                Device_ID=device_id,
-                Subscription_Start_date__lte=today,
-                Subcription_End_date__gte=today
-            ).order_by('-Subscription_Start_date').first()
             
-            # Agar Subscription_ID 3 (Device Only) hai, toh empty list return karein
-            if active_sub and active_sub.Subscription_ID == 3:
+            # LATEST subscription nikalo
+            active_sub = SubscriptionHistory.objects.filter(
+                Device_ID=device_id
+            ).order_by('-Subcription_End_date', '-Subscription_Start_date').first()
+            
+            # 👇 NAYA LOGIC: Agar Subscription_ID 3 (Device Only) YA Plan_ID 2 (Lifetime) hai, toh empty list bhejo
+            if active_sub and (active_sub.Subscription_ID == 3 or active_sub.Plan_ID == 2):
                 return DeviceReadingLog.objects.none() 
 
             queryset = queryset.filter(DEVICE_ID=device_id)
@@ -417,14 +417,15 @@ def devicecheck(request, device_id):
             "status": "No Subscription"
         })
 
-    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) hai
-    if sub.Subscription_ID == 3:
+    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) ya 'Lifetime' (Plan_ID == 2) hai
+    if sub.Subscription_ID == 3 or sub.Plan_ID == 2:
+        is_lifetime = (sub.Plan_ID == 2)
         return Response({
             "device_id": device_id,
             "exists": True,
-            "plan_type": None,
-            "valid_till": None,
-            "status": "No Subscription",
+            "plan_type": "Lifetime" if is_lifetime else None,
+            "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
+            "status": "Lifetime" if is_lifetime else "No Subscription",
             "show_readings": False
         })
 
@@ -663,19 +664,17 @@ class AddReadingByMacIdView(APIView):
                     "error": f"Parameter ID {param_id} is not linked to any sensor on this device."
                 }, status=status.HTTP_404_NOT_FOUND)
 
-            # Check for 'Device only' (Subscription_ID = 3)
-            is_device_only = False
-            today = date.today()
+            # 👇 NAYA LOGIC: Check for 'Device only' (Subscription_ID = 3) OR 'Lifetime' (Plan_ID = 2)
+            is_device_only_or_lifetime = False
             active_sub = SubscriptionHistory.objects.filter(
-                Device_ID=device.DEVICE_ID,
-                Subscription_Start_date__lte=today,
-                Subcription_End_date__gte=today
-            ).order_by('-Subscription_Start_date').first()
+                Device_ID=device.DEVICE_ID
+            ).order_by('-Subcription_End_date', '-Subscription_Start_date').first()
             
-            if active_sub and active_sub.Subscription_ID == 3:
-                is_device_only = True
+            if active_sub and (active_sub.Subscription_ID == 3 or active_sub.Plan_ID == 2):
+                is_device_only_or_lifetime = True
 
-            if not is_voc and not is_device_only:
+            # 🚀 VIP LOGIC: Agar VOC NAHI hai AUR plan 'Device Only/Lifetime' NAHI hai, tabhi Reading DB mein save hogi!
+            if not is_voc and not is_device_only_or_lifetime:
                 DeviceReadingLog.objects.create(
                     DEVICE_ID=device.DEVICE_ID, 
                     SENSOR_ID=sensor_param.SENSOR_ID, 
@@ -687,8 +686,8 @@ class AddReadingByMacIdView(APIView):
                     CENTRE_ID=device.CENTRE_ID
                 )
                 msg = "Reading saved successfully! Device auto-registered if it was new."
-            elif is_device_only:
-                msg = "Device is on 'Device only' subscription. Reading data ignored and not saved."
+            elif is_device_only_or_lifetime:
+                msg = "Device is on 'Device only' or 'Lifetime' plan. Reading data ignored and not saved to DB."
             else:
                 msg = "VOC hardware connected! Device registered but Reading & Subscription intentionally skipped."
 
@@ -781,15 +780,16 @@ def devicecheck_mac(request):
             "status": "No Subscription"
         })
 
-    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) hai (ESP32 ko No Subscription dikhana hai)
-    if sub.Subscription_ID == 3:
+    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) ya 'Lifetime' (Plan_ID == 2) hai
+    if sub.Subscription_ID == 3 or sub.Plan_ID == 2:
+        is_lifetime = (sub.Plan_ID == 2)
         return Response({
             "mac_id": mac_id,
             "device_id": device_id,
             "exists": True,
-            "plan_type": None,
-            "valid_till": None,
-            "status": "No Subscription",
+            "plan_type": "Lifetime" if is_lifetime else None,
+            "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
+            "status": "Lifetime" if is_lifetime else "No Subscription",
             "show_readings": False
         })
 
