@@ -139,17 +139,15 @@ class MasterDeviceViewSet(viewsets.ModelViewSet):
     queryset = MasterDevice.objects.all()
     serializer_class = MasterDeviceSerializer
 
-    # 👇 NAYA LOGIC: Jab dashboard se 'Add New' karoge tab S/N banega
     def perform_create(self, serializer):
         # 1. Pehle device DB mein save karo taaki usko ID mil jaye
         device = serializer.save()
         
-        # 2. Date aur ID se Serial Number banao (Format: S/N: 180926-33)
+        # 2. Date aur ID se Serial Number banao (Format: 01102634)
         date_str = datetime.now().strftime("%d%m%y")
-        padded_id = str(device.DEVICE_ID).zfill(2)
         
-        # 3. Serial Number update karke save kar do
-        device.DEVICE_SERIAL_NO = f"S/N: {date_str}-{padded_id}"
+        # 👇 NAYA LOGIC: Bina 'S/N:' aur bina dash '-' ke
+        device.DEVICE_SERIAL_NO = f"{date_str}{device.DEVICE_ID}"
         device.save()
         
 class DeviceReadingLogViewSet(viewsets.ModelViewSet):
@@ -393,7 +391,6 @@ from datetime import date
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def devicecheck(request, device_id):
-
     device = MasterDevice.objects.filter(DEVICE_ID=device_id).first()
 
     if not device:
@@ -407,31 +404,10 @@ def devicecheck(request, device_id):
 
     today = date.today()
 
-    # 1️⃣ Active subscription
-    sub = (
-        SubscriptionHistory.objects
-        .filter(
-            Device_ID=device_id,
-            Subscription_Start_date__lte=today,
-            Subcription_End_date__gte=today
-        )
-        .order_by('-Subscription_Start_date')
-        .first()
-    )
+    # 👇 LATEST subscription nikalo
+    sub = SubscriptionHistory.objects.filter(Device_ID=device_id).order_by('-Subcription_End_date', '-Subscription_Start_date').first()
 
-    # 2️⃣ Future subscription
-    if not sub:
-        sub = (
-            SubscriptionHistory.objects
-            .filter(
-                Device_ID=device_id,
-                Subscription_Start_date__gt=today
-            )
-            .order_by('Subscription_Start_date')
-            .first()
-        )
-
-    # 3️⃣ No subscription
+    # 1️⃣ Agar kabhi koi subscription assign hi nahi hui
     if not sub:
         return Response({
             "device_id": device_id,
@@ -441,20 +417,34 @@ def devicecheck(request, device_id):
             "status": "No Subscription"
         })
 
+    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) hai
+    if sub.Subscription_ID == 3:
+        return Response({
+            "device_id": device_id,
+            "exists": True,
+            "plan_type": None,
+            "valid_till": None,
+            "status": "No Subscription",
+            "show_readings": False
+        })
+
+    # 3️⃣ Agar Data Logging wala plan hai (Check Active / Future / Expired)
     plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
-    is_device_only = (sub.Subscription_ID == 3) # NAYA: Check for device only
+    
+    if today < sub.Subscription_Start_date:
+        status_val = "Future"
+    elif sub.Subcription_End_date and today > sub.Subcription_End_date:
+        status_val = "Expired"
+    else:
+        status_val = "Active"
 
     return Response({
         "device_id": device_id,
         "exists": True,
         "plan_type": plan.Plan_Name if plan else "Unknown",
         "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
-        "status": (
-            "Future" if today < sub.Subscription_Start_date
-            else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
-            else "Active"
-        ),
-        "show_readings": not is_device_only # NAYA: Flag for app
+        "status": status_val,
+        "show_readings": True
     })
 
 
@@ -631,6 +621,7 @@ class AddReadingByMacIdView(APIView):
                 next_count = current_count + 1
                 auto_name = f"{org_name}{next_count}_{device_keyword}"
                 
+                # SMART AUTO-REGISTRATION block ke andar...
                 device = MasterDevice.objects.create(
                     DEVICE_MACID=mac_id,
                     DEVICE_NAME=auto_name,
@@ -641,9 +632,11 @@ class AddReadingByMacIdView(APIView):
                     CENTRE_ID=default_centre_id
                 )
 
+                # Date lock aur Serial No generate (Bina Dash ke)
                 date_str = datetime.now().strftime("%d%m%y")
-                padded_id = str(device.DEVICE_ID).zfill(2)
-                device.DEVICE_SERIAL_NO = f"S/N: {date_str}-{padded_id}"
+                
+                # 👇 NAYA LOGIC: Bina 'S/N:' aur bina dash '-' ke
+                device.DEVICE_SERIAL_NO = f"{date_str}{device.DEVICE_ID}"
                 device.save()
                 
                 if not is_voc:
@@ -753,7 +746,6 @@ def devicecheck_mac(request):
     device = MasterDevice.objects.filter(DEVICE_MACID=mac_id).first()
 
     if not device:
-        # 🚀 VIP PASS: Hardware ko bol do ki sab "Active" hai, taaki wo reading bhej sake!
         return Response({
             "mac_id": mac_id,
             "exists": True, 
@@ -762,7 +754,6 @@ def devicecheck_mac(request):
             "status": "Active"
         }, status=200)
 
-    # 👇 NAYA LOGIC: VOC Devices (ID 4 & 5) ke liye Subscription API hamesha "Active" return karegi
     if device.CATEGORY_ID in [4, 5]:
         return Response({
             "mac_id": mac_id,
@@ -773,35 +764,13 @@ def devicecheck_mac(request):
             "status": "Active"
         }, status=200)
 
-    # Agar device mil gaya toh uski ID nikaal lo
     device_id = device.DEVICE_ID
     today = date.today()
 
-    # 1️⃣ Active subscription check
-    sub = (
-        SubscriptionHistory.objects
-        .filter(
-            Device_ID=device_id,
-            Subscription_Start_date__lte=today,
-            Subcription_End_date__gte=today
-        )
-        .order_by('-Subscription_Start_date')
-        .first()
-    )
+    # 👇 LATEST subscription nikalo
+    sub = SubscriptionHistory.objects.filter(Device_ID=device_id).order_by('-Subcription_End_date', '-Subscription_Start_date').first()
 
-    # 2️⃣ Future subscription check
-    if not sub:
-        sub = (
-            SubscriptionHistory.objects
-            .filter(
-                Device_ID=device_id,
-                Subscription_Start_date__gt=today
-            )
-            .order_by('Subscription_Start_date')
-            .first()
-        )
-
-    # 3️⃣ No subscription
+    # 1️⃣ Agar kabhi koi subscription assign hi nahi hui
     if not sub:
         return Response({
             "mac_id": mac_id,
@@ -812,8 +781,27 @@ def devicecheck_mac(request):
             "status": "No Subscription"
         })
 
+    # 2️⃣ Agar 'Device Only' (Subscription_ID == 3) hai (ESP32 ko No Subscription dikhana hai)
+    if sub.Subscription_ID == 3:
+        return Response({
+            "mac_id": mac_id,
+            "device_id": device_id,
+            "exists": True,
+            "plan_type": None,
+            "valid_till": None,
+            "status": "No Subscription",
+            "show_readings": False
+        })
+
+    # 3️⃣ Agar Data Logging wala plan hai (Check Active / Future / Expired)
     plan = Master_Plan_Type.objects.filter(Plan_ID=sub.Plan_ID).first()
-    is_device_only = (sub.Subscription_ID == 3) # NAYA: Check for device only
+    
+    if today < sub.Subscription_Start_date:
+        status_val = "Future"
+    elif sub.Subcription_End_date and today > sub.Subcription_End_date:
+        status_val = "Expired"
+    else:
+        status_val = "Active"
 
     return Response({
         "mac_id": mac_id,
@@ -821,10 +809,6 @@ def devicecheck_mac(request):
         "exists": True,
         "plan_type": plan.Plan_Name if plan else "Unknown",
         "valid_till": sub.Subcription_End_date.strftime("%Y-%m-%d") if sub.Subcription_End_date else None,
-        "status": (
-            "Future" if today < sub.Subscription_Start_date
-            else "Expired" if sub.Subcription_End_date and today > sub.Subcription_End_date
-            else "Active"
-        ),
-        "show_readings": not is_device_only # NAYA: Flag for app
+        "status": status_val,
+        "show_readings": True
     })
