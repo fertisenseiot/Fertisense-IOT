@@ -138,7 +138,7 @@ IST = pytz.timezone("Asia/Kolkata")  # ✅ IST timezone
 
 # ================== Alarm Normalized Alert ==================
 def send_normalized_alert(active_alarm):
-    if not has_active_subcription(active_alarm.DEVICE_ID):
+    if not has_active_subscription(active_alarm.DEVICE_ID):
         print("⛔ Subscription expired → Normalized alert skipped")
         return
     from .models import MasterDevice, UserOrganizationCentreLink, MasterUser  # Import here to avoid circular imports
