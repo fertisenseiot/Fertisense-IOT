@@ -663,13 +663,13 @@ class MasterCentre(models.Model):
 from django.db import models
 
 class MasterRole(models.Model):
-    ROLE_ID = models.AutoField(primary_key=True)
-    ROLE_NAME = models.CharField(max_length=100)
+     ROLE_ID = models.AutoField(primary_key=True)
+     ROLE_NAME = models.CharField(max_length=100)
 
-    class Meta:  # ✅ Ab sahi jagah par hai
+class Meta:
         db_table = "master_role"
 
-    def __str__(self): # ✅
+def __str__(self):
         return self.ROLE_NAME
 
 from django.db import models
@@ -713,7 +713,7 @@ class UserOrganizationCentreLink(models.Model):
     created_by = models.IntegerField(null=True, blank=True)    
 
     def __str__(self):
-        return f"{self.USER_ID.USERNAME} → {self.ORGANIZATION_ID.ORGANIZATION_NAME} → {self.CENTRE_ID.CENTRE_NAME}"
+        return f"{self.USER.USERNAME} → {self.ORGANIZATION.ORGANIZATION_NAME} → {self.CENTRE.CENTRE_NAME}"
     
     class Meta:
         db_table = "userorganizationcentrelink"
