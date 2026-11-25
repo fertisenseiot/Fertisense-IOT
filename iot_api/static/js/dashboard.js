@@ -310,7 +310,21 @@ else if (currentTable === "createuser") {
       <div class="col-md-6 mb-1"><label class="form-label">Actual Name</label><input type="text" class="form-control" name="ACTUAL_NAME" value="${row.ACTUAL_NAME ?? ''}" ${autoCapStr}></div>
       <div class="col-md-6 mb-1"><label class="form-label">Username</label><input type="text" class="form-control" name="USERNAME" value="${row.USERNAME ?? ''}" ${autoCapStr}></div>
       <div class="col-md-6 mb-1"><label class="form-label">Role</label><select class="form-select" name="ROLE_ID"><option value="">-- Choose Role --</option>${(dropdownData.roles || []).map(r => `<option value="${r.ROLE_ID}" ${(String(r.ROLE_ID) === String(row.ROLE_ID ?? "")) ? "selected" : ""}>${r.ROLE_NAME} (${r.ROLE_ID})</option>`).join("")}</select></div>
-      <div class="col-md-6 mb-1"><label class="form-label">Phone</label><input type="text" class="form-control" name="PHONE" value="${row.PHONE ?? ''}"></div>
+      <div class="col-md-6 mb-1">
+    <label class="form-label">Phone</label>
+    <input
+        type="text"
+        class="form-control"
+        name="PHONE"
+        id="PHONE"
+        value="${row.PHONE ?? ''}"
+        inputmode="text"
+        placeholder="9876543210, 9123456789"
+        required
+        oninput="validatePhoneNumber(this)"
+    >
+    <small class="text-danger d-none" id="phoneError"></small>
+</div>
       <div class="col-md-12 mb-1"><label class="form-label">Email</label><input type="email" class="form-control" name="EMAIL" value="${row.EMAIL ?? ''}"></div>
       <div class="col-12 mb-1 d-flex align-items-center py-1">
         <div class="form-check me-4"><input class="form-check-input" type="checkbox" name="SEND_SMS" ${row.SEND_SMS ? "checked" : ""}><label class="form-check-label small">Send SMS</label></div>
@@ -367,6 +381,15 @@ else if (currentTable === "createuser") {
    ============================================================ */
 document.getElementById('crudForm').addEventListener('submit', async function(e){
   e.preventDefault();
+
+  if (currentTable === "createuser") {
+
+    const phoneInput = this.querySelector('[name="PHONE"]');
+
+    if (phoneInput && !validatePhoneNumber(phoneInput)) {
+        return;
+    }
+}
   const form = new FormData(this); let payload = {}; form.forEach((v,k)=>payload[k]=v);
 
   Object.keys(payload).forEach(k => { if (payload[k] === "" || payload[k] === undefined) delete payload[k]; });
@@ -746,6 +769,59 @@ function togglePassword() {
     if(passwordField) passwordField.type = "password";
     if(confirmField) confirmField.type = "password";
   }
+}
+
+function validatePhoneNumber(input) {
+    const value = input.value;
+    const error = document.getElementById("phoneError");
+
+    error.classList.add("d-none");
+    error.innerText = "";
+    input.classList.remove("is-invalid");
+
+    if (!value.trim()) return true;
+
+    // Comma se separate numbers
+    const numbers = value.split(",").map(num => num.trim());
+
+    let errorMessage = "";
+
+    if (numbers.some(num => num === "")) {
+        errorMessage = "Please enter a mobile number after each comma.";
+    } else {
+        for (let i = 0; i < numbers.length; i++) {
+            const num = numbers[i];
+
+            if (/\s/.test(num)) {
+                errorMessage = `Number ${i + 1}: Spaces are not allowed inside mobile numbers.`;
+                break;
+            }
+
+            if (!/^\d+$/.test(num)) {
+                errorMessage = `Number ${i + 1}: Only digits (0-9) are allowed.`;
+                break;
+            }
+
+            if (num.length !== 10) {
+                errorMessage = `Number ${i + 1}: Mobile number must contain exactly 10 digits.`;
+                break;
+            }
+
+            if (!/^[6-9]\d{9}$/.test(num)) {
+                errorMessage = `Number ${i + 1}: Please enter a valid Indian mobile number.`;
+                break;
+            }
+        }
+    }
+
+    if (errorMessage) {
+        error.innerText = errorMessage;
+        error.classList.remove("d-none");
+        input.classList.add("is-invalid");
+        return false;
+    }
+
+    return true;
 }
 
 /* ============================================================
